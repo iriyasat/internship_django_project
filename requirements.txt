@@ -1,0 +1,5 @@
+# ".\venv\Scripts.\venv\Scripts"
+
+django
+django-environ
+pillow
