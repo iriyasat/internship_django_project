@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 import pymysql
 pymysql.install_as_MySQLdb()
 
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'car_sales'
 ]
 
 MIDDLEWARE = [
@@ -56,7 +58,7 @@ ROOT_URLCONF = 'project1.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -77,7 +79,7 @@ WSGI_APPLICATION = 'project1.wsgi.application'
 DATABASES = {                                                                                                                        
         'default': {                                                                                                                     
             'ENGINE': 'django.db.backends.mysql',                                                                                        
-            'NAME': 'project1_db',                                                                                                       
+            'NAME': 'car_sales',                                                                                                       
             'USER': 'root',                                                                                               
             'PASSWORD': '',                                                                                           
             'HOST': '127.0.0.1',                                                                                                         
