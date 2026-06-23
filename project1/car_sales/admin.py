@@ -18,6 +18,11 @@ from .models import (
     TradeIn,
     Vehicle,
     VehicleModel,
+    LeadSource,
+    VehicleImage,
+    VehicleService,
+    FinanceApplication,
+    Manufacturer,
 )
 
 # ==========================================
@@ -90,11 +95,25 @@ class LeadActivityTypeAdmin(admin.ModelAdmin):
     ordering = ("lead_activity_type_id",)
 
 
+@admin.register(LeadSource)
+class LeadSourceAdmin(admin.ModelAdmin):
+    list_display = ("source_id", "source_name")
+    search_fields = ("source_name",)
+    ordering = ("source_id",)
+
+
 @admin.register(Phone)
 class PhoneAdmin(admin.ModelAdmin):
     list_display = ("phone_id", "phone_number")
     search_fields = ("phone_number",)
     ordering = ("phone_id",)
+
+
+@admin.register(Manufacturer)
+class ManufacturerAdmin(admin.ModelAdmin):
+    list_display = ("manufacturer_id", "manufacturer_name")
+    search_fields = ("manufacturer_name",)
+    ordering = ("manufacturer_id",)
 
 
 # ==========================================
@@ -147,10 +166,21 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(VehicleModel)
 class VehicleModelAdmin(admin.ModelAdmin):
-    list_display = ("model_id", "make", "model", "trim", "body_type", "fuel_type")
-    list_filter = ("make", "body_type", "fuel_type")
-    search_fields = ("make", "model", "trim")
-    ordering = ("make", "model")
+    list_display = ("model_id", "manufacturer", "model", "trim", "body_type", "fuel_type")
+    list_filter = ("manufacturer", "body_type", "fuel_type")
+    search_fields = ("manufacturer__manufacturer_name", "model", "trim")
+    raw_id_fields = ("manufacturer",)
+    ordering = ("manufacturer__manufacturer_name", "model")
+
+
+class VehicleImageInline(admin.TabularInline):
+    model = VehicleImage
+    extra = 1
+
+
+class VehicleServiceInline(admin.TabularInline):
+    model = VehicleService
+    extra = 1
 
 
 @admin.register(Vehicle)
@@ -165,11 +195,14 @@ class VehicleAdmin(admin.ModelAdmin):
         "selling_price",
         "condition",
         "status",
+        "date_acquired",
+        "date_listed",
     )
-    list_filter = ("status", "condition", "year")
-    search_fields = ("vin", "model__make", "model__model", "color")
+    list_filter = ("status", "condition", "year", "date_acquired", "date_listed")
+    search_fields = ("vin", "model__manufacturer__manufacturer_name", "model__model", "color")
     raw_id_fields = ("model",)
-    ordering = ("-year", "model__make")
+    inlines = [VehicleImageInline, VehicleServiceInline]
+    ordering = ("-year", "model__manufacturer__manufacturer_name")
 
 
 @admin.register(Lead)
@@ -216,6 +249,7 @@ class LeadActivityAdmin(admin.ModelAdmin):
 class SaleAdmin(admin.ModelAdmin):
     list_display = (
         "sale_id",
+        "customer",
         "vehicle",
         "employee",
         "sale_date",
@@ -224,16 +258,17 @@ class SaleAdmin(admin.ModelAdmin):
         "tax_amount",
         "total_price",
         "commission_earned",
+        "status",
     )
-    list_filter = ("sale_date", "employee")
+    list_filter = ("sale_date", "employee", "status")
     search_fields = (
         "vehicle__vin",
         "employee__first_name",
         "employee__last_name",
-        "lead__customer__first_name",
-        "lead__customer__last_name",
+        "customer__first_name",
+        "customer__last_name",
     )
-    raw_id_fields = ("lead", "employee", "vehicle")
+    raw_id_fields = ("customer", "lead", "employee", "vehicle")
     readonly_fields = ("total_price", "commission_earned", "created_at", "updated_at")
     inlines = [TradeInInline, PaymentInline]
     ordering = ("-sale_date",)
@@ -263,3 +298,30 @@ class PaymentAdmin(admin.ModelAdmin):
     raw_id_fields = ("sale", "payment_method")
     readonly_fields = ("created_at", "updated_at")
     ordering = ("-payment_date",)
+
+
+@admin.register(VehicleImage)
+class VehicleImageAdmin(admin.ModelAdmin):
+    list_display = ("image_id", "vehicle", "is_primary")
+    list_filter = ("is_primary",)
+    search_fields = ("vehicle__vin",)
+    raw_id_fields = ("vehicle",)
+    ordering = ("-image_id",)
+
+
+@admin.register(VehicleService)
+class VehicleServiceAdmin(admin.ModelAdmin):
+    list_display = ("service_id", "vehicle", "service_date", "cost")
+    list_filter = ("service_date",)
+    search_fields = ("vehicle__vin", "description")
+    raw_id_fields = ("vehicle",)
+    ordering = ("-service_date",)
+
+
+@admin.register(FinanceApplication)
+class FinanceApplicationAdmin(admin.ModelAdmin):
+    list_display = ("application_id", "customer", "sale", "loan_amount", "status")
+    list_filter = ("status",)
+    search_fields = ("customer__first_name", "customer__last_name", "sale__vehicle__vin")
+    raw_id_fields = ("customer", "sale")
+    ordering = ("-application_id",)

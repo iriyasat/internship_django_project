@@ -100,10 +100,13 @@ CREATE TABLE `Vehicles` (
   `selling_price` decimal(10,2) NOT NULL,
   `condition` enum('NEW', 'USED', 'CPO') NOT NULL,
   `status` enum('AVAILABLE', 'RESERVED', 'SOLD', 'IN_SERVICE') NOT NULL DEFAULT 'AVAILABLE',
+  `date_acquired` date NOT NULL,
+  `date_listed` date NULL,
   CONSTRAINT `chk_vehicle_year` CHECK (`year` BETWEEN 1900 AND 2100),
   CONSTRAINT `chk_vehicle_mileage` CHECK (`mileage` >= 0),
   CONSTRAINT `chk_vehicle_cost` CHECK (`acquisition_cost` >= 0.00),
-  CONSTRAINT `chk_vehicle_price` CHECK (`selling_price` >= 0.00)
+  CONSTRAINT `chk_vehicle_price` CHECK (`selling_price` >= 0.00),
+  CONSTRAINT `chk_vehicle_dates` CHECK (`date_listed` IS NULL OR `date_listed` >= `date_acquired`)
 );
 
 -- ------------------------------------------
@@ -336,6 +339,8 @@ Table Vehicles {
   selling_price decimal(10,2) [not null]
   condition VehicleCondition [not null]
   status VehicleStatus [default: 'AVAILABLE', not null]
+  date_acquired date [not null]
+  date_listed date
 }
 
 Table Leads {
@@ -462,6 +467,8 @@ erDiagram
         int model_id FK
         string vin
         string status
+        date date_acquired
+        date date_listed
     }
     LEADS {
         int lead_id PK

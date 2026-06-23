@@ -17,6 +17,8 @@ class Address(models.Model):
     city = models.ForeignKey('City', on_delete=models.CASCADE, db_column="city_id", related_name="addresses", verbose_name="City")
     state = models.CharField(max_length=50, verbose_name="State")
     postal_code = models.CharField(max_length=20, verbose_name="Postal Code")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"{self.street_address}"
@@ -74,6 +76,9 @@ class Customer(models.Model):
     email = models.EmailField(max_length=100, unique=True, verbose_name="Email Address")
     phone = models.ForeignKey('Phone', on_delete=models.SET_NULL, db_column="phone_id", null=True, blank=True, related_name="customers", verbose_name="Phone Number")
     address = models.ForeignKey('Address', on_delete=models.SET_NULL, db_column="address_id", null=True, blank=True, related_name="customers", verbose_name="Address")
+    notes = models.TextField(blank=True, null=True, verbose_name="Notes")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     @property
     def full_name(self) -> str:
@@ -110,6 +115,8 @@ class Employee(models.Model):
     leave_end_date = models.DateField(blank=True, null=True, verbose_name="Leave End Date")
     assigned_task = models.CharField(max_length=255, blank=True, null=True, verbose_name="Assigned Task")
     terminated_date = models.DateField(blank=True, null=True, verbose_name="Terminated Date")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     @property
     def full_name(self) -> str:
@@ -203,7 +210,24 @@ class EmployeeTarget(models.Model):
 
 
 # ==========================================
-# 9. Lead
+# 9. LeadSource
+# ==========================================
+
+class LeadSource(models.Model):
+    source_id = models.AutoField(primary_key=True)
+    source_name = models.CharField(max_length=50, unique=True, verbose_name="Source Name")
+
+    def __str__(self) -> str:
+        return self.source_name
+
+    class Meta:
+        db_table = "LeadSources"
+        verbose_name = "Lead Source"
+        verbose_name_plural = "Lead Sources"
+
+
+# ==========================================
+# 10. Lead
 # ==========================================
 
 class LeadQuerySet(models.QuerySet):
@@ -235,7 +259,7 @@ class Lead(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, db_column="customer_id", related_name="leads", verbose_name="Customer")
     vehicle = models.ForeignKey('Vehicle', on_delete=models.SET_NULL, db_column="vehicle_id", null=True, blank=True, related_name="leads", verbose_name="Vehicle")
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE, db_column="employee_id", related_name="leads", verbose_name="Assigned Employee")
-    source = models.CharField(max_length=50, blank=True, null=True, verbose_name="Source")
+    source = models.ForeignKey('LeadSource', on_delete=models.SET_NULL, db_column="source_id", null=True, blank=True, related_name="leads", verbose_name="Source")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, verbose_name="Status")
     notes = models.TextField(blank=True, null=True, verbose_name="Notes")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
@@ -270,7 +294,7 @@ class Lead(models.Model):
 
 
 # ==========================================
-# 10. LeadActivity
+# 11. LeadActivity
 # ==========================================
 
 class LeadActivity(models.Model):
@@ -292,7 +316,7 @@ class LeadActivity(models.Model):
 
 
 # ==========================================
-# 11. LeadActivityType
+# 12. LeadActivityType
 # ==========================================
 
 class LeadActivityType(models.Model):
@@ -309,7 +333,7 @@ class LeadActivityType(models.Model):
 
 
 # ==========================================
-# 12. Payment
+# 13. Payment
 # ==========================================
 
 class Payment(models.Model):
@@ -339,7 +363,7 @@ class Payment(models.Model):
 
 
 # ==========================================
-# 13. PaymentMethod
+# 14. PaymentMethod
 # ==========================================
 
 class PaymentMethod(models.Model):
@@ -356,7 +380,7 @@ class PaymentMethod(models.Model):
 
 
 # ==========================================
-# 14. Phone
+# 15. Phone
 # ==========================================
 
 class Phone(models.Model):
@@ -383,11 +407,20 @@ class Phone(models.Model):
 
 
 # ==========================================
-# 15. Sale
+# 16. Sale
 # ==========================================
 
 class Sale(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        PENDING = "PENDING", "Pending"
+        FINANCING = "FINANCING", "Financing"
+        COMPLETED = "COMPLETED", "Completed"
+        CANCELLED = "CANCELLED", "Cancelled"
+        REFUNDED = "REFUNDED", "Refunded"
+
     sale_id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey('Customer', on_delete=models.PROTECT, db_column="customer_id", related_name="sales", verbose_name="Customer")
     lead = models.OneToOneField('Lead', on_delete=models.SET_NULL, db_column="lead_id", null=True, blank=True, related_name="sale", verbose_name="Lead")
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE, db_column="employee_id", related_name="sales", verbose_name="Employee")
     vehicle = models.OneToOneField('Vehicle', on_delete=models.CASCADE, db_column="vehicle_id", related_name="sale", verbose_name="Vehicle")
@@ -396,6 +429,8 @@ class Sale(models.Model):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Discount Amount")
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Tax Amount")
     commission_rate_applied = models.DecimalField(max_digits=5, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Commission Rate Applied")
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Commission Amount")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name="Status")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
@@ -405,8 +440,26 @@ class Sale(models.Model):
 
     @property
     def commission_earned(self) -> Decimal:
+        if self.commission_amount is not None:
+            return self.commission_amount
         net_amount = self.base_price - self.discount_amount
         return (net_amount * self.commission_rate_applied) / Decimal("100.00")
+
+    def clean(self):
+        super().clean()
+        if not hasattr(self, 'customer') or self.customer is None:
+            if self.lead and self.lead.customer:
+                self.customer = self.lead.customer
+        
+        if self.base_price is not None and self.discount_amount is not None and self.commission_rate_applied is not None:
+            net_amount = self.base_price - self.discount_amount
+            calculated_comm = (net_amount * self.commission_rate_applied) / Decimal("100.00")
+            if self.commission_amount is None:
+                self.commission_amount = calculated_comm
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"Sale #{self.sale_id} - Vehicle VIN: {self.vehicle.vin} (${self.total_price})"
@@ -421,7 +474,7 @@ class Sale(models.Model):
 
 
 # ==========================================
-# 16. TradeIn
+# 17. TradeIn
 # ==========================================
 
 class TradeIn(models.Model):
@@ -442,7 +495,7 @@ class TradeIn(models.Model):
 
 
 # ==========================================
-# 17. Vehicle
+# 18. Vehicle
 # ==========================================
 
 class Vehicle(models.Model):
@@ -459,7 +512,17 @@ class Vehicle(models.Model):
 
     vehicle_id = models.AutoField(primary_key=True)
     model = models.ForeignKey('VehicleModel', on_delete=models.CASCADE, db_column="model_id", related_name="vehicles", verbose_name="Vehicle Model")
-    vin = models.CharField(max_length=17, unique=True, verbose_name="VIN")
+    vin = models.CharField(
+        max_length=17,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r'^[A-HJ-NPR-Z0-9]{17}$',
+                message='Invalid VIN format'
+            )
+        ],
+        verbose_name="VIN"
+    )
     year = models.PositiveIntegerField(validators=[MinValueValidator(1900), MaxValueValidator(2100)], verbose_name="Year")
     color = models.CharField(max_length=30, blank=True, null=True, verbose_name="Color")
     mileage = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)], verbose_name="Mileage")
@@ -467,9 +530,22 @@ class Vehicle(models.Model):
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Selling Price")
     condition = models.CharField(max_length=20, choices=Condition.choices, verbose_name="Condition")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE, verbose_name="Status")
+    date_acquired = models.DateField(verbose_name="Date Acquired")
+    date_listed = models.DateField(null=True, blank=True, verbose_name="Date Listed")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def clean(self):
+        super().clean()
+        if self.date_acquired and self.date_listed and self.date_listed < self.date_acquired:
+            raise ValidationError({"date_listed": "Date listed cannot be before date acquired."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.year} {self.model.make} {self.model.model} (VIN: {self.vin})"
+        return f"{self.year} {self.model.manufacturer.manufacturer_name} {self.model.model} (VIN: {self.vin})"
 
     class Meta:
         db_table = "Vehicles"
@@ -482,19 +558,42 @@ class Vehicle(models.Model):
 
 
 # ==========================================
-# 18. VehicleModel
+# 19. Manufacturer
+# ==========================================
+
+class Manufacturer(models.Model):
+    manufacturer_id = models.AutoField(primary_key=True)
+    manufacturer_name = models.CharField(max_length=50, unique=True, verbose_name="Manufacturer Name")
+
+    def __str__(self) -> str:
+        return self.manufacturer_name
+
+    class Meta:
+        db_table = "Manufacturers"
+        verbose_name = "Manufacturer"
+        verbose_name_plural = "Manufacturers"
+
+
+# ==========================================
+# 20. VehicleModel
 # ==========================================
 
 class VehicleModel(models.Model):
     model_id = models.AutoField(primary_key=True)
-    make = models.CharField(max_length=50, verbose_name="Make")
+    manufacturer = models.ForeignKey(
+        'Manufacturer',
+        on_delete=models.CASCADE,
+        db_column="manufacturer_id",
+        related_name="vehicle_models",
+        verbose_name="Manufacturer"
+    )
     model = models.CharField(max_length=50, verbose_name="Model")
     trim = models.CharField(max_length=50, blank=True, null=True, verbose_name="Trim")
     body_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Body Type")
     fuel_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Fuel Type")
 
     def __str__(self) -> str:
-        parts = [self.make, self.model]
+        parts = [self.manufacturer.manufacturer_name, self.model]
         if self.trim:
             parts.append(self.trim)
         return " ".join(parts)
@@ -503,3 +602,105 @@ class VehicleModel(models.Model):
         db_table = "VehicleModels"
         verbose_name = "Vehicle Model"
         verbose_name_plural = "Vehicle Models"
+
+
+# ==========================================
+# 21. VehicleImage
+# ==========================================
+
+class VehicleImage(models.Model):
+    image_id = models.AutoField(primary_key=True)
+    vehicle = models.ForeignKey(
+        'Vehicle',
+        on_delete=models.CASCADE,
+        db_column="vehicle_id",
+        related_name="images",
+        verbose_name="Vehicle"
+    )
+    image = models.ImageField(
+        upload_to="vehicles/",
+        verbose_name="Image"
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        verbose_name="Is Primary"
+    )
+
+    def __str__(self) -> str:
+        return f"Image #{self.image_id} for Vehicle VIN: {self.vehicle.vin}"
+
+    class Meta:
+        db_table = "VehicleImages"
+        verbose_name = "Vehicle Image"
+        verbose_name_plural = "Vehicle Images"
+
+
+# ==========================================
+# 22. VehicleService
+# ==========================================
+
+class VehicleService(models.Model):
+    service_id = models.AutoField(primary_key=True)
+    vehicle = models.ForeignKey(
+        'Vehicle',
+        on_delete=models.CASCADE,
+        db_column="vehicle_id",
+        related_name="services",
+        verbose_name="Vehicle"
+    )
+    service_date = models.DateField(verbose_name="Service Date")
+    description = models.TextField(verbose_name="Description")
+    cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        verbose_name="Cost"
+    )
+
+    def __str__(self) -> str:
+        return f"Service #{self.service_id} for Vehicle VIN: {self.vehicle.vin} (${self.cost})"
+
+    class Meta:
+        db_table = "VehicleServices"
+        verbose_name = "Vehicle Service"
+        verbose_name_plural = "Vehicle Services"
+
+
+# ==========================================
+# 23. FinanceApplication
+# ==========================================
+
+class FinanceApplication(models.Model):
+    application_id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.CASCADE,
+        db_column="customer_id",
+        related_name="finance_applications",
+        verbose_name="Customer"
+    )
+    sale = models.OneToOneField(
+        'Sale',
+        on_delete=models.CASCADE,
+        db_column="sale_id",
+        related_name="finance_application",
+        verbose_name="Sale"
+    )
+    loan_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        verbose_name="Loan Amount"
+    )
+    status = models.CharField(
+        max_length=20,
+        verbose_name="Status"
+    )
+
+    def __str__(self) -> str:
+        return f"Finance Application #{self.application_id} - Loan: ${self.loan_amount} ({self.status})"
+
+    class Meta:
+        db_table = "FinanceApplications"
+        verbose_name = "Finance Application"
+        verbose_name_plural = "Finance Applications"
