@@ -34,6 +34,7 @@ CREATE TABLE `Roles` (
 -- Table Addresses
 CREATE TABLE `Addresses` (
   `address_id` int PRIMARY KEY AUTO_INCREMENT,
+  `house_no` varchar(150) NOT NULL,
   `street_address` varchar(150) NOT NULL,
   `city` varchar(50) NOT NULL,
   `state` varchar(50) NOT NULL,
@@ -279,6 +280,7 @@ Table Roles {
 
 Table Addresses {
   address_id int [pk, increment]
+  house_no varchar(150) [not null]
   street_address varchar(150) [not null]
   city varchar(50) [not null]
   state varchar(50) [not null]
@@ -429,8 +431,11 @@ erDiagram
     }
     ADDRESSES {
         int address_id PK
+        string house_no
+        string street_address
         string city
-        string country
+        string state
+        string postal_code
     }
     PAYMENT_METHODS {
         int method_id PK

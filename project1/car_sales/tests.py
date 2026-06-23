@@ -4,18 +4,24 @@ from django.test import TestCase
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
-    EmployeeRole,
     Address,
-    PaymentMethod,
-    Employee,
+    City,
+    Country,
     Customer,
-    VehicleModel,
-    Vehicle,
+    Employee,
+    EmployeeRole,
+    EmployeeStatus,
+    EmployeeTarget,
     Lead,
     LeadActivity,
+    LeadActivityType,
+    Payment,
+    PaymentMethod,
+    Phone,
     Sale,
     TradeIn,
-    Payment,
+    Vehicle,
+    VehicleModel,
 )
 
 
@@ -25,14 +31,24 @@ class CarSalesModelTestCase(TestCase):
     def setUp(self):
         # Create Lookup Tables Data
         self.role = EmployeeRole.objects.create(role_name="Sales Executive")
+        self.status_active = EmployeeStatus.objects.create(status_name="Active")
         
         self.payment_method_bank = PaymentMethod.objects.create(payment_method_name="Bank Transfer")
         self.payment_method_cash = PaymentMethod.objects.create(payment_method_name="Cash")
 
+        # Create Country and City
+        self.country = Country.objects.create(country_name="USA")
+        self.city_obj = City.objects.create(city_name="Metropolis", country=self.country)
+
+        # Create Phone Numbers
+        self.phone_emp = Phone.objects.create(phone_number="+8801712345678")
+        self.phone_cust = Phone.objects.create(phone_number="+8801812345678")
+
         # Create an Address
         self.address = Address.objects.create(
-            street_address="123 Main St",
-            city="Metropolis",
+            house_no="12/A",
+            street_address="Main St",
+            city=self.city_obj,
             state="NY",
             postal_code="10001",
         )
@@ -43,10 +59,9 @@ class CarSalesModelTestCase(TestCase):
             first_name="Jane",
             last_name="Doe",
             email="jane.doe@dealership.com",
-            phone="555-0199",
+            phone=self.phone_emp,
             address=self.address,
-            status=Employee.Status.ACTIVE,
-            commission_rate=Decimal("5.50"),
+            status=self.status_active,
         )
 
         # Create a Customer
@@ -54,7 +69,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Smith",
             email="john.smith@gmail.com",
-            phone="555-0144",
+            phone=self.phone_cust,
             address=self.address,
         )
 
@@ -80,6 +95,9 @@ class CarSalesModelTestCase(TestCase):
             status=Vehicle.Status.AVAILABLE,
         )
 
+        # Create LeadActivityType
+        self.activity_call = LeadActivityType.objects.create(lead_activity_type_name="Call")
+
         # Create a Lead
         self.lead = Lead.objects.create(
             customer=self.customer,
@@ -92,7 +110,11 @@ class CarSalesModelTestCase(TestCase):
     def test_str_representations(self):
         """Test the __str__ methods of various models."""
         self.assertEqual(str(self.role), "Sales Executive")
-        self.assertEqual(str(self.address), "123 Main St")
+        self.assertEqual(str(self.status_active), "Active")
+        self.assertEqual(str(self.country), "USA")
+        self.assertEqual(str(self.city_obj), "Metropolis, USA")
+        self.assertEqual(str(self.address), "Main St")
+        self.assertEqual(str(self.phone_emp), "+8801712345678")
         self.assertEqual(str(self.employee), "Jane Doe")
         self.assertEqual(str(self.customer), "John Smith")
         self.assertEqual(str(self.vehicle_model), "Toyota Camry SE")
@@ -138,13 +160,13 @@ class CarSalesModelTestCase(TestCase):
         activity = LeadActivity.objects.create(
             lead=self.lead,
             employee=self.employee,
-            activity_type=LeadActivity.ActivityType.CALL,
+            activity_type=self.activity_call,
             details="Called the customer to discuss pricing details.",
         )
         self.assertEqual(activity.lead, self.lead)
         self.assertEqual(activity.employee, self.employee)
-        self.assertEqual(activity.activity_type, LeadActivity.ActivityType.CALL)
-        self.assertIn("CALL on", str(activity))
+        self.assertEqual(activity.activity_type, self.activity_call)
+        self.assertIn("Call on", str(activity))
 
     def test_sale_financial_properties(self):
         """Test pricing and commission calculations on the Sale model."""
@@ -195,3 +217,102 @@ class CarSalesModelTestCase(TestCase):
         )
         with self.assertRaises(ValidationError):
             invalid_payment.full_clean()
+
+    def test_phone_validation(self):
+        """Test constraints and validation rules on the Phone model."""
+        # Valid Phone Number
+        valid_phone = Phone(phone_number="+8801912345678")
+        try:
+            valid_phone.full_clean()
+        except ValidationError:
+            self.fail("ValidationError raised on a valid Bangladesh phone number")
+
+        # Invalid Phone Number (Format check)
+        invalid_phone = Phone(phone_number="01712345678")
+        with self.assertRaises(ValidationError):
+            invalid_phone.full_clean()
+
+        # Invalid Phone Number (Length check)
+        invalid_phone_long = Phone(phone_number="+88017123456789")
+        with self.assertRaises(ValidationError):
+            invalid_phone_long.full_clean()
+
+    def test_employee_dates_validation(self):
+        """Test validation rules for employee hire/termination dates and leave dates."""
+        # 1. Invalid Terminated Date (before hire_date)
+        invalid_employee_termination = Employee(
+            role=self.role,
+            first_name="John",
+            last_name="Doe",
+            email="john.doe.invalid@dealership.com",
+            phone=self.phone_emp,
+            address=self.address,
+            status=self.status_active,
+            hire_date=datetime.date(2026, 6, 20),
+            terminated_date=datetime.date(2026, 6, 19),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_employee_termination.full_clean()
+
+        # 2. Invalid Leave Dates (leave_end_date before leave_start_date)
+        invalid_employee_leave = Employee(
+            role=self.role,
+            first_name="Jane",
+            last_name="Smith",
+            email="jane.smith.invalid@dealership.com",
+            phone=self.phone_emp,
+            address=self.address,
+            status=self.status_active,
+            hire_date=datetime.date(2026, 6, 20),
+            leave_start_date=datetime.date(2026, 6, 25),
+            leave_end_date=datetime.date(2026, 6, 24),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_employee_leave.full_clean()
+
+    def test_employee_target_validation(self):
+        """Test validation rules for EmployeeTarget dates and constraint checks."""
+        # 1. Valid EmployeeTarget creation
+        target = EmployeeTarget.objects.create(
+            employee=self.employee,
+            target_goal=10,
+            commission_percentage=Decimal("5.00"),
+            start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 6, 30),
+        )
+        self.assertEqual(target.employee, self.employee)
+        self.assertEqual(target.target_goal, 10)
+        self.assertEqual(target.commission_percentage, Decimal("5.00"))
+        self.assertEqual(str(target), "Target for Jane Doe: 10 products (5.00%)")
+
+        # 2. Invalid EmployeeTarget dates (end_date before start_date)
+        invalid_target = EmployeeTarget(
+            employee=self.employee,
+            target_goal=10,
+            commission_percentage=Decimal("5.00"),
+            start_date=datetime.date(2026, 6, 30),
+            end_date=datetime.date(2026, 6, 1),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_target.full_clean()
+
+        # 3. Invalid commission percentage (out of range [0, 100])
+        invalid_percentage_high = EmployeeTarget(
+            employee=self.employee,
+            target_goal=5,
+            commission_percentage=Decimal("101.50"),
+            start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 6, 30),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_percentage_high.full_clean()
+
+        invalid_percentage_low = EmployeeTarget(
+            employee=self.employee,
+            target_goal=5,
+            commission_percentage=Decimal("-1.00"),
+            start_date=datetime.date(2026, 6, 1),
+            end_date=datetime.date(2026, 6, 30),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_percentage_low.full_clean()

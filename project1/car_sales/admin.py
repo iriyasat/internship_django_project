@@ -1,17 +1,23 @@
 from django.contrib import admin
 from .models import (
-    EmployeeRole,
     Address,
-    PaymentMethod,
-    Employee,
+    City,
+    Country,
     Customer,
-    VehicleModel,
-    Vehicle,
+    Employee,
+    EmployeeRole,
+    EmployeeStatus,
+    EmployeeTarget,
     Lead,
     LeadActivity,
+    LeadActivityType,
+    Payment,
+    PaymentMethod,
+    Phone,
     Sale,
     TradeIn,
-    Payment,
+    Vehicle,
+    VehicleModel,
 )
 
 # ==========================================
@@ -21,7 +27,7 @@ from .models import (
 class LeadActivityInline(admin.TabularInline):
     model = LeadActivity
     extra = 1
-    raw_id_fields = ("employee",)
+    raw_id_fields = ("employee", "activity_type")
 
 
 class PaymentInline(admin.TabularInline):
@@ -48,11 +54,47 @@ class EmployeeRoleAdmin(admin.ModelAdmin):
     ordering = ("role_id",)
 
 
+@admin.register(EmployeeStatus)
+class EmployeeStatusAdmin(admin.ModelAdmin):
+    list_display = ("status_id", "status_name")
+    search_fields = ("status_name",)
+    ordering = ("status_id",)
+
+
 @admin.register(PaymentMethod)
 class PaymentMethodAdmin(admin.ModelAdmin):
     list_display = ("method_id", "payment_method_name")
     search_fields = ("payment_method_name",)
     ordering = ("method_id",)
+
+
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    list_display = ("country_id", "country_name")
+    search_fields = ("country_name",)
+    ordering = ("country_id",)
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ("city_id", "city_name", "country")
+    list_filter = ("country",)
+    search_fields = ("city_name", "country__country_name")
+    ordering = ("city_id",)
+
+
+@admin.register(LeadActivityType)
+class LeadActivityTypeAdmin(admin.ModelAdmin):
+    list_display = ("lead_activity_type_id", "lead_activity_type_name")
+    search_fields = ("lead_activity_type_name",)
+    ordering = ("lead_activity_type_id",)
+
+
+@admin.register(Phone)
+class PhoneAdmin(admin.ModelAdmin):
+    list_display = ("phone_id", "phone_number")
+    search_fields = ("phone_number",)
+    ordering = ("phone_id",)
 
 
 # ==========================================
@@ -61,9 +103,9 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
-    list_display = ("address_id", "street_address", "city", "state", "postal_code")
+    list_display = ("address_id", "house_no", "street_address", "city", "state", "postal_code")
     list_filter = ("state", "city")
-    search_fields = ("street_address", "city", "state", "postal_code")
+    search_fields = ("house_no", "street_address", "city__city_name", "state", "postal_code")
     ordering = ("address_id",)
 
 
@@ -78,19 +120,28 @@ class EmployeeAdmin(admin.ModelAdmin):
         "role",
         "status",
         "hire_date",
-        "commission_rate",
+        "assigned_task",
     )
     list_filter = ("status", "role", "hire_date")
-    search_fields = ("first_name", "last_name", "email", "phone")
-    raw_id_fields = ("address", "role")
+    search_fields = ("first_name", "last_name", "email", "phone__phone_number")
+    raw_id_fields = ("address", "role", "status", "phone")
     ordering = ("last_name", "first_name")
+
+
+@admin.register(EmployeeTarget)
+class EmployeeTargetAdmin(admin.ModelAdmin):
+    list_display = ("target_id", "employee", "target_goal", "commission_percentage", "start_date", "end_date")
+    list_filter = ("employee", "start_date", "end_date")
+    search_fields = ("employee__first_name", "employee__last_name")
+    raw_id_fields = ("employee",)
+    ordering = ("target_id",)
 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ("customer_id", "first_name", "last_name", "email", "phone")
-    search_fields = ("first_name", "last_name", "email", "phone")
-    raw_id_fields = ("address",)
+    search_fields = ("first_name", "last_name", "email", "phone__phone_number")
+    raw_id_fields = ("address", "phone")
     ordering = ("last_name", "first_name")
 
 
@@ -157,7 +208,7 @@ class LeadActivityAdmin(admin.ModelAdmin):
         "employee__last_name",
         "details",
     )
-    raw_id_fields = ("lead", "employee")
+    raw_id_fields = ("lead", "employee", "activity_type")
     ordering = ("-activity_date",)
 
 
