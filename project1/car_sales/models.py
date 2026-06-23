@@ -7,7 +7,7 @@ from django.utils import timezone
 
 
 # ==========================================
-# 1. Geography & Contact Infrastructure
+# 1. Geography
 # ==========================================
 
 class Country(models.Model):
@@ -38,64 +38,8 @@ class City(models.Model):
         unique_together = (('city_name', 'country'),)
 
 
-class Phone(models.Model):
-    phone_id = models.AutoField(primary_key=True)
-    phone_number = models.CharField(
-        max_length=20,
-        unique=True,
-        validators=[
-            RegexValidator(
-                regex=r'^\+8801[3-9]\d{8}$',
-                message="Phone number must be in the format: '+8801XXXXXXXXX' (where X represents digits)."
-            )
-        ],
-        verbose_name="Phone Number"
-    )
-
-    def __str__(self) -> str:
-        return self.phone_number
-
-    class Meta:
-        db_table = "Phones"
-        verbose_name = "Phone"
-        verbose_name_plural = "Phones"
-
-
 # ==========================================
-# 2. Customers
-# ==========================================
-
-class Customer(models.Model):
-    customer_id = models.AutoField(primary_key=True)
-    first_name = models.CharField(max_length=50, verbose_name="First Name")
-    last_name = models.CharField(max_length=50, verbose_name="Last Name")
-    email = models.EmailField(max_length=100, unique=True, verbose_name="Email Address")
-    phone = models.ForeignKey(Phone, on_delete=models.SET_NULL, db_column="phone_id", null=True, blank=True, related_name="customers", verbose_name="Phone Number")
-    customer_address = models.CharField(max_length=150, null=True, blank=True, verbose_name="Customer Address")
-    customer_city = models.ForeignKey(City, on_delete=models.SET_NULL, db_column="city_id", null=True, blank=True, related_name="customers", verbose_name="Customer City")
-    customer_country = models.ForeignKey(Country, on_delete=models.SET_NULL, db_column="country_id", null=True, blank=True, related_name="customers", verbose_name="Customer Country")
-    notes = models.TextField(blank=True, null=True, verbose_name="Notes")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
-
-    @property
-    def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
-
-    def __str__(self) -> str:
-        return self.full_name
-
-    class Meta:
-        db_table = "Customers"
-        verbose_name = "Customer"
-        verbose_name_plural = "Customers"
-        indexes = [
-            models.Index(fields=["last_name"], name="Customers_lastname_idx"),
-        ]
-
-
-# ==========================================
-# 3. Employees & HR
+# 2. Employees & HR
 # ==========================================
 
 class EmployeeRole(models.Model):
@@ -130,7 +74,7 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=50, blank=False, null=False, verbose_name="First Name")
     last_name = models.CharField(max_length=50, blank=False, null=False, verbose_name="Last Name")
     email = models.EmailField(max_length=100, unique=True, blank=False, null=False, verbose_name="Employee Email")
-    phone = models.ForeignKey(Phone, on_delete=models.SET_NULL, db_column="phone_id", null=True, blank=True, related_name="employees", verbose_name="Phone Number")
+    emp_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone Number")
     date_of_birth = models.DateField(blank=True, null=True, verbose_name="Employee DOB")
     emp_address = models.CharField(max_length=150, null=True, blank=True, verbose_name="Employee Address")
     emp_city = models.ForeignKey(City, on_delete=models.SET_NULL, db_column="city_id", null=True, blank=True, related_name="employees", verbose_name="Employee City")
@@ -195,6 +139,39 @@ class EmployeeTarget(models.Model):
         db_table = "EmployeeTargets"
         verbose_name = "Employee Target"
         verbose_name_plural = "Employee Targets"
+
+
+# ==========================================
+# 3. Customers
+# ==========================================
+
+class Customer(models.Model):
+    customer_id = models.AutoField(primary_key=True)
+    first_name = models.CharField(max_length=50, verbose_name="First Name")
+    last_name = models.CharField(max_length=50, verbose_name="Last Name")
+    email = models.EmailField(max_length=100, unique=True, verbose_name="Email Address")
+    customer_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone Number")
+    customer_address = models.CharField(max_length=150, null=True, blank=True, verbose_name="Customer Address")
+    customer_city = models.ForeignKey(City, on_delete=models.SET_NULL, db_column="city_id", null=True, blank=True, related_name="customers", verbose_name="Customer City")
+    customer_country = models.ForeignKey(Country, on_delete=models.SET_NULL, db_column="country_id", null=True, blank=True, related_name="customers", verbose_name="Customer Country")
+    notes = models.TextField(blank=True, null=True, verbose_name="Notes")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
+    def __str__(self) -> str:
+        return self.full_name
+
+    class Meta:
+        db_table = "Customers"
+        verbose_name = "Customer"
+        verbose_name_plural = "Customers"
+        indexes = [
+            models.Index(fields=["last_name"], name="Customers_lastname_idx"),
+        ]
 
 
 # ==========================================

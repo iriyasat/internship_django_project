@@ -16,7 +16,6 @@ from .models import (
     LeadActivityType,
     Payment,
     PaymentMethod,
-    Phone,
     Sale,
     TradeIn,
     Vehicle,
@@ -44,9 +43,9 @@ class CarSalesModelTestCase(TestCase):
         self.country = Country.objects.create(country_name="USA")
         self.city_obj = City.objects.create(city_name="Metropolis", country=self.country)
 
-        # Create Phone Numbers
-        self.phone_emp = Phone.objects.create(phone_number="+8801712345678")
-        self.phone_cust = Phone.objects.create(phone_number="+8801812345678")
+        # Define phone numbers as strings
+        self.phone_emp = "+8801712345678"
+        self.phone_cust = "+8801812345678"
 
         # Create an Employee
         self.employee = Employee.objects.create(
@@ -120,7 +119,7 @@ class CarSalesModelTestCase(TestCase):
         self.assertEqual(str(self.status_active), "Active")
         self.assertEqual(str(self.country), "USA")
         self.assertEqual(str(self.city_obj), "Metropolis, USA")
-        self.assertEqual(str(self.phone_emp), "+8801712345678")
+        self.assertEqual(self.phone_emp, "+8801712345678")
         self.assertEqual(str(self.employee), "Jane Doe")
         self.assertEqual(str(self.customer), "John Smith")
         self.assertEqual(str(self.manufacturer), "Toyota")
@@ -227,23 +226,44 @@ class CarSalesModelTestCase(TestCase):
             invalid_payment.full_clean()
 
     def test_phone_validation(self):
-        """Test constraints and validation rules on the Phone model."""
+        """Test constraints and validation rules on the phone field in Customer."""
         # Valid Phone Number
-        valid_phone = Phone(phone_number="+8801912345678")
+        valid_customer = Customer(
+            first_name="John",
+            last_name="Smith",
+            email="valid_phone@gmail.com",
+            phone="+8801912345678",
+            customer_city=self.city_obj,
+            customer_country=self.country,
+        )
         try:
-            valid_phone.full_clean()
+            valid_customer.full_clean()
         except ValidationError:
             self.fail("ValidationError raised on a valid Bangladesh phone number")
 
         # Invalid Phone Number (Format check)
-        invalid_phone = Phone(phone_number="01712345678")
+        invalid_customer = Customer(
+            first_name="John",
+            last_name="Smith",
+            email="invalid_phone_format@gmail.com",
+            phone="01712345678",
+            customer_city=self.city_obj,
+            customer_country=self.country,
+        )
         with self.assertRaises(ValidationError):
-            invalid_phone.full_clean()
+            invalid_customer.full_clean()
 
         # Invalid Phone Number (Length check)
-        invalid_phone_long = Phone(phone_number="+88017123456789")
+        invalid_customer_long = Customer(
+            first_name="John",
+            last_name="Smith",
+            email="invalid_phone_length@gmail.com",
+            phone="+88017123456789",
+            customer_city=self.city_obj,
+            customer_country=self.country,
+        )
         with self.assertRaises(ValidationError):
-            invalid_phone_long.full_clean()
+            invalid_customer_long.full_clean()
 
     def test_employee_dates_validation(self):
         """Test validation rules for employee hire/termination dates and leave dates."""

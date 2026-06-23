@@ -12,7 +12,6 @@ from .models import (
     LeadActivityType,
     Payment,
     PaymentMethod,
-    Phone,
     Sale,
     TradeIn,
     Vehicle,
@@ -101,12 +100,6 @@ class LeadSourceAdmin(admin.ModelAdmin):
     ordering = ("source_id",)
 
 
-@admin.register(Phone)
-class PhoneAdmin(admin.ModelAdmin):
-    list_display = ("phone_id", "phone_number")
-    search_fields = ("phone_number",)
-    ordering = ("phone_id",)
-
 
 @admin.register(Manufacturer)
 class ManufacturerAdmin(admin.ModelAdmin):
@@ -134,8 +127,8 @@ class EmployeeAdmin(admin.ModelAdmin):
         "assigned_task",
     )
     list_filter = ("status", "role", "hire_date")
-    search_fields = ("first_name", "last_name", "email", "phone__phone_number")
-    raw_id_fields = ("emp_city", "emp_country", "role", "status", "phone")
+    search_fields = ("first_name", "last_name", "email", "phone")
+    raw_id_fields = ("emp_city", "emp_country", "role", "status")
     ordering = ("last_name", "first_name")
 
 
@@ -151,8 +144,8 @@ class EmployeeTargetAdmin(admin.ModelAdmin):
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ("customer_id", "first_name", "last_name", "email", "phone")
-    search_fields = ("first_name", "last_name", "email", "phone__phone_number")
-    raw_id_fields = ("customer_city", "customer_country", "phone")
+    search_fields = ("first_name", "last_name", "email", "phone")
+    raw_id_fields = ("customer_city", "customer_country")
     ordering = ("last_name", "first_name")
 
 
