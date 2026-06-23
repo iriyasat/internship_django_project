@@ -4,7 +4,6 @@ from django.test import TestCase
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
-    Address,
     City,
     Country,
     Customer,
@@ -49,15 +48,6 @@ class CarSalesModelTestCase(TestCase):
         self.phone_emp = Phone.objects.create(phone_number="+8801712345678")
         self.phone_cust = Phone.objects.create(phone_number="+8801812345678")
 
-        # Create an Address
-        self.address = Address.objects.create(
-            house_no="12/A",
-            street_address="Main St",
-            city=self.city_obj,
-            state="NY",
-            postal_code="10001",
-        )
-
         # Create an Employee
         self.employee = Employee.objects.create(
             role=self.role,
@@ -65,7 +55,9 @@ class CarSalesModelTestCase(TestCase):
             last_name="Doe",
             email="jane.doe@dealership.com",
             phone=self.phone_emp,
-            address=self.address,
+            emp_address="12/A Main St",
+            emp_city=self.city_obj,
+            emp_country=self.country,
             status=self.status_active,
         )
 
@@ -75,7 +67,9 @@ class CarSalesModelTestCase(TestCase):
             last_name="Smith",
             email="john.smith@gmail.com",
             phone=self.phone_cust,
-            address=self.address,
+            customer_address="12/A Main St",
+            customer_city=self.city_obj,
+            customer_country=self.country,
         )
 
         # Create a Manufacturer
@@ -126,7 +120,6 @@ class CarSalesModelTestCase(TestCase):
         self.assertEqual(str(self.status_active), "Active")
         self.assertEqual(str(self.country), "USA")
         self.assertEqual(str(self.city_obj), "Metropolis, USA")
-        self.assertEqual(str(self.address), "Main St")
         self.assertEqual(str(self.phone_emp), "+8801712345678")
         self.assertEqual(str(self.employee), "Jane Doe")
         self.assertEqual(str(self.customer), "John Smith")
@@ -261,7 +254,9 @@ class CarSalesModelTestCase(TestCase):
             last_name="Doe",
             email="john.doe.invalid@dealership.com",
             phone=self.phone_emp,
-            address=self.address,
+            emp_address="12/A Main St",
+            emp_city=self.city_obj,
+            emp_country=self.country,
             status=self.status_active,
             hire_date=datetime.date(2026, 6, 20),
             terminated_date=datetime.date(2026, 6, 19),
@@ -276,7 +271,9 @@ class CarSalesModelTestCase(TestCase):
             last_name="Smith",
             email="jane.smith.invalid@dealership.com",
             phone=self.phone_emp,
-            address=self.address,
+            emp_address="12/A Main St",
+            emp_city=self.city_obj,
+            emp_country=self.country,
             status=self.status_active,
             hire_date=datetime.date(2026, 6, 20),
             leave_start_date=datetime.date(2026, 6, 25),
@@ -377,8 +374,6 @@ class CarSalesModelTestCase(TestCase):
         self.assertEqual(Customer.objects.get(pk=self.customer.pk).notes, "Looking for a family SUV.")
 
         # 3. Test Audit Fields
-        self.assertIsNotNone(self.address.created_at)
-        self.assertIsNotNone(self.address.updated_at)
         self.assertIsNotNone(self.customer.created_at)
         self.assertIsNotNone(self.customer.updated_at)
         self.assertIsNotNone(self.employee.created_at)

@@ -1,6 +1,5 @@
 from django.contrib import admin
 from .models import (
-    Address,
     City,
     Country,
     Customer,
@@ -120,13 +119,6 @@ class ManufacturerAdmin(admin.ModelAdmin):
 # MAIN ENTITY ADMINS
 # ==========================================
 
-@admin.register(Address)
-class AddressAdmin(admin.ModelAdmin):
-    list_display = ("address_id", "house_no", "street_address", "city", "state", "postal_code")
-    list_filter = ("state", "city")
-    search_fields = ("house_no", "street_address", "city__city_name", "state", "postal_code")
-    ordering = ("address_id",)
-
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
@@ -143,7 +135,7 @@ class EmployeeAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "role", "hire_date")
     search_fields = ("first_name", "last_name", "email", "phone__phone_number")
-    raw_id_fields = ("address", "role", "status", "phone")
+    raw_id_fields = ("emp_city", "emp_country", "role", "status", "phone")
     ordering = ("last_name", "first_name")
 
 
@@ -160,7 +152,7 @@ class EmployeeTargetAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ("customer_id", "first_name", "last_name", "email", "phone")
     search_fields = ("first_name", "last_name", "email", "phone__phone_number")
-    raw_id_fields = ("address", "phone")
+    raw_id_fields = ("customer_city", "customer_country", "phone")
     ordering = ("last_name", "first_name")
 
 
