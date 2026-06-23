@@ -200,13 +200,13 @@ class VehicleModel(models.Model):
         related_name="vehicle_models",
         verbose_name="Manufacturer"
     )
-    model = models.CharField(max_length=50, verbose_name="Model")
+    vehicle_model = models.CharField(max_length=50, verbose_name="Vehicle Model")
     trim = models.CharField(max_length=50, blank=True, null=True, verbose_name="Trim")
     body_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Body Type")
     fuel_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Fuel Type")
 
     def __str__(self) -> str:
-        parts = [self.manufacturer.manufacturer_name, self.model]
+        parts = [self.manufacturer.manufacturer_name, self.vehicle_model]
         if self.trim:
             parts.append(self.trim)
         return " ".join(parts)
@@ -264,7 +264,7 @@ class Vehicle(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.year} {self.model.manufacturer.manufacturer_name} {self.model.model} (VIN: {self.vin})"
+        return f"{self.year} {self.model.manufacturer.manufacturer_name} {self.model.vehicle_model} (VIN: {self.vin})"
 
     class Meta:
         db_table = "Vehicles"
@@ -276,31 +276,31 @@ class Vehicle(models.Model):
         ]
 
 
-class VehicleImage(models.Model):
-    image_id = models.AutoField(primary_key=True)
-    vehicle = models.ForeignKey(
-        Vehicle,
-        on_delete=models.CASCADE,
-        db_column="vehicle_id",
-        related_name="images",
-        verbose_name="Vehicle"
-    )
-    image = models.ImageField(
-        upload_to="vehicles/",
-        verbose_name="Image"
-    )
-    is_primary = models.BooleanField(
-        default=False,
-        verbose_name="Is Primary"
-    )
+# class VehicleImage(models.Model):
+#     image_id = models.AutoField(primary_key=True)
+#     vehicle = models.ForeignKey(
+#         Vehicle,
+#         on_delete=models.CASCADE,
+#         db_column="vehicle_id",
+#         related_name="images",
+#         verbose_name="Vehicle"
+#     )
+#     image = models.ImageField(
+#         upload_to="vehicles/",
+#         verbose_name="Image"
+#     )
+#     is_primary = models.BooleanField(
+#         default=False,
+#         verbose_name="Is Primary"
+#     )
 
-    def __str__(self) -> str:
-        return f"Image #{self.image_id} for Vehicle VIN: {self.vehicle.vin}"
+#     def __str__(self) -> str:
+#         return f"Image #{self.image_id} for Vehicle VIN: {self.vehicle.vin}"
 
-    class Meta:
-        db_table = "VehicleImages"
-        verbose_name = "Vehicle Image"
-        verbose_name_plural = "Vehicle Images"
+#     class Meta:
+#         db_table = "VehicleImages"
+#         verbose_name = "Vehicle Image"
+#         verbose_name_plural = "Vehicle Images"
 
 
 class VehicleService(models.Model):
