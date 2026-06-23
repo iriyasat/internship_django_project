@@ -1,16 +1,8 @@
 from django.contrib import admin
 from .models import (
-    Employee_Role,
+    EmployeeRole,
     Address,
-    Employee_Status,
-    Vehicle_Condition,
-    Vehicle_Status,
-    Lead_Status,
-    Activity_Type,
-    Payment_Method,
-    Payment_Status,
-    Service_Status,
-    Maintenance_Status,
+    PaymentMethod,
     Employee,
     Customer,
     VehicleModel,
@@ -20,9 +12,6 @@ from .models import (
     Sale,
     TradeIn,
     Payment,
-    Supplier,
-    ServiceRequest,
-    MaintenanceSchedule,
 )
 
 # ==========================================
@@ -32,13 +21,13 @@ from .models import (
 class LeadActivityInline(admin.TabularInline):
     model = LeadActivity
     extra = 1
-    raw_id_fields = ("employee", "activity_type")
+    raw_id_fields = ("employee",)
 
 
 class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 1
-    raw_id_fields = ("payment_method", "status")
+    raw_id_fields = ("payment_method",)
     readonly_fields = ("created_at", "updated_at")
 
 
@@ -52,74 +41,18 @@ class TradeInInline(admin.StackedInline):
 # LOOKUP / STATUS ADMINS
 # ==========================================
 
-@admin.register(Employee_Role)
-class Employee_RoleAdmin(admin.ModelAdmin):
+@admin.register(EmployeeRole)
+class EmployeeRoleAdmin(admin.ModelAdmin):
     list_display = ("role_id", "role_name")
     search_fields = ("role_name",)
     ordering = ("role_id",)
 
 
-@admin.register(Employee_Status)
-class Employee_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "employee_status_name")
-    search_fields = ("employee_status_name",)
-    ordering = ("status_id",)
-
-
-@admin.register(Vehicle_Condition)
-class Vehicle_ConditionAdmin(admin.ModelAdmin):
-    list_display = ("condition_id", "vehicle_condition_name")
-    search_fields = ("vehicle_condition_name",)
-    ordering = ("condition_id",)
-
-
-@admin.register(Vehicle_Status)
-class Vehicle_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "vehicle_status_name")
-    search_fields = ("vehicle_status_name",)
-    ordering = ("status_id",)
-
-
-@admin.register(Lead_Status)
-class Lead_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "lead_status_name")
-    search_fields = ("lead_status_name",)
-    ordering = ("status_id",)
-
-
-@admin.register(Activity_Type)
-class Activity_TypeAdmin(admin.ModelAdmin):
-    list_display = ("type_id", "activity_type_name")
-    search_fields = ("activity_type_name",)
-    ordering = ("type_id",)
-
-
-@admin.register(Payment_Method)
-class Payment_MethodAdmin(admin.ModelAdmin):
+@admin.register(PaymentMethod)
+class PaymentMethodAdmin(admin.ModelAdmin):
     list_display = ("method_id", "payment_method_name")
     search_fields = ("payment_method_name",)
     ordering = ("method_id",)
-
-
-@admin.register(Payment_Status)
-class Payment_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "payment_status_name")
-    search_fields = ("payment_status_name",)
-    ordering = ("status_id",)
-
-
-@admin.register(Service_Status)
-class Service_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "service_status_name")
-    search_fields = ("service_status_name",)
-    ordering = ("status_id",)
-
-
-@admin.register(Maintenance_Status)
-class Maintenance_StatusAdmin(admin.ModelAdmin):
-    list_display = ("status_id", "maintenance_status_name")
-    search_fields = ("maintenance_status_name",)
-    ordering = ("status_id",)
 
 
 # ==========================================
@@ -149,7 +82,7 @@ class EmployeeAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "role", "hire_date")
     search_fields = ("first_name", "last_name", "email", "phone")
-    raw_id_fields = ("address", "role", "status")
+    raw_id_fields = ("address", "role")
     ordering = ("last_name", "first_name")
 
 
@@ -184,7 +117,7 @@ class VehicleAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "condition", "year")
     search_fields = ("vin", "model__make", "model__model", "color")
-    raw_id_fields = ("model", "condition", "status")
+    raw_id_fields = ("model",)
     ordering = ("-year", "model__make")
 
 
@@ -208,7 +141,7 @@ class LeadAdmin(admin.ModelAdmin):
         "employee__last_name",
         "vehicle__vin",
     )
-    raw_id_fields = ("customer", "vehicle", "employee", "status")
+    raw_id_fields = ("customer", "vehicle", "employee")
     inlines = [LeadActivityInline]
     ordering = ("-created_at",)
 
@@ -224,7 +157,7 @@ class LeadActivityAdmin(admin.ModelAdmin):
         "employee__last_name",
         "details",
     )
-    raw_id_fields = ("lead", "employee", "activity_type")
+    raw_id_fields = ("lead", "employee")
     ordering = ("-activity_date",)
 
 
@@ -276,34 +209,6 @@ class PaymentAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "payment_method", "payment_date")
     search_fields = ("transaction_reference", "sale__vehicle__vin")
-    raw_id_fields = ("sale", "payment_method", "status")
+    raw_id_fields = ("sale", "payment_method")
     readonly_fields = ("created_at", "updated_at")
     ordering = ("-payment_date",)
-
-
-@admin.register(Supplier)
-class SupplierAdmin(admin.ModelAdmin):
-    list_display = ("supplier_id", "name", "contact_person", "contact_number", "email")
-    search_fields = ("name", "contact_person", "email")
-    raw_id_fields = ("address",)
-    ordering = ("name",)
-
-
-@admin.register(ServiceRequest)
-class ServiceRequestAdmin(admin.ModelAdmin):
-    list_display = ("request_id", "vehicle", "supplier", "request_date", "status")
-    list_filter = ("status", "request_date")
-    search_fields = ("vehicle__vin", "supplier__name", "issue_description")
-    raw_id_fields = ("vehicle", "supplier", "status")
-    readonly_fields = ("created_at", "updated_at")
-    ordering = ("-request_date",)
-
-
-@admin.register(MaintenanceSchedule)
-class MaintenanceScheduleAdmin(admin.ModelAdmin):
-    list_display = ("schedule_id", "vehicle", "maintenance_type", "schedule_date", "status")
-    list_filter = ("status", "schedule_date", "maintenance_type")
-    search_fields = ("vehicle__vin", "maintenance_type")
-    raw_id_fields = ("vehicle", "status")
-    readonly_fields = ("created_at", "updated_at")
-    ordering = ("schedule_date",)

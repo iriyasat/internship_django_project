@@ -4,17 +4,9 @@ from django.test import TestCase
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import (
-    Employee_Role,
+    EmployeeRole,
     Address,
-    Employee_Status,
-    Vehicle_Condition,
-    Vehicle_Status,
-    Lead_Status,
-    Activity_Type,
-    Payment_Method,
-    Payment_Status,
-    Service_Status,
-    Maintenance_Status,
+    PaymentMethod,
     Employee,
     Customer,
     VehicleModel,
@@ -24,9 +16,6 @@ from .models import (
     Sale,
     TradeIn,
     Payment,
-    Supplier,
-    ServiceRequest,
-    MaintenanceSchedule,
 )
 
 
@@ -35,22 +24,10 @@ class CarSalesModelTestCase(TestCase):
 
     def setUp(self):
         # Create Lookup Tables Data
-        self.employee_status = Employee_Status.objects.create(employee_status_name="Active")
-        self.role = Employee_Role.objects.create(role_name="Sales Executive")
+        self.role = EmployeeRole.objects.create(role_name="Sales Executive")
         
-        self.vehicle_condition = Vehicle_Condition.objects.create(vehicle_condition_name="New")
-        self.vehicle_status = Vehicle_Status.objects.create(vehicle_status_name="Available")
-        
-        self.lead_status = Lead_Status.objects.create(lead_status_name="Qualified")
-        self.activity_type = Activity_Type.objects.create(activity_type_name="Call")
-        
-        self.payment_method_bank = Payment_Method.objects.create(payment_method_name="Bank Transfer")
-        self.payment_method_cash = Payment_Method.objects.create(payment_method_name="Cash")
-        self.payment_status_completed = Payment_Status.objects.create(payment_status_name="Completed")
-        self.payment_status_pending = Payment_Status.objects.create(payment_status_name="Pending")
-        
-        self.service_status = Service_Status.objects.create(service_status_name="Pending")
-        self.maintenance_status = Maintenance_Status.objects.create(maintenance_status_name="Scheduled")
+        self.payment_method_bank = PaymentMethod.objects.create(payment_method_name="Bank Transfer")
+        self.payment_method_cash = PaymentMethod.objects.create(payment_method_name="Cash")
 
         # Create an Address
         self.address = Address.objects.create(
@@ -68,7 +45,7 @@ class CarSalesModelTestCase(TestCase):
             email="jane.doe@dealership.com",
             phone="555-0199",
             address=self.address,
-            status=self.employee_status,
+            status=Employee.Status.ACTIVE,
             commission_rate=Decimal("5.50"),
         )
 
@@ -99,8 +76,8 @@ class CarSalesModelTestCase(TestCase):
             mileage=50,
             acquisition_cost=Decimal("20000.00"),
             selling_price=Decimal("25000.00"),
-            condition=self.vehicle_condition,
-            status=self.vehicle_status,
+            condition=Vehicle.Condition.NEW,
+            status=Vehicle.Status.AVAILABLE,
         )
 
         # Create a Lead
@@ -109,19 +86,18 @@ class CarSalesModelTestCase(TestCase):
             vehicle=self.vehicle,
             employee=self.employee,
             source="Website",
-            status=self.lead_status,
+            status=Lead.Status.QUALIFIED,
         )
 
     def test_str_representations(self):
         """Test the __str__ methods of various models."""
         self.assertEqual(str(self.role), "Sales Executive")
-        self.assertEqual(str(self.employee_status), "Active")
         self.assertEqual(str(self.address), "123 Main St")
         self.assertEqual(str(self.employee), "Jane Doe")
         self.assertEqual(str(self.customer), "John Smith")
         self.assertEqual(str(self.vehicle_model), "Toyota Camry SE")
         self.assertEqual(str(self.vehicle), "2024 Toyota Camry (VIN: 1YV1Y111111111111)")
-        self.assertEqual(str(self.lead), f"Lead #{self.lead.lead_id} - John Smith (Qualified)")
+        self.assertEqual(str(self.lead), f"Lead #{self.lead.lead_id} - John Smith (QUALIFIED)")
 
     def test_employee_properties(self):
         """Test properties defined on the Employee model."""
@@ -162,13 +138,13 @@ class CarSalesModelTestCase(TestCase):
         activity = LeadActivity.objects.create(
             lead=self.lead,
             employee=self.employee,
-            activity_type=self.activity_type,
+            activity_type=LeadActivity.ActivityType.CALL,
             details="Called the customer to discuss pricing details.",
         )
         self.assertEqual(activity.lead, self.lead)
         self.assertEqual(activity.employee, self.employee)
-        self.assertEqual(activity.activity_type, self.activity_type)
-        self.assertIn("Call on", str(activity))
+        self.assertEqual(activity.activity_type, LeadActivity.ActivityType.CALL)
+        self.assertIn("CALL on", str(activity))
 
     def test_sale_financial_properties(self):
         """Test pricing and commission calculations on the Sale model."""
@@ -206,16 +182,16 @@ class CarSalesModelTestCase(TestCase):
             sale=sale,
             amount=Decimal("5000.00"),
             payment_method=self.payment_method_bank,
-            status=self.payment_status_completed,
+            status=Payment.Status.COMPLETED,
         )
-        self.assertEqual(payment.status, self.payment_status_completed)
+        self.assertEqual(payment.status, Payment.Status.COMPLETED)
 
         # Invalid Payment (amount <= 0) should fail model validation
         invalid_payment = Payment(
             sale=sale,
             amount=Decimal("0.00"),
             payment_method=self.payment_method_cash,
-            status=self.payment_status_pending,
+            status=Payment.Status.PENDING,
         )
         with self.assertRaises(ValidationError):
             invalid_payment.full_clean()
