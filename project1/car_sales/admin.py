@@ -20,7 +20,7 @@ class CityAdmin(admin.ModelAdmin):
 
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
-    list_display = ('store_id', 'store_name', 'store_code', 'city', 'country', 'address')
+    list_display = ('store_id', 'store_name', 'store_code', 'city_id', 'country_id', 'address')
     list_filter = ('country', 'city')
     search_fields = ('store_name', 'store_code')
 
@@ -53,7 +53,7 @@ class VehicleInfoAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerInfo)
 class CustomerInfoAdmin(admin.ModelAdmin):
-    list_display = ('customer_id', 'firstname', 'lastname', 'customer_status', 'city', 'country')
+    list_display = ('customer_id', 'firstname', 'lastname', 'customer_status', 'city_id', 'country_id')
     list_filter = ('customer_status', 'country', 'city')
     search_fields = ('firstname', 'lastname', 'customer_address')
 
