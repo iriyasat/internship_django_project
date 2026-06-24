@@ -13,6 +13,8 @@ from django.utils import timezone
 class Country(models.Model):
     country_id = models.AutoField(primary_key=True)
     country_name = models.CharField(max_length=100, unique=True, verbose_name="Country Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.country_name
@@ -27,6 +29,8 @@ class City(models.Model):
     city_id = models.AutoField(primary_key=True)
     city_name = models.CharField(max_length=100, verbose_name="City Name")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column="country_id", related_name="cities", verbose_name="Country")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"{self.city_name}, {self.country.country_name}"
@@ -45,6 +49,8 @@ class City(models.Model):
 class EmployeeRole(models.Model):
     role_id = models.AutoField(primary_key=True)
     role_name = models.CharField(max_length=50, unique=True, verbose_name="Role Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.role_name
@@ -58,6 +64,8 @@ class EmployeeRole(models.Model):
 class EmployeeStatus(models.Model):
     status_id = models.AutoField(primary_key=True)
     status_name = models.CharField(max_length=50, unique=True, verbose_name="Status Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.status_name
@@ -74,7 +82,18 @@ class Employee(models.Model):
     first_name = models.CharField(max_length=50, blank=False, null=False, verbose_name="First Name")
     last_name = models.CharField(max_length=50, blank=False, null=False, verbose_name="Last Name")
     email = models.EmailField(max_length=100, unique=True, blank=False, null=False, verbose_name="Employee Email")
-    emp_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone Number")
+    emp_phone = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\+8801[3-9]\d{8}$',
+                message="Phone number must be in the format: '+8801XXXXXXXXX' (14 characters)."
+            )
+        ],
+        verbose_name="Phone Number"
+    )
     date_of_birth = models.DateField(blank=True, null=True, verbose_name="Employee DOB")
     emp_address = models.CharField(max_length=150, null=True, blank=True, verbose_name="Employee Address")
     emp_city = models.ForeignKey(City, on_delete=models.SET_NULL, db_column="city_id", null=True, blank=True, related_name="employees", verbose_name="Employee City")
@@ -122,6 +141,8 @@ class EmployeeTarget(models.Model):
     commission_percentage = models.DecimalField(max_digits=5, decimal_places=2, validators=[MinValueValidator(Decimal("0.00")), MaxValueValidator(Decimal("100.00"))], verbose_name="Commission Percentage")
     start_date = models.DateField(verbose_name="Start Date")
     end_date = models.DateField(verbose_name="End Date")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def clean(self):
         super().clean()
@@ -150,7 +171,18 @@ class Customer(models.Model):
     first_name = models.CharField(max_length=50, verbose_name="First Name")
     last_name = models.CharField(max_length=50, verbose_name="Last Name")
     email = models.EmailField(max_length=100, unique=True, verbose_name="Email Address")
-    customer_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Phone Number")
+    customer_phone = models.CharField(
+        max_length=15,
+        blank=True,
+        null=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\+8801[3-9]\d{8}$',
+                message="Phone number must be in the format: '+8801XXXXXXXXX' (14 characters)."
+            )
+        ],
+        verbose_name="Phone Number"
+    )
     customer_address = models.CharField(max_length=150, null=True, blank=True, verbose_name="Customer Address")
     customer_city = models.ForeignKey(City, on_delete=models.SET_NULL, db_column="city_id", null=True, blank=True, related_name="customers", verbose_name="Customer City")
     customer_country = models.ForeignKey(Country, on_delete=models.SET_NULL, db_column="country_id", null=True, blank=True, related_name="customers", verbose_name="Customer Country")
@@ -181,6 +213,8 @@ class Customer(models.Model):
 class Manufacturer(models.Model):
     manufacturer_id = models.AutoField(primary_key=True)
     manufacturer_name = models.CharField(max_length=50, unique=True, verbose_name="Manufacturer Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.manufacturer_name
@@ -204,6 +238,8 @@ class VehicleModel(models.Model):
     trim = models.CharField(max_length=50, blank=True, null=True, verbose_name="Trim")
     body_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Body Type")
     fuel_type = models.CharField(max_length=30, blank=True, null=True, verbose_name="Fuel Type")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         parts = [self.manufacturer.manufacturer_name, self.vehicle_model]
@@ -320,6 +356,8 @@ class VehicleService(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))],
         verbose_name="Cost"
     )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"Service #{self.service_id} for Vehicle VIN: {self.vehicle.vin} (${self.cost})"
@@ -337,6 +375,8 @@ class VehicleService(models.Model):
 class LeadSource(models.Model):
     source_id = models.AutoField(primary_key=True)
     source_name = models.CharField(max_length=50, unique=True, verbose_name="Source Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.source_name
@@ -413,6 +453,8 @@ class Lead(models.Model):
 class LeadActivityType(models.Model):
     lead_activity_type_id = models.AutoField(primary_key=True)
     lead_activity_type_name = models.CharField(max_length=50, unique=True, verbose_name="Lead Activity Type Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.lead_activity_type_name
@@ -431,6 +473,7 @@ class LeadActivity(models.Model):
     activity_date = models.DateTimeField(default=timezone.now, verbose_name="Activity Date")
     details = models.TextField(blank=True, null=True, verbose_name="Details")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"{self.activity_type.lead_activity_type_name} on {self.activity_date.strftime('%Y-%m-%d %H:%M')} by {self.employee.full_name}"
@@ -521,6 +564,8 @@ class TradeIn(models.Model):
     appraised_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Appraised Value")
     allowance_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))], verbose_name="Allowance Amount")
     notes = models.TextField(blank=True, null=True, verbose_name="Notes")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"Trade-In #{self.trade_in_id} - Value: ${self.appraised_value or 0.00}"
@@ -534,6 +579,8 @@ class TradeIn(models.Model):
 class PaymentMethod(models.Model):
     method_id = models.AutoField(primary_key=True)
     payment_method_name = models.CharField(max_length=50, unique=True, verbose_name="Payment Method Name")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return self.payment_method_name
@@ -596,6 +643,8 @@ class FinanceApplication(models.Model):
         max_length=20,
         verbose_name="Status"
     )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self) -> str:
         return f"Finance Application #{self.application_id} - Loan: ${self.loan_amount} ({self.status})"

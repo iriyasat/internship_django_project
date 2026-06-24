@@ -6,70 +6,78 @@ from .models import *
 # ==========================================
 
 class countryadmin(admin.ModelAdmin):
-    list_display = ("country_id", "country_name")
+    list_display = ("country_id", "country_name", "created_at", "updated_at")
     search_fields = ("country_name",)
+    readonly_fields = ("created_at", "updated_at")
     ordering = ("country_id",)
 
 admin.site.register(Country, countryadmin)
 
 
 class cityadmin(admin.ModelAdmin):
-    list_display = ("city_id", "city_name", "country")
+    list_display = ("city_id", "city_name", "country", "created_at", "updated_at")
     list_filter = ("country",)
     search_fields = ("city_name", "country__country_name")
+    readonly_fields = ("created_at", "updated_at")
     ordering = ("city_id",)
 
 admin.site.register(City, cityadmin)
 
 
-# # ==========================================
-# # 2. Employees & HR
-# # ==========================================
+# ==========================================
+# 2. Employees & HR
+# ==========================================
 
-# class employeeroleadmin(admin.ModelAdmin):
-#     list_display = ("role_id", "role_name")
-#     search_fields = ("role_name",)
-#     ordering = ("role_id",)
+class employeeroleadmin(admin.ModelAdmin):
+    list_display = ("role_id", "role_name", "created_at", "updated_at")
+    search_fields = ("role_name",)
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("role_id",)
 
-# admin.site.register(EmployeeRole, employeeroleadmin)
-
-
-# class employeestatusadmin(admin.ModelAdmin):
-#     list_display = ("status_id", "status_name")
-#     search_fields = ("status_name",)
-#     ordering = ("status_id",)
-
-# admin.site.register(EmployeeStatus, employeestatusadmin)
+admin.site.register(EmployeeRole, employeeroleadmin)
 
 
-# class employeeadmin(admin.ModelAdmin):
-#     list_display = (
-#         "employee_id",
-#         "first_name",
-#         "last_name",
-#         "email",
-#         "emp_phone",
-#         "role",
-#         "status",
-#         "hire_date",
-#         "assigned_task",
-#     )
-#     list_filter = ("status", "role", "hire_date")
-#     search_fields = ("first_name", "last_name", "email", "emp_phone")
-#     raw_id_fields = ("emp_city", "emp_country", "role", "status")
-#     ordering = ("last_name", "first_name")
+class employeestatusadmin(admin.ModelAdmin):
+    list_display = ("status_id", "status_name", "created_at", "updated_at")
+    search_fields = ("status_name",)
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("status_id",)
 
-# admin.site.register(Employee, employeeadmin)
+admin.site.register(EmployeeStatus, employeestatusadmin)
 
 
-# class employeetargetadmin(admin.ModelAdmin):
-#     list_display = ("target_id", "employee", "target_goal", "commission_percentage", "start_date", "end_date")
-#     list_filter = ("employee", "start_date", "end_date")
-#     search_fields = ("employee__first_name", "employee__last_name")
-#     raw_id_fields = ("employee",)
-#     ordering = ("target_id",)
+class employeeadmin(admin.ModelAdmin):
+    list_display = (
+        "employee_id",
+        "first_name",
+        "last_name",
+        "email",
+        "emp_phone",
+        "role",
+        "status",
+        "hire_date",
+        "assigned_task",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("status", "role", "hire_date")
+    search_fields = ("first_name", "last_name", "email", "emp_phone")
+    raw_id_fields = ("emp_city", "emp_country", "role", "status")
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("last_name", "first_name")
 
-# admin.site.register(EmployeeTarget, employeetargetadmin)
+admin.site.register(Employee, employeeadmin)
+
+
+class employeetargetadmin(admin.ModelAdmin):
+    list_display = ("target_id", "employee", "target_goal", "commission_percentage", "start_date", "end_date", "created_at", "updated_at")
+    list_filter = ("employee", "start_date", "end_date")
+    search_fields = ("employee__first_name", "employee__last_name")
+    raw_id_fields = ("employee",)
+    readonly_fields = ("created_at", "updated_at")
+    ordering = ("target_id",)
+
+admin.site.register(EmployeeTarget, employeetargetadmin)
 
 
 # # ==========================================
@@ -77,9 +85,10 @@ admin.site.register(City, cityadmin)
 # # ==========================================
 
 # class customeradmin(admin.ModelAdmin):
-#     list_display = ("customer_id", "first_name", "last_name", "email", "customer_phone")
+#     list_display = ("customer_id", "first_name", "last_name", "email", "customer_phone", "created_at", "updated_at")
 #     search_fields = ("first_name", "last_name", "email", "customer_phone")
 #     raw_id_fields = ("customer_city", "customer_country")
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("last_name", "first_name")
 
 # admin.site.register(Customer, customeradmin)
@@ -90,18 +99,20 @@ admin.site.register(City, cityadmin)
 # # ==========================================
 
 # class manufactureradmin(admin.ModelAdmin):
-#     list_display = ("manufacturer_id", "manufacturer_name")
+#     list_display = ("manufacturer_id", "manufacturer_name", "created_at", "updated_at")
 #     search_fields = ("manufacturer_name",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("manufacturer_id",)
 
 # admin.site.register(Manufacturer, manufactureradmin)
 
 
 # class vehiclemodeladmin(admin.ModelAdmin):
-#     list_display = ("model_id", "manufacturer", "vehicle_model", "trim", "body_type", "fuel_type")
+#     list_display = ("model_id", "manufacturer", "vehicle_model", "trim", "body_type", "fuel_type", "created_at", "updated_at")
 #     list_filter = ("manufacturer", "body_type", "fuel_type")
 #     search_fields = ("manufacturer__manufacturer_name", "vehicle_model", "trim")
 #     raw_id_fields = ("manufacturer",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("manufacturer__manufacturer_name", "vehicle_model")
 
 # admin.site.register(VehicleModel, vehiclemodeladmin)
@@ -110,6 +121,7 @@ admin.site.register(City, cityadmin)
 # class vehicleserviceinline(admin.TabularInline):
 #     model = VehicleService
 #     extra = 1
+#     readonly_fields = ("created_at", "updated_at")
 
 
 # class vehicleadmin(admin.ModelAdmin):
@@ -125,10 +137,13 @@ admin.site.register(City, cityadmin)
 #         "status",
 #         "date_acquired",
 #         "date_listed",
+#         "created_at",
+#         "updated_at",
 #     )
 #     list_filter = ("status", "condition", "year", "date_acquired", "date_listed")
 #     search_fields = ("vin", "model__manufacturer__manufacturer_name", "model__vehicle_model", "color")
 #     raw_id_fields = ("model",)
+#     readonly_fields = ("created_at", "updated_at")
 #     inlines = [vehicleserviceinline]
 #     ordering = ("-year", "model__manufacturer__manufacturer_name")
 
@@ -136,10 +151,11 @@ admin.site.register(City, cityadmin)
 
 
 # class vehicleserviceadmin(admin.ModelAdmin):
-#     list_display = ("service_id", "vehicle", "service_date", "cost")
+#     list_display = ("service_id", "vehicle", "service_date", "cost", "created_at", "updated_at")
 #     list_filter = ("service_date",)
 #     search_fields = ("vehicle__vin", "description")
 #     raw_id_fields = ("vehicle",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("-service_date",)
 
 # admin.site.register(VehicleService, vehicleserviceadmin)
@@ -150,8 +166,9 @@ admin.site.register(City, cityadmin)
 # # ==========================================
 
 # class leadsourceadmin(admin.ModelAdmin):
-#     list_display = ("source_id", "source_name")
+#     list_display = ("source_id", "source_name", "created_at", "updated_at")
 #     search_fields = ("source_name",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("source_id",)
 
 # admin.site.register(LeadSource, leadsourceadmin)
@@ -161,6 +178,7 @@ admin.site.register(City, cityadmin)
 #     model = LeadActivity
 #     extra = 1
 #     raw_id_fields = ("employee", "activity_type")
+#     readonly_fields = ("created_at", "updated_at")
 
 
 # class leadadmin(admin.ModelAdmin):
@@ -183,6 +201,7 @@ admin.site.register(City, cityadmin)
 #         "vehicle__vin",
 #     )
 #     raw_id_fields = ("customer", "vehicle", "employee")
+#     readonly_fields = ("created_at", "updated_at")
 #     inlines = [leadactivityinline]
 #     ordering = ("-created_at",)
 
@@ -190,15 +209,16 @@ admin.site.register(City, cityadmin)
 
 
 # class leadactivitytypeadmin(admin.ModelAdmin):
-#     list_display = ("lead_activity_type_id", "lead_activity_type_name")
+#     list_display = ("lead_activity_type_id", "lead_activity_type_name", "created_at", "updated_at")
 #     search_fields = ("lead_activity_type_name",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("lead_activity_type_id",)
 
 # admin.site.register(LeadActivityType, leadactivitytypeadmin)
 
 
 # class leadactivityadmin(admin.ModelAdmin):
-#     list_display = ("activity_id", "lead", "employee", "activity_type", "activity_date")
+#     list_display = ("activity_id", "lead", "employee", "activity_type", "activity_date", "created_at", "updated_at")
 #     list_filter = ("activity_type", "activity_date")
 #     search_fields = (
 #         "lead__customer__first_name",
@@ -208,6 +228,7 @@ admin.site.register(City, cityadmin)
 #         "details",
 #     )
 #     raw_id_fields = ("lead", "employee", "activity_type")
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("-activity_date",)
 
 # admin.site.register(LeadActivity, leadactivityadmin)
@@ -221,6 +242,7 @@ admin.site.register(City, cityadmin)
 #     model = TradeIn
 #     extra = 0
 #     raw_id_fields = ("vehicle",)
+#     readonly_fields = ("created_at", "updated_at")
 
 
 # class paymentinline(admin.TabularInline):
@@ -261,17 +283,19 @@ admin.site.register(City, cityadmin)
 
 
 # class tradeinadmin(admin.ModelAdmin):
-#     list_display = ("trade_in_id", "sale", "vehicle", "appraised_value", "allowance_amount")
+#     list_display = ("trade_in_id", "sale", "vehicle", "appraised_value", "allowance_amount", "created_at", "updated_at")
 #     search_fields = ("vehicle__vin", "sale__vehicle__vin")
 #     raw_id_fields = ("sale", "vehicle")
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("-trade_in_id",)
 
 # admin.site.register(TradeIn, tradeinadmin)
 
 
 # class paymentmethodadmin(admin.ModelAdmin):
-#     list_display = ("method_id", "payment_method_name")
+#     list_display = ("method_id", "payment_method_name", "created_at", "updated_at")
 #     search_fields = ("payment_method_name",)
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("method_id",)
 
 # admin.site.register(PaymentMethod, paymentmethodadmin)
@@ -297,10 +321,11 @@ admin.site.register(City, cityadmin)
 
 
 # class financeapplicationadmin(admin.ModelAdmin):
-#     list_display = ("application_id", "customer", "sale", "loan_amount", "status")
+#     list_display = ("application_id", "customer", "sale", "loan_amount", "status", "created_at", "updated_at")
 #     list_filter = ("status",)
 #     search_fields = ("customer__first_name", "customer__last_name", "sale__vehicle__vin")
 #     raw_id_fields = ("customer", "sale")
+#     readonly_fields = ("created_at", "updated_at")
 #     ordering = ("-application_id",)
 
 # admin.site.register(FinanceApplication, financeapplicationadmin)

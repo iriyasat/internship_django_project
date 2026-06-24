@@ -21,7 +21,6 @@ from .models import (
     Vehicle,
     VehicleModel,
     LeadSource,
-    VehicleImage,
     VehicleService,
     FinanceApplication,
     Manufacturer,
@@ -53,7 +52,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="Jane",
             last_name="Doe",
             email="jane.doe@dealership.com",
-            phone=self.phone_emp,
+            emp_phone=self.phone_emp,
             emp_address="12/A Main St",
             emp_city=self.city_obj,
             emp_country=self.country,
@@ -65,7 +64,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Smith",
             email="john.smith@gmail.com",
-            phone=self.phone_cust,
+            customer_phone=self.phone_cust,
             customer_address="12/A Main St",
             customer_city=self.city_obj,
             customer_country=self.country,
@@ -77,7 +76,7 @@ class CarSalesModelTestCase(TestCase):
         # Create a Vehicle Model
         self.vehicle_model = VehicleModel.objects.create(
             manufacturer=self.manufacturer,
-            model="Camry",
+            vehicle_model="Camry",
             trim="SE",
             body_type="Sedan",
             fuel_type="Gasoline",
@@ -232,7 +231,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Smith",
             email="valid_phone@gmail.com",
-            phone="+8801912345678",
+            customer_phone="+8801912345678",
             customer_city=self.city_obj,
             customer_country=self.country,
         )
@@ -246,7 +245,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Smith",
             email="invalid_phone_format@gmail.com",
-            phone="01712345678",
+            customer_phone="01712345678",
             customer_city=self.city_obj,
             customer_country=self.country,
         )
@@ -258,7 +257,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Smith",
             email="invalid_phone_length@gmail.com",
-            phone="+88017123456789",
+            customer_phone="+88017123456789",
             customer_city=self.city_obj,
             customer_country=self.country,
         )
@@ -273,7 +272,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="John",
             last_name="Doe",
             email="john.doe.invalid@dealership.com",
-            phone=self.phone_emp,
+            emp_phone=self.phone_emp,
             emp_address="12/A Main St",
             emp_city=self.city_obj,
             emp_country=self.country,
@@ -290,7 +289,7 @@ class CarSalesModelTestCase(TestCase):
             first_name="Jane",
             last_name="Smith",
             email="jane.smith.invalid@dealership.com",
-            phone=self.phone_emp,
+            emp_phone=self.phone_emp,
             emp_address="12/A Main St",
             emp_city=self.city_obj,
             emp_country=self.country,
@@ -442,13 +441,13 @@ class CarSalesModelTestCase(TestCase):
         )
         self.assertEqual(sale_with_manual_comm.commission_earned, Decimal("1200.00"))
 
-        # 5. Test VehicleImage creation
-        vehicle_image = VehicleImage.objects.create(
-            vehicle=self.vehicle,
-            image="vehicles/toyota_camry.jpg",
-            is_primary=True,
-        )
-        self.assertEqual(str(vehicle_image), f"Image #{vehicle_image.image_id} for Vehicle VIN: {self.vehicle.vin}")
+        # 5. Test VehicleImage creation (Commented out in models)
+        # vehicle_image = VehicleImage.objects.create(
+        #     vehicle=self.vehicle,
+        #     image="vehicles/toyota_camry.jpg",
+        #     is_primary=True,
+        # )
+        # self.assertEqual(str(vehicle_image), f"Image #{vehicle_image.image_id} for Vehicle VIN: {self.vehicle.vin}")
 
         # 6. Test VehicleService creation
         service = VehicleService.objects.create(
