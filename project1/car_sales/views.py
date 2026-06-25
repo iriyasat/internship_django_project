@@ -7,7 +7,7 @@ def home_view(request):
     return render(request, 'car_sales/index.html')
 
 def employee_view(request):
-    employees_list = Employee.objects.select_related('employee_role', 'status', 'store', 'city', 'country').order_by('-employee_id').all()
+    employees_list = Employee.objects.select_related('employee_role', 'status', 'store', 'city', 'country').order_by('employee_id').all()
     context = {
         'employees': employees_list
     }
@@ -56,21 +56,27 @@ def industry_view(request):
     return render(request, 'car_sales/industry_view.html', context)
 
 def vehicle_view(request):
-    vehicles_list = VehicleInfo.objects.select_related('make').order_by('-id').all()
+    vehicles_list = VehicleInfo.objects.select_related('make').order_by('id').all()
+    paginator = Paginator(vehicles_list, 100)  # Show 100 vehicles per page
+    page_number = request.GET.get('page')
+    vehicles_page = paginator.get_page(page_number)
     context = {
-        'vehicles': vehicles_list
+        'vehicles': vehicles_page
     }
     return render(request, 'car_sales/vehicle_view.html', context)
 
 def customer_view(request):
-    customers_list = CustomerInfo.objects.select_related('city', 'country').order_by('-customer_id').all()
+    customers_list = CustomerInfo.objects.select_related('city', 'country').order_by('customer_id').all()
+    paginator = Paginator(customers_list, 100)  # Show 100 customers per page
+    page_number = request.GET.get('page')
+    customers_page = paginator.get_page(page_number)
     context = {
-        'customers': customers_list
+        'customers': customers_page
     }
     return render(request, 'car_sales/customer_view.html', context)
 
 def selling_view(request):
-    sales_list = SellingInfo.objects.prefetch_related('customer', 'vehicle__make', 'employee', 'store').order_by('-sell_id').all()
+    sales_list = SellingInfo.objects.prefetch_related('customer', 'vehicle__make', 'employee', 'store').order_by('sell_id').all()
     paginator = Paginator(sales_list, 100)  # Show 100 sales per page
     page_number = request.GET.get('page')
     sales_page = paginator.get_page(page_number)
@@ -80,8 +86,11 @@ def selling_view(request):
     return render(request, 'car_sales/selling_view.html', context)
 
 def budget_view(request):
-    budgets_list = EmployeeBudget.objects.prefetch_related('employee', 'store').order_by('-id').all()
+    budgets_list = EmployeeBudget.objects.prefetch_related('employee', 'store').order_by('id').all()
+    paginator = Paginator(budgets_list, 100)  # Show 100 budgets per page
+    page_number = request.GET.get('page')
+    budgets_page = paginator.get_page(page_number)
     context = {
-        'budgets': budgets_list
+        'budgets': budgets_page
     }
     return render(request, 'car_sales/budget_view.html', context)

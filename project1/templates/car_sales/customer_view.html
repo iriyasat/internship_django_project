@@ -109,6 +109,47 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .pagination-info {
+            color: #666;
+        }
+        .pagination-links {
+            display: flex;
+            gap: 0.25rem;
+        }
+        .pagination-links a, .pagination-links span {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #417690;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .pagination-links a:hover {
+            background: #79aec8;
+            color: #fff;
+            border-color: #79aec8;
+        }
+        .pagination-links .active {
+            background: #79aec8;
+            color: #fff;
+            border-color: #79aec8;
+            font-weight: bold;
+        }
+        .pagination-links .disabled {
+            color: #ccc;
+            border-color: #ddd;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -150,6 +191,32 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing Page <strong>{{ customers.number }}</strong> of <strong>{{ customers.paginator.num_pages }}</strong> (Total {{ customers.paginator.count }} customers)
+                </div>
+                <div class="pagination-links">
+                    {% if customers.has_previous %}
+                        <a href="?page=1">&laquo; First</a>
+                        <a href="?page={{ customers.previous_page_number }}">Previous</a>
+                    {% else %}
+                        <span class="disabled">&laquo; First</span>
+                        <span class="disabled">Previous</span>
+                    {% endif %}
+
+                    <span class="active">{{ customers.number }}</span>
+
+                    {% if customers.has_next %}
+                        <a href="?page={{ customers.next_page_number }}">Next</a>
+                        <a href="?page={{ customers.paginator.num_pages }}">Last &raquo;</a>
+                    {% else %}
+                        <span class="disabled">Next</span>
+                        <span class="disabled">Last &raquo;</span>
+                    {% endif %}
+                </div>
+            </div>
         {% else %}
             <div class="empty-message">No customer records found in the database.</div>
         {% endif %}
@@ -160,7 +227,11 @@
     
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            const dataTable = new simpleDatatables.DataTable("#myTable");
+            const dataTable = new simpleDatatables.DataTable("#myTable", {
+                perPage: 100,
+                perPageSelect: false,
+                paging: false
+            });
         });
     </script>
 </body>
