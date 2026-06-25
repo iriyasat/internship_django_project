@@ -1,0 +1,14 @@
+# Ignore Python bytecode / cache directories
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Django specific files
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# Environments and virtual environments
+.env
+venv/
+env/
