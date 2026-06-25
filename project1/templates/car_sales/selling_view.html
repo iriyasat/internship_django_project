@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
     <title>Sales List</title>
     
     <!-- DataTables CSS -->
-    <link rel="stylesheet" href="//cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="{% static 'assets/vendor/simple-datatables/style.css' %}">
     
     <style>
         body {
@@ -41,12 +42,12 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border: 1px solid #e0e0e0;
         }
-        table.dataTable {
+        .datatable-table {
             border-collapse: collapse !important;
             margin-top: 1rem !important;
             margin-bottom: 1rem !important;
         }
-        table.dataTable thead th {
+        .datatable-table thead th {
             background-color: #79aec8 !important;
             color: white !important;
             font-weight: bold !important;
@@ -56,28 +57,28 @@
             border-bottom: 1px solid #5fa1c4 !important;
             padding: 10px 12px !important;
         }
-        table.dataTable tbody td {
+        .datatable-table tbody td {
             padding: 12px !important;
             border-bottom: 1px solid #eee !important;
             font-size: 0.875rem;
         }
-        table.dataTable tbody tr:nth-child(even) {
+        .datatable-table tbody tr:nth-child(even) {
             background-color: #fcfcfc;
         }
-        table.dataTable tbody tr:hover {
+        .datatable-table tbody tr:hover {
             background-color: #f5f8fa !important;
         }
-        .dt-search input {
+        .datatable-input {
             border: 1px solid #ccc !important;
             border-radius: 4px !important;
             padding: 5px 8px !important;
             outline: none;
         }
-        .dt-search input:focus {
+        .datatable-input:focus {
             border-color: #79aec8 !important;
             box-shadow: 0 0 4px rgba(121, 174, 200, 0.5) !important;
         }
-        .dt-length select {
+        .datatable-selector {
             border: 1px solid #ccc !important;
             border-radius: 4px !important;
             padding: 3px 5px !important;
@@ -89,6 +90,47 @@
             border: 1px solid #ddd;
             color: #666;
             border-radius: 4px;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .pagination-info {
+            color: #666;
+        }
+        .pagination-links {
+            display: flex;
+            gap: 0.25rem;
+        }
+        .pagination-links a, .pagination-links span {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #417690;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .pagination-links a:hover {
+            background: #79aec8;
+            color: #fff;
+            border-color: #79aec8;
+        }
+        .pagination-links .active {
+            background: #79aec8;
+            color: #fff;
+            border-color: #79aec8;
+            font-weight: bold;
+        }
+        .pagination-links .disabled {
+            color: #ccc;
+            border-color: #ddd;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -107,8 +149,6 @@
                         <th>Vehicle (VIN)</th>
                         <th>Sales Employee</th>
                         <th>Store</th>
-                        <th>Selling Price</th>
-                        <th>Selling Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,25 +159,51 @@
                             <td>{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }} (<code>{{ sale.vehicle.vin }}</code>)</td>
                             <td>{{ sale.employee.first_name }} {{ sale.employee.last_name }}</td>
                             <td>{{ sale.store.store_name }}</td>
-                            <td><strong>${{ sale.selling_price }}</strong></td>
-                            <td>{{ sale.selling_date|date:"Y-m-d" }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing Page <strong>{{ sales.number }}</strong> of <strong>{{ sales.paginator.num_pages }}</strong> (Total {{ sales.paginator.count }} sales)
+                </div>
+                <div class="pagination-links">
+                    {% if sales.has_previous %}
+                        <a href="?page=1">&laquo; First</a>
+                        <a href="?page={{ sales.previous_page_number }}">Previous</a>
+                    {% else %}
+                        <span class="disabled">&laquo; First</span>
+                        <span class="disabled">Previous</span>
+                    {% endif %}
+
+                    <span class="active">{{ sales.number }}</span>
+
+                    {% if sales.has_next %}
+                        <a href="?page={{ sales.next_page_number }}">Next</a>
+                        <a href="?page={{ sales.paginator.num_pages }}">Last &raquo;</a>
+                    {% else %}
+                        <span class="disabled">Next</span>
+                        <span class="disabled">Last &raquo;</span>
+                    {% endif %}
+                </div>
+            </div>
         {% else %}
             <div class="empty-message">No sales records found in the database.</div>
         {% endif %}
     </div>
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- DataTables JS -->
-    <script src="//cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+    <!-- simple-datatables JS -->
+    <script src="{% static 'assets/vendor/simple-datatables/simple-datatables.js' %}"></script>
     
     <script>
-        $(document).ready(function() {
-            let table = new DataTable('#myTable');
+        document.addEventListener("DOMContentLoaded", () => {
+            const dataTable = new simpleDatatables.DataTable("#myTable", {
+                perPage: 100,
+                perPageSelect: false,
+                paging: false
+            });
         });
     </script>
 </body>

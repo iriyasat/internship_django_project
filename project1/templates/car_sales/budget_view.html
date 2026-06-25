@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
     <title>Employee Budget List</title>
     
     <!-- DataTables CSS -->
-    <link rel="stylesheet" href="//cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="{% static 'assets/vendor/simple-datatables/style.css' %}">
     
     <style>
         body {
@@ -41,12 +42,12 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border: 1px solid #e0e0e0;
         }
-        table.dataTable {
+        .datatable-table {
             border-collapse: collapse !important;
             margin-top: 1rem !important;
             margin-bottom: 1rem !important;
         }
-        table.dataTable thead th {
+        .datatable-table thead th {
             background-color: #79aec8 !important;
             color: white !important;
             font-weight: bold !important;
@@ -56,28 +57,28 @@
             border-bottom: 1px solid #5fa1c4 !important;
             padding: 10px 12px !important;
         }
-        table.dataTable tbody td {
+        .datatable-table tbody td {
             padding: 12px !important;
             border-bottom: 1px solid #eee !important;
             font-size: 0.875rem;
         }
-        table.dataTable tbody tr:nth-child(even) {
+        .datatable-table tbody tr:nth-child(even) {
             background-color: #fcfcfc;
         }
-        table.dataTable tbody tr:hover {
+        .datatable-table tbody tr:hover {
             background-color: #f5f8fa !important;
         }
-        .dt-search input {
+        .datatable-input {
             border: 1px solid #ccc !important;
             border-radius: 4px !important;
             padding: 5px 8px !important;
             outline: none;
         }
-        .dt-search input:focus {
+        .datatable-input:focus {
             border-color: #79aec8 !important;
             box-shadow: 0 0 4px rgba(121, 174, 200, 0.5) !important;
         }
-        .dt-length select {
+        .datatable-selector {
             border: 1px solid #ccc !important;
             border-radius: 4px !important;
             padding: 3px 5px !important;
@@ -130,14 +131,12 @@
         {% endif %}
     </div>
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- DataTables JS -->
-    <script src="//cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+    <!-- simple-datatables JS -->
+    <script src="{% static 'assets/vendor/simple-datatables/simple-datatables.js' %}"></script>
     
     <script>
-        $(document).ready(function() {
-            let table = new DataTable('#myTable');
+        document.addEventListener("DOMContentLoaded", () => {
+            const dataTable = new simpleDatatables.DataTable("#myTable");
         });
     </script>
 </body>

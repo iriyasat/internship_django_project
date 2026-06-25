@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.core.paginator import Paginator
 from .models import *
 
 # Create your views here.
@@ -6,7 +7,7 @@ def home_view(request):
     return render(request, 'car_sales/index.html')
 
 def employee_view(request):
-    employees_list = Employee.objects.select_related('employee_role', 'status', 'store', 'city', 'country').all()[:200]
+    employees_list = Employee.objects.select_related('employee_role', 'status', 'store', 'city', 'country').order_by('-employee_id').all()
     context = {
         'employees': employees_list
     }
@@ -55,28 +56,31 @@ def industry_view(request):
     return render(request, 'car_sales/industry_view.html', context)
 
 def vehicle_view(request):
-    vehicles_list = VehicleInfo.objects.select_related('make').all()[:200]
+    vehicles_list = VehicleInfo.objects.select_related('make').order_by('-id').all()
     context = {
         'vehicles': vehicles_list
     }
     return render(request, 'car_sales/vehicle_view.html', context)
 
 def customer_view(request):
-    customers_list = CustomerInfo.objects.select_related('city', 'country').all()[:200]
+    customers_list = CustomerInfo.objects.select_related('city', 'country').order_by('-customer_id').all()
     context = {
         'customers': customers_list
     }
     return render(request, 'car_sales/customer_view.html', context)
 
 def selling_view(request):
-    sales_list = SellingInfo.objects.select_related('customer', 'vehicle__make', 'employee', 'store').all()[:200]
+    sales_list = SellingInfo.objects.prefetch_related('customer', 'vehicle__make', 'employee', 'store').order_by('-sell_id').all()
+    paginator = Paginator(sales_list, 100)  # Show 100 sales per page
+    page_number = request.GET.get('page')
+    sales_page = paginator.get_page(page_number)
     context = {
-        'sales': sales_list
+        'sales': sales_page
     }
     return render(request, 'car_sales/selling_view.html', context)
 
 def budget_view(request):
-    budgets_list = EmployeeBudget.objects.select_related('employee', 'store').all()[:200]
+    budgets_list = EmployeeBudget.objects.prefetch_related('employee', 'store').order_by('-id').all()
     context = {
         'budgets': budgets_list
     }

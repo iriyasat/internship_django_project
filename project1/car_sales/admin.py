@@ -17,12 +17,14 @@ class CityAdmin(admin.ModelAdmin):
     list_filter = ('country',)
     search_fields = ('city_name',)
     readonly_fields = ('created_at', 'updated_at')
+    list_select_related = ('country',)
 
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
-    list_display = ('store_id', 'store_name', 'store_code', 'city_id', 'country_id', 'address')
+    list_display = ('store_id', 'store_name', 'store_code', 'city', 'country', 'address')
     list_filter = ('country', 'city')
     search_fields = ('store_name', 'store_code')
+    list_select_related = ('city', 'country')
 
 @admin.register(EmployeeRole)
 class EmployeeRoleAdmin(admin.ModelAdmin):
@@ -39,6 +41,7 @@ class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('employee_id', 'first_name', 'last_name', 'employee_role', 'status', 'store', 'date_of_joining')
     list_filter = ('status', 'employee_role', 'store', 'country')
     search_fields = ('first_name', 'last_name', 'employee_addr')
+    list_select_related = ('employee_role', 'status', 'store', 'city', 'country')
 
 @admin.register(IndustryInfo)
 class IndustryInfoAdmin(admin.ModelAdmin):
@@ -50,21 +53,27 @@ class VehicleInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'make', 'vehicle_model', 'mmr', 'trim', 'body', 'transmission', 'vin', 'condition', 'odometer', 'color')
     list_filter = ('make', 'transmission', 'state', 'color')
     search_fields = ('vehicle_model', 'vin')
+    list_select_related = ('make',)
 
 @admin.register(CustomerInfo)
 class CustomerInfoAdmin(admin.ModelAdmin):
-    list_display = ('customer_id', 'firstname', 'lastname', 'customer_status', 'city_id', 'country_id')
+    list_display = ('customer_id', 'firstname', 'lastname', 'customer_status', 'city', 'country')
     list_filter = ('customer_status', 'country', 'city')
     search_fields = ('firstname', 'lastname', 'customer_address')
+    list_select_related = ('city', 'country')
 
 @admin.register(SellingInfo)
 class SellingInfoAdmin(admin.ModelAdmin):
     list_display = ('sell_id', 'customer', 'vehicle', 'employee', 'store', 'selling_price', 'selling_date')
     list_filter = ('store', 'selling_date')
     search_fields = ('sell_id', 'customer__firstname', 'customer__lastname', 'vehicle__vin', 'employee__first_name', 'employee__last_name')
+    autocomplete_fields = ('customer', 'vehicle', 'employee')
+    list_select_related = ('customer', 'vehicle__make', 'employee', 'store')
 
 @admin.register(EmployeeBudget)
 class EmployeeBudgetAdmin(admin.ModelAdmin):
     list_display = ('id', 'employee', 'budget_year', 'budget_month', 'store', 'budget_qty', 'budget_amount')
     list_filter = ('budget_year', 'budget_month', 'store')
     search_fields = ('employee__first_name', 'employee__last_name')
+    autocomplete_fields = ('employee',)
+    list_select_related = ('employee', 'store')
