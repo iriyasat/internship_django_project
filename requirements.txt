@@ -3,3 +3,4 @@
 django
 django-environ
 pillow
+djangorestframework

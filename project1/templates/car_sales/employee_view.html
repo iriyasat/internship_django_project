@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee List</title>
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="//cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+    
+    <style>
+        body {
+            font-family: "Roboto", "Lucida Grande", "DejaVu Sans", "Bitstream Vera Sans", Verdana, Arial, sans-serif;
+            margin: 0;
+            background: #f8fafc;
+            color: #333;
+        }
+        
+        /* Django Admin Inspired Styling */
+        .django-header {
+            background-color: #417690;
+            color: #f5dd5d;
+            padding: 1.2rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .django-header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: normal;
+            color: #fff;
+        }
+        .django-header h1 span {
+            color: #f5dd5d;
+            font-weight: bold;
+        }
+        
+        .container {
+            margin: 0 auto;
+            max-width: 95%;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Customize DataTable styling to align with Django UI */
+        table.dataTable {
+            border-collapse: collapse !important;
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+        table.dataTable thead th {
+            background-color: #79aec8 !important;
+            color: white !important;
+            font-weight: bold !important;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #5fa1c4 !important;
+            padding: 10px 12px !important;
+        }
+        table.dataTable tbody td {
+            padding: 12px !important;
+            border-bottom: 1px solid #eee !important;
+            font-size: 0.875rem;
+        }
+        table.dataTable tbody tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+        table.dataTable tbody tr:hover {
+            background-color: #f5f8fa !important;
+        }
+        
+        /* Search and Length inputs */
+        .dt-search input {
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            padding: 5px 8px !important;
+            outline: none;
+        }
+        .dt-search input:focus {
+            border-color: #79aec8 !important;
+            box-shadow: 0 0 4px rgba(121, 174, 200, 0.5) !important;
+        }
+        .dt-length select {
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            padding: 3px 5px !important;
+        }
+
+        /* Status & Role Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .badge-active {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .badge-inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .badge-role {
+            background-color: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+        }
+        
+        .empty-message {
+            padding: 2rem;
+            text-align: center;
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #666;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Django-styled Header -->
+    <header class="django-header">
+        <h1><span>Employee Directory</span></h1>
+    </header>
+
+    <div class="container">
+        {% if employees %}
+            <table id="myTable" class="display">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Date of Joining</th>
+                        <th>Address</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Store</th>
+                        <th>City</th>
+                        <th>Country</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                        <tr>
+                            <td data-order="{{ employee.employee_id }}"><strong>#{{ employee.employee_id }}</strong></td>
+                            <td>{{ employee.first_name }} {{ employee.last_name }}</td>
+                            <td>{{ employee.date_of_joining|date:"Y-m-d" }}</td>
+                            <td>{{ employee.employee_addr }}</td>
+                            <td>
+                                <span class="badge badge-role">
+                                    {{ employee.employee_role.role_name }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if employee.status.status|lower == 'active' %}
+                                    <span class="badge badge-active">
+                                        {{ employee.status.status }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-inactive">
+                                        {{ employee.status.status }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ employee.store.store_name }}</td>
+                            <td>{{ employee.city.city_name }}</td>
+                            <td>{{ employee.country.country_name }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-message">No employee records found in the database.</div>
+        {% endif %}
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- DataTables JS -->
+    <script src="//cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+    
+    <!-- Initialize DataTable -->
+    <script>
+        $(document).ready(function() {
+            let table = new DataTable('#myTable');
+        });
+    </script>
+</body>
+</html>

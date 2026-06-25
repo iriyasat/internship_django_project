@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City List</title>
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="//cdn.datatables.net/2.3.8/css/dataTables.dataTables.min.css">
+    
+    <style>
+        body {
+            font-family: "Roboto", "Lucida Grande", "DejaVu Sans", "Bitstream Vera Sans", Verdana, Arial, sans-serif;
+            margin: 0;
+            background: #f8fafc;
+            color: #333;
+        }
+        .django-header {
+            background-color: #417690;
+            color: #f5dd5d;
+            padding: 1.2rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+        .django-header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: normal;
+            color: #fff;
+        }
+        .django-header h1 span {
+            color: #f5dd5d;
+            font-weight: bold;
+        }
+        .container {
+            margin: 0 auto;
+            max-width: 95%;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+        table.dataTable {
+            border-collapse: collapse !important;
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+        table.dataTable thead th {
+            background-color: #79aec8 !important;
+            color: white !important;
+            font-weight: bold !important;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #5fa1c4 !important;
+            padding: 10px 12px !important;
+        }
+        table.dataTable tbody td {
+            padding: 12px !important;
+            border-bottom: 1px solid #eee !important;
+            font-size: 0.875rem;
+        }
+        table.dataTable tbody tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+        table.dataTable tbody tr:hover {
+            background-color: #f5f8fa !important;
+        }
+        .dt-search input {
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            padding: 5px 8px !important;
+            outline: none;
+        }
+        .dt-search input:focus {
+            border-color: #79aec8 !important;
+            box-shadow: 0 0 4px rgba(121, 174, 200, 0.5) !important;
+        }
+        .dt-length select {
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            padding: 3px 5px !important;
+        }
+        .empty-message {
+            padding: 2rem;
+            text-align: center;
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #666;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header class="django-header">
+        <h1><span>City Directory</span></h1>
+    </header>
+
+    <div class="container">
+        {% if cities %}
+            <table id="myTable" class="display">
+                <thead>
+                    <tr>
+                        <th>City ID</th>
+                        <th>City Name</th>
+                        <th>Country</th>
+                        <th>Created At</th>
+                        <th>Updated At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for city in cities %}
+                        <tr>
+                            <td data-order="{{ city.city_id }}"><strong>#{{ city.city_id }}</strong></td>
+                            <td>{{ city.city_name }}</td>
+                            <td>{{ city.country.country_name }}</td>
+                            <td>{{ city.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>{{ city.updated_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-message">No city records found in the database.</div>
+        {% endif %}
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="//cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            let table = new DataTable('#myTable');
+        });
+    </script>
+</body>
+</html>
