@@ -19,16 +19,18 @@ def home_view(request):
         revenue=Sum('selling_price')
     ).order_by('-count')[:5]
     
-    # 4. Chart series (grouped by date)
-    daily_sales = SellingInfo.objects.values('selling_date').annotate(
+    # 4. Chart series (grouped by month)
+    from django.db.models.functions import TruncMonth
+    monthly_sales = SellingInfo.objects.annotate(
+        month=TruncMonth('selling_date')
+    ).values('month').annotate(
         count=Count('sell_id'),
         revenue=Sum('selling_price')
-    ).order_by('-selling_date')[:7]
-    daily_sales = list(reversed(daily_sales))
+    ).order_by('month')
     
-    chart_dates = [item['selling_date'].strftime('%Y-%m-%d') for item in daily_sales]
-    chart_sales = [item['count'] for item in daily_sales]
-    chart_revenue = [item['revenue'] for item in daily_sales]
+    chart_dates = [item['month'].strftime('%b %Y') for item in monthly_sales]
+    chart_sales = [item['count'] for item in monthly_sales]
+    chart_revenue = [item['revenue'] for item in monthly_sales]
     
     context = {
         'active_tab': 'dashboard',
