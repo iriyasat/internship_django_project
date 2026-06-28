@@ -7,6 +7,15 @@ from .models import (
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
     SellingInfo, EmployeeBudget
 )
+from django import forms
+from django.forms import ModelForm, IntegerField
+from django.apps import apps
+from django.forms import modelform_factory
+from django.http import Http404, HttpResponseRedirect
+from django.urls import reverse
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+
 
 # Create your views here.
 def home_view(request):
@@ -151,14 +160,6 @@ def budget_view(request):
     }
     return render(request, 'car_sales/budget_view.html', context)
 
-from django import forms
-from django.forms import ModelForm, IntegerField
-from django.apps import apps
-from django.forms import modelform_factory
-from django.http import Http404, HttpResponseRedirect
-from django.urls import reverse
-from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 
 class SellingInfoForm(ModelForm):
     customer = IntegerField(label="Customer ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Customer ID (e.g. 5)'}))
