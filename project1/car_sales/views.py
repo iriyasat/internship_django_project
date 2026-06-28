@@ -1,7 +1,12 @@
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Sum, Count
-from .models import *
+from django.db.models.functions import TruncMonth
+from .models import (
+    Country, City, Store, EmployeeRole, EmployeeStatus,
+    Employee, IndustryInfo, VehicleInfo, CustomerInfo,
+    SellingInfo, EmployeeBudget
+)
 
 # Create your views here.
 def home_view(request):
@@ -20,7 +25,6 @@ def home_view(request):
     ).order_by('-count')[:5]
     
     # 4. Chart series (grouped by month)
-    from django.db.models.functions import TruncMonth
     monthly_sales = SellingInfo.objects.annotate(
         month=TruncMonth('selling_date')
     ).values('month').annotate(
