@@ -92,74 +92,7 @@
                   {{ chart_revenue|json_script:"chart-revenue-data" }}
                   {{ chart_dates|json_script:"chart-dates-data" }}
 
-                  <script>
-                    document.addEventListener("DOMContentLoaded", () => {
-                      const chartSales = JSON.parse(document.getElementById('chart-sales-data').textContent);
-                      const chartRevenue = JSON.parse(document.getElementById('chart-revenue-data').textContent);
-                      const chartDates = JSON.parse(document.getElementById('chart-dates-data').textContent);
 
-                      new ApexCharts(document.querySelector("#reportsChart"), {
-                        series: [{
-                          name: 'Sales Count',
-                          data: chartSales
-                        }, {
-                          name: 'Revenue ($)',
-                          data: chartRevenue
-                        }],
-                        chart: {
-                          height: 350,
-                          type: 'area',
-                          toolbar: {
-                            show: false
-                          },
-                        },
-                        markers: {
-                          size: 4
-                        },
-                        colors: ['#4154f1', '#2eca6a'],
-                        fill: {
-                          type: "gradient",
-                          gradient: {
-                            shadeIntensity: 1,
-                            opacityFrom: 0.3,
-                            opacityTo: 0.4,
-                            stops: [0, 90, 100]
-                          }
-                        },
-                        dataLabels: {
-                          enabled: false
-                        },
-                        stroke: {
-                          curve: 'smooth',
-                          width: 2
-                        },
-                        xaxis: {
-                          type: 'category',
-                          categories: chartDates
-                        },
-                        tooltip: {
-                          x: {
-                            format: 'yyyy-MM-dd'
-                          },
-                          y: {
-                            formatter: function (value, { seriesIndex }) {
-                              if (seriesIndex === 0) {
-                                return value.toLocaleString();
-                              }
-                              return '$' + value.toLocaleString();
-                            }
-                          }
-                        },
-                        yaxis: {
-                          labels: {
-                            formatter: function (value) {
-                              return value.toLocaleString();
-                            }
-                          }
-                        }
-                      }).render();
-                    });
-                  </script>
                   <!-- End Line Chart -->
 
                 </div>
@@ -279,4 +212,8 @@
 
       </div>
     </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/js/dashboard.js' %}"></script>
 {% endblock %}

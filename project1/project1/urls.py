@@ -16,8 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include 
+from django.http import JsonResponse
+
+def chrome_devtools_json(request):
+    return JsonResponse({})
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
+    path('.well-known/appspecific/com.chrome.devtools.json', chrome_devtools_json),
     path('', include('car_sales.urls')),
 ]
+

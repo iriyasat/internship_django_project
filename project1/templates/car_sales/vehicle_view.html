@@ -22,7 +22,9 @@
         <div class="card-body">
           <h5 class="card-title">
             Vehicle Inventory
+            {% if user.is_staff %}
             <a href="{% url 'admin_crud' 'vehicleinfo' 'create' %}?next={{ request.get_full_path }}" class="btn btn-primary btn-sm float-end"><i class="bi bi-plus-circle"></i> Add Vehicle</a>
+            {% endif %}
           </h5>
           
           <div class="table-responsive">
@@ -39,7 +41,9 @@
                   <th>Odometer</th>
                   <th>Color</th>
                   <th>MMR ($)</th>
+                  {% if user.is_staff %}
                   <th>Actions</th>
+                  {% endif %}
                 </tr>
               </thead>
               <tbody>
@@ -55,10 +59,12 @@
                   <td>{{ v.odometer|default:"0"|intcomma }}</td>
                   <td>{{ v.color|default:"-" }}</td>
                   <td>${{ v.mmr|intcomma }}</td>
+                  {% if user.is_staff %}
                   <td class="text-nowrap">
                     <a href="{% url 'admin_crud_pk' 'vehicleinfo' 'update' v.id %}?next={{ request.get_full_path }}" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil"></i></a>
                     <a href="{% url 'admin_crud_pk' 'vehicleinfo' 'delete' v.id %}?next={{ request.get_full_path }}" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></a>
                   </td>
+                  {% endif %}
                 </tr>
                 {% endfor %}
               </tbody>
