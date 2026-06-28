@@ -150,3 +150,148 @@ def budget_view(request):
         'budgets': budgets_page
     }
     return render(request, 'car_sales/budget_view.html', context)
+
+from django import forms
+from django.forms import ModelForm, IntegerField
+from django.apps import apps
+from django.forms import modelform_factory
+from django.http import Http404, HttpResponseRedirect
+from django.urls import reverse
+from django.contrib import messages
+
+class SellingInfoForm(ModelForm):
+    customer = IntegerField(label="Customer ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Customer ID (e.g. 5)'}))
+    vehicle = IntegerField(label="Vehicle ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Vehicle ID (e.g. 12)'}))
+
+    class Meta:
+        model = SellingInfo
+        exclude = ['created_at', 'updated_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            if self.instance.customer:
+                self.initial['customer'] = self.instance.customer.customer_id
+            if self.instance.vehicle:
+                self.initial['vehicle'] = self.instance.vehicle.id
+
+    def clean_customer(self):
+        customer_id = self.cleaned_data['customer']
+        try:
+            return CustomerInfo.objects.get(pk=customer_id)
+        except CustomerInfo.DoesNotExist:
+            raise forms.ValidationError("Customer with this ID does not exist.")
+
+    def clean_vehicle(self):
+        vehicle_id = self.cleaned_data['vehicle']
+        try:
+            return VehicleInfo.objects.get(pk=vehicle_id)
+        except VehicleInfo.DoesNotExist:
+            raise forms.ValidationError("Vehicle with this ID does not exist.")
+
+def admin_panel_view(request):
+    stats = {
+        'countries': {'name': 'Countries', 'count': Country.objects.count(), 'url': '/countries/', 'slug': 'country'},
+        'cities': {'name': 'Cities', 'count': City.objects.count(), 'url': '/cities/', 'slug': 'city'},
+        'stores': {'name': 'Stores', 'count': Store.objects.count(), 'url': '/stores/', 'slug': 'store'},
+        'roles': {'name': 'Employee Roles', 'count': EmployeeRole.objects.count(), 'url': '/emproles/', 'slug': 'employeerole'},
+        'statuses': {'name': 'Employee Statuses', 'count': EmployeeStatus.objects.count(), 'url': '/statuses/', 'slug': 'employeestatus'},
+        'employees': {'name': 'Employees', 'count': Employee.objects.count(), 'url': '/employees/', 'slug': 'employee'},
+        'industry': {'name': 'Vehicle Makes', 'count': IndustryInfo.objects.count(), 'url': '/industry/', 'slug': 'industryinfo'},
+        'vehicles': {'name': 'Vehicles', 'count': VehicleInfo.objects.count(), 'url': '/vehicles/', 'slug': 'vehicleinfo'},
+        'customers': {'name': 'Customers', 'count': CustomerInfo.objects.count(), 'url': '/customers/', 'slug': 'customerinfo'},
+        'sales': {'name': 'Sales Transactions', 'count': SellingInfo.objects.count(), 'url': '/sales/', 'slug': 'sellinginfo'},
+        'budgets': {'name': 'Employee Budgets', 'count': EmployeeBudget.objects.count(), 'url': '/budgets/', 'slug': 'employeebudget'},
+    }
+    context = {
+        'active_tab': 'admin_panel',
+        'stats': stats,
+    }
+    return render(request, 'car_sales/admin_panel.html', context)
+
+def admin_crud_view(request, model_name, action, pk=None):
+    model_mapping = {
+        'country': 'Country',
+        'city': 'City',
+        'store': 'Store',
+        'employeerole': 'EmployeeRole',
+        'employeestatus': 'EmployeeStatus',
+        'employee': 'Employee',
+        'industryinfo': 'IndustryInfo',
+        'vehicleinfo': 'VehicleInfo',
+        'customerinfo': 'CustomerInfo',
+        'sellinginfo': 'SellingInfo',
+        'employeebudget': 'EmployeeBudget'
+    }
+    actual_model_name = model_mapping.get(model_name.lower())
+    if not actual_model_name:
+        raise Http404("Model not found")
+
+    try:
+        model = apps.get_model('car_sales', actual_model_name)
+    except LookupError:
+        raise Http404("Model not found")
+
+    instance = None
+    if pk:
+        try:
+            instance = model.objects.get(pk=pk)
+        except model.DoesNotExist:
+            raise Http404("Record not found")
+
+    exclude_fields = ['created_at', 'updated_at']
+
+    if action == 'delete':
+        next_url = request.GET.get('next') or request.POST.get('next') or reverse('admin_panel')
+        if request.method == 'POST':
+            instance.delete()
+            messages.success(request, f"Successfully deleted {model._meta.verbose_name} record.")
+            return HttpResponseRedirect(next_url)
+        context = {
+            'action': action,
+            'model_name': model._meta.verbose_name,
+            'instance': instance,
+            'next': next_url
+        }
+        return render(request, 'car_sales/admin_crud.html', context)
+
+    if actual_model_name == 'SellingInfo':
+        form_class = SellingInfoForm
+    else:
+        form_class = modelform_factory(model, exclude=exclude_fields)
+
+    next_url = request.GET.get('next') or request.POST.get('next') or reverse('admin_panel')
+    
+    if request.method == 'POST':
+        form = form_class(request.POST, instance=instance)
+        for name, field in form.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select'})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-check-input'})
+            else:
+                field.widget.attrs.update({'class': 'form-control'})
+                
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Successfully {'updated' if instance else 'created'} {model._meta.verbose_name} record.")
+            return HttpResponseRedirect(next_url)
+    else:
+        form = form_class(instance=instance)
+        for name, field in form.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs.update({'class': 'form-select'})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-check-input'})
+            else:
+                field.widget.attrs.update({'class': 'form-control'})
+
+    context = {
+        'form': form,
+        'action': action,
+        'model_name': model._meta.verbose_name,
+        'instance': instance,
+        'next': next_url
+    }
+    return render(request, 'car_sales/admin_crud.html', context)
+

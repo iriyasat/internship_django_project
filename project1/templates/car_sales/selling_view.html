@@ -20,7 +20,10 @@
     <div class="col-lg-12">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Transaction Log</h5>
+          <h5 class="card-title">
+            Transaction Log
+            <a href="{% url 'admin_crud' 'sellinginfo' 'create' %}?next={{ request.get_full_path }}" class="btn btn-primary btn-sm float-end"><i class="bi bi-plus-circle"></i> Log New Sale</a>
+          </h5>
           
           <div class="table-responsive">
             <table class="table datatable">
@@ -33,6 +36,7 @@
                   <th>Store</th>
                   <th>Price</th>
                   <th>Selling Date</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -45,6 +49,10 @@
                   <td>{{ sale.store.store_name }}</td>
                   <td><span class="text-success fw-bold">${{ sale.selling_price|intcomma }}</span></td>
                   <td>{{ sale.selling_date }}</td>
+                  <td class="text-nowrap">
+                    <a href="{% url 'admin_crud_pk' 'sellinginfo' 'update' sale.sell_id %}?next={{ request.get_full_path }}" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'admin_crud_pk' 'sellinginfo' 'delete' sale.sell_id %}?next={{ request.get_full_path }}" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></a>
+                  </td>
                 </tr>
                 {% endfor %}
               </tbody>

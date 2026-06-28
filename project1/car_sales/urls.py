@@ -14,4 +14,7 @@ urlpatterns = [
     path('customers/', customer_view, name='customer'),
     path('sales/', selling_view, name='selling'),
     path('budgets/', budget_view, name='budget'),
+    path('admin-panel/', admin_panel_view, name='admin_panel'),
+    path('admin-panel/crud/<str:model_name>/<str:action>/', admin_crud_view, name='admin_crud'),
+    path('admin-panel/crud/<str:model_name>/<str:action>/<int:pk>/', admin_crud_view, name='admin_crud_pk'),
 ]
