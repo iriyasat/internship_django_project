@@ -5,6 +5,8 @@
 project1/dataset/car_sales.csv
 project1/dataset/car_sales.json
 project1/dataset/car_sales.sql
+project1/dataset/car_sales_final.sql
+
 
 # Django specific files
 db.sqlite3
