@@ -297,13 +297,16 @@
       color: var(--text-main) !important;
       border-bottom: 1px solid var(--border-color) !important;
     }
-    .card .table tbody tr:nth-child(even) {
+    .card .table tbody tr:nth-child(even) td,
+    .card .table tbody tr:nth-child(even) th {
       background-color: var(--table-row-even) !important;
     }
-    .card .table tbody tr:nth-child(odd) {
+    .card .table tbody tr:nth-child(odd) td,
+    .card .table tbody tr:nth-child(odd) th {
       background-color: var(--table-row-odd) !important;
     }
-    .card .table tbody tr:hover td {
+    .card .table tbody tr:hover td,
+    .card .table tbody tr:hover th {
       background-color: var(--table-row-hover) !important;
       color: var(--text-title) !important;
     }
