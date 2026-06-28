@@ -1,137 +1,49 @@
+{% extends 'car_sales/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Country List</title>
-    
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="{% static 'assets/vendor/simple-datatables/style.css' %}">
-    
-    <style>
-        body {
-            font-family: "Roboto", "Lucida Grande", "DejaVu Sans", "Bitstream Vera Sans", Verdana, Arial, sans-serif;
-            margin: 0;
-            background: #f8fafc;
-            color: #333;
-        }
-        .django-header {
-            background-color: #417690;
-            color: #f5dd5d;
-            padding: 1.2rem 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-        }
-        .django-header h1 {
-            margin: 0;
-            font-size: 1.6rem;
-            font-weight: normal;
-            color: #fff;
-        }
-        .django-header h1 span {
-            color: #f5dd5d;
-            font-weight: bold;
-        }
-        .container {
-            margin: 0 auto;
-            max-width: 95%;
-            background: #fff;
-            padding: 2rem;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e0e0e0;
-        }
-        .datatable-table {
-            border-collapse: collapse !important;
-            margin-top: 1rem !important;
-            margin-bottom: 1rem !important;
-        }
-        .datatable-table thead th {
-            background-color: #79aec8 !important;
-            color: white !important;
-            font-weight: bold !important;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #5fa1c4 !important;
-            padding: 10px 12px !important;
-        }
-        .datatable-table tbody td {
-            padding: 12px !important;
-            border-bottom: 1px solid #eee !important;
-            font-size: 0.875rem;
-        }
-        .datatable-table tbody tr:nth-child(even) {
-            background-color: #fcfcfc;
-        }
-        .datatable-table tbody tr:hover {
-            background-color: #f5f8fa !important;
-        }
-        .datatable-input {
-            border: 1px solid #ccc !important;
-            border-radius: 4px !important;
-            padding: 5px 8px !important;
-            outline: none;
-        }
-        .datatable-input:focus {
-            border-color: #79aec8 !important;
-            box-shadow: 0 0 4px rgba(121, 174, 200, 0.5) !important;
-        }
-        .datatable-selector {
-            border: 1px solid #ccc !important;
-            border-radius: 4px !important;
-            padding: 3px 5px !important;
-        }
-        .empty-message {
-            padding: 2rem;
-            text-align: center;
-            background: #fff;
-            border: 1px solid #ddd;
-            color: #666;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-    <header class="django-header">
-        <h1><span>Country Directory</span></h1>
-    </header>
 
-    <div class="container">
-        {% if countries %}
-            <table id="myTable" class="display">
-                <thead>
-                    <tr>
-                        <th>Country ID</th>
-                        <th>Country Name</th>
-                        <th>Created At</th>
-                        <th>Updated At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for country in countries %}
-                        <tr>
-                            <td data-order="{{ country.country_id }}"><strong>#{{ country.country_id }}</strong></td>
-                            <td>{{ country.country_name }}</td>
-                            <td>{{ country.created_at|date:"Y-m-d H:i" }}</td>
-                            <td>{{ country.updated_at|date:"Y-m-d H:i" }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="empty-message">No country records found in the database.</div>
-        {% endif %}
+{% block title %}Countries - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Countries</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">Countries</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Country List</h5>
+          
+          <table class="table datatable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Country Name</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for country in countries %}
+              <tr>
+                <td>{{ country.country_id }}</td>
+                <td><strong>{{ country.country_name }}</strong></td>
+                <td>{{ country.created_at }}</td>
+                <td>{{ country.updated_at }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-
-    <!-- simple-datatables JS -->
-    <script src="{% static 'assets/vendor/simple-datatables/simple-datatables.js' %}"></script>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const dataTable = new simpleDatatables.DataTable("#myTable");
-        });
-    </script>
-</body>
-</html>
+  </div>
+</section>
+{% endblock %}
