@@ -178,10 +178,239 @@
       border-color: #e9ecef;
       color: #6c757d;
     }
+
+    /* CSS Theme Variables */
+    :root {
+      --bg-body: #f6f9ff;
+      --bg-card: #ffffff;
+      --border-color: #ebeef4;
+      --text-title: #012970;
+      --text-main: #444444;
+      --text-muted: #899bbd;
+      --bg-sidebar: #ffffff;
+      --hover-sidebar: #f6f9ff;
+      --bg-header: #ffffff;
+      --table-row-odd: #ffffff;
+      --table-row-even: #fafbfc;
+      --table-row-hover: #f1f4fb;
+      --table-head-bg: #f6f9ff;
+      --table-head-border: #e0e6ff;
+      --card-title-color: #012970;
+      --dropdown-bg: #ffffff;
+      --dropdown-text: #212529;
+      --dropdown-hover: #f6f9ff;
+      --breadcrumb-active: #899bbd;
+      --recent-activity-badge-bg: #ffffff;
+      --pagetitle-h1: #012970;
+      --timeline-item-border: #eceef2;
+    }
+
+    body.dark-theme {
+      --bg-body: #0b0f19;
+      --bg-card: #151c2c;
+      --border-color: #222d42;
+      --text-title: #ffffff;
+      --text-main: #d1d5db;
+      --text-muted: #9ca3af;
+      --bg-sidebar: #111827;
+      --hover-sidebar: #1f2937;
+      --bg-header: #111827;
+      --table-row-odd: #151c2c;
+      --table-row-even: #1d263b;
+      --table-row-hover: #222d42;
+      --table-head-bg: #1d263b;
+      --table-head-border: #222d42;
+      --card-title-color: #3b82f6;
+      --dropdown-bg: #151c2c;
+      --dropdown-text: #f3f4f6;
+      --dropdown-hover: #222d42;
+      --breadcrumb-active: #9ca3af;
+      --recent-activity-badge-bg: #151c2c;
+      --pagetitle-h1: #ffffff;
+      --timeline-item-border: #222d42;
+    }
+
+    /* Theme overrides using CSS Variables */
+    body {
+      background-color: var(--bg-body) !important;
+      color: var(--text-main) !important;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    .header {
+      background-color: var(--bg-header) !important;
+      border-bottom: 1px solid var(--border-color) !important;
+      box-shadow: 0px 2px 20px rgba(1, 41, 112, 0.05) !important;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .header .logo span {
+      color: var(--text-title) !important;
+    }
+    .header .toggle-sidebar-btn {
+      color: var(--text-title) !important;
+    }
+    
+    .sidebar {
+      background-color: var(--bg-sidebar) !important;
+      border-right: 1px solid var(--border-color) !important;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .sidebar-nav .nav-link {
+      background-color: var(--hover-sidebar) !important;
+      color: var(--text-title) !important;
+    }
+    .sidebar-nav .nav-link.collapsed {
+      background-color: transparent !important;
+      color: var(--text-main) !important;
+    }
+    .sidebar-nav .nav-link:hover {
+      color: var(--text-title) !important;
+      background-color: var(--hover-sidebar) !important;
+    }
+    .sidebar-nav .nav-link.collapsed:hover {
+      color: var(--text-title) !important;
+      background-color: var(--hover-sidebar) !important;
+    }
+    
+    .card {
+      background-color: var(--bg-card) !important;
+      border: 1px solid var(--border-color) !important;
+      box-shadow: 0px 0 30px rgba(1, 41, 112, 0.08) !important;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .card-title {
+      color: var(--card-title-color) !important;
+    }
+    .card-title span {
+      color: var(--text-muted) !important;
+    }
+    .pagetitle h1 {
+      color: var(--pagetitle-h1) !important;
+    }
+    
+    .card .table thead th {
+      background-color: var(--table-head-bg) !important;
+      color: var(--card-title-color) !important;
+      border-bottom: 2px solid var(--table-head-border) !important;
+    }
+    .card .table tbody td {
+      color: var(--text-main) !important;
+      border-bottom: 1px solid var(--border-color) !important;
+    }
+    .card .table tbody tr:nth-child(even) {
+      background-color: var(--table-row-even) !important;
+    }
+    .card .table tbody tr:nth-child(odd) {
+      background-color: var(--table-row-odd) !important;
+    }
+    .card .table tbody tr:hover td {
+      background-color: var(--table-row-hover) !important;
+      color: var(--text-title) !important;
+    }
+    
+    .breadcrumb-item a {
+      color: var(--text-main) !important;
+    }
+    .breadcrumb-item.active {
+      color: var(--breadcrumb-active) !important;
+    }
+    
+    .dropdown-menu {
+      background-color: var(--dropdown-bg) !important;
+      border: 1px solid var(--border-color) !important;
+      box-shadow: 0px 0px 30px rgba(1, 41, 112, 0.1) !important;
+    }
+    .dropdown-menu .dropdown-header h6 {
+      color: var(--text-title) !important;
+    }
+    .dropdown-menu .dropdown-header span {
+      color: var(--text-muted) !important;
+    }
+    .dropdown-menu .dropdown-item {
+      color: var(--dropdown-text) !important;
+      transition: all 0.2s ease;
+    }
+    .dropdown-menu .dropdown-item:hover {
+      background-color: var(--dropdown-hover) !important;
+      color: var(--text-title) !important;
+    }
+    .dropdown-divider {
+      border-color: var(--border-color) !important;
+    }
+    
+    .activity .activity-item .activite-label {
+      color: var(--text-main) !important;
+    }
+    .activity .activity-item .activity-badge {
+      background-color: var(--recent-activity-badge-bg) !important;
+    }
+    .activity .activity-item .activity-content {
+      color: var(--text-main) !important;
+    }
+    .activity .activity-item::before {
+      background-color: var(--timeline-item-border) !important;
+    }
+    
+    #theme-toggle {
+      color: var(--text-title) !important;
+      transition: all 0.3s ease;
+    }
+    #theme-toggle:hover {
+      background-color: var(--hover-sidebar);
+    }
+    
+    h1, h2, h3, h4, h5, h6, .text-dark {
+      color: var(--text-title) !important;
+    }
+    .text-muted, .text-muted.small {
+      color: var(--text-muted) !important;
+    }
+    
+    .datatable-selector {
+      background-color: var(--bg-card) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+    }
+    .datatable-input {
+      background-color: var(--bg-card) !important;
+      color: var(--text-main) !important;
+      border-color: var(--border-color) !important;
+    }
+    .datatable-info {
+      color: var(--text-muted) !important;
+    }
+    .datatable-pagination-list-item-link {
+      background-color: var(--bg-card) !important;
+      border-color: var(--border-color) !important;
+      color: var(--text-main) !important;
+    }
+    .datatable-pagination-list-item-link:hover {
+      background-color: var(--hover-sidebar) !important;
+      color: var(--text-title) !important;
+    }
+    
+    body.dark-theme .apexcharts-text, 
+    body.dark-theme .apexcharts-tooltip-title,
+    body.dark-theme .apexcharts-tooltip-text {
+      fill: #ffffff !important;
+      color: #ffffff !important;
+    }
+    body.dark-theme .apexcharts-tooltip {
+      background: #151c2c !important;
+      border: 1px solid #222d42 !important;
+    }
+    body.dark-theme .apexcharts-legend-text {
+      color: #ffffff !important;
+    }
   </style>
 </head>
 
 <body>
+  <script>
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark-theme");
+    }
+  </script>
 
   <!-- ======= Header ======= -->
   <header id="header" class="header fixed-top d-flex align-items-center">
@@ -196,6 +425,13 @@
 
     <nav class="header-nav ms-auto">
       <ul class="d-flex align-items-center">
+
+        <!-- Dark Mode Toggle -->
+        <li class="nav-item pe-3">
+          <button id="theme-toggle" class="btn btn-link nav-link p-0 d-flex align-items-center justify-content-center" style="font-size: 1.25rem; border: none; box-shadow: none; width: 36px; height: 36px; border-radius: 50%;" aria-label="Toggle dark theme">
+            <i class="bi bi-moon" id="theme-icon"></i>
+          </button>
+        </li>
 
         <li class="nav-item dropdown pe-3">
 
@@ -381,6 +617,44 @@
 
   <!-- Template Main JS File -->
   <script src="{% static 'assets/js/main.js' %}"></script>
+
+  <!-- ======= Theme Toggle Script ======= -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const themeToggle = document.getElementById("theme-toggle");
+      const themeIcon = document.getElementById("theme-icon");
+      const body = document.body;
+
+      // 1. Check saved preference
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        body.classList.add("dark-theme");
+        if (themeIcon) {
+          themeIcon.classList.replace("bi-moon", "bi-sun");
+        }
+      }
+
+      // 2. Add click handler
+      if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+          body.classList.toggle("dark-theme");
+          const isDark = body.classList.contains("dark-theme");
+          
+          if (isDark) {
+            localStorage.setItem("theme", "dark");
+            if (themeIcon) {
+              themeIcon.classList.replace("bi-moon", "bi-sun");
+            }
+          } else {
+            localStorage.setItem("theme", "light");
+            if (themeIcon) {
+              themeIcon.classList.replace("bi-sun", "bi-moon");
+            }
+          }
+        });
+      }
+    });
+  </script>
 
   {% block extra_js %}{% endblock %}
 
