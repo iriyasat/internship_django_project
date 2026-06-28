@@ -1,10 +1,4 @@
-# Django Project (Car Sales) - macOS Setup & Codebase Reference
-
-**Status: Setup Complete & Running on the New Machine** 🚀
-
-This repository contains a Django web application for managing car sales. The project has been fully configured, the database is imported, and the server is running on port `8000`.
-
----
+# Django Project (Car Sales)
 
 ## Setup Steps Completed
 
