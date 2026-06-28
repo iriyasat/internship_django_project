@@ -21,28 +21,30 @@
         <div class="card-body">
           <h5 class="card-title">City Directory</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>City Name</th>
-                <th>Country</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for city in cities %}
-              <tr>
-                <td>{{ city.city_id }}</td>
-                <td><strong>{{ city.city_name }}</strong></td>
-                <td>{{ city.country.country_name }}</td>
-                <td>{{ city.created_at }}</td>
-                <td>{{ city.updated_at }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>City Name</th>
+                  <th>Country</th>
+                  <th>Created At</th>
+                  <th>Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for city in cities %}
+                <tr>
+                  <td>{{ city.city_id }}</td>
+                  <td><strong>{{ city.city_name }}</strong></td>
+                  <td>{{ city.country.country_name }}</td>
+                  <td>{{ city.created_at }}</td>
+                  <td>{{ city.updated_at }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

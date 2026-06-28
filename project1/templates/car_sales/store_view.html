@@ -21,30 +21,32 @@
         <div class="card-body">
           <h5 class="card-title">Store Directory</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Store Name</th>
-                <th>Store Code</th>
-                <th>City</th>
-                <th>Country</th>
-                <th>Address</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for store in stores %}
-              <tr>
-                <td>{{ store.store_id }}</td>
-                <td><strong>{{ store.store_name }}</strong></td>
-                <td><span class="badge bg-info text-dark">{{ store.store_code }}</span></td>
-                <td>{{ store.city.city_name }}</td>
-                <td>{{ store.country.country_name }}</td>
-                <td>{{ store.address }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Store Name</th>
+                  <th>Store Code</th>
+                  <th>City</th>
+                  <th>Country</th>
+                  <th>Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for store in stores %}
+                <tr>
+                  <td>{{ store.store_id }}</td>
+                  <td><strong>{{ store.store_name }}</strong></td>
+                  <td><span class="badge bg-info text-dark">{{ store.store_code }}</span></td>
+                  <td>{{ store.city.city_name }}</td>
+                  <td>{{ store.country.country_name }}</td>
+                  <td>{{ store.address }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

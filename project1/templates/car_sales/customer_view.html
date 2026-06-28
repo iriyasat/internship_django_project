@@ -21,36 +21,38 @@
         <div class="card-body">
           <h5 class="card-title">Customer Registry</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Address</th>
-                <th>City</th>
-                <th>Country</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for cust in customers %}
-              <tr>
-                <td>{{ cust.customer_id }}</td>
-                <td><strong>{{ cust.firstname }} {{ cust.lastname }}</strong></td>
-                <td>
-                  {% if cust.customer_status == "Active" %}
-                  <span class="badge bg-success">Active</span>
-                  {% else %}
-                  <span class="badge bg-secondary">{{ cust.customer_status }}</span>
-                  {% endif %}
-                </td>
-                <td>{{ cust.customer_address }}</td>
-                <td>{{ cust.city.city_name }}</td>
-                <td>{{ cust.country.country_name }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Address</th>
+                  <th>City</th>
+                  <th>Country</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cust in customers %}
+                <tr>
+                  <td>{{ cust.customer_id }}</td>
+                  <td><strong>{{ cust.firstname }} {{ cust.lastname }}</strong></td>
+                  <td>
+                    {% if cust.customer_status == "Active" %}
+                    <span class="badge bg-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ cust.customer_status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ cust.customer_address }}</td>
+                  <td>{{ cust.city.city_name }}</td>
+                  <td>{{ cust.country.country_name }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
 
           <!-- Django Server-side pagination controls -->
           <nav aria-label="Page navigation" class="mt-4">

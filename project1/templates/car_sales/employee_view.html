@@ -21,38 +21,40 @@
         <div class="card-body">
           <h5 class="card-title">Employee Registry</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Store</th>
-                <th>Address</th>
-                <th>Date of Joining</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for emp in employees %}
-              <tr>
-                <td>{{ emp.employee_id }}</td>
-                <td><strong>{{ emp.first_name }} {{ emp.last_name }}</strong></td>
-                <td>{{ emp.employee_role.role_name }}</td>
-                <td>
-                  {% if emp.status.status == "Active" %}
-                  <span class="badge bg-success">Active</span>
-                  {% else %}
-                  <span class="badge bg-secondary">{{ emp.status.status }}</span>
-                  {% endif %}
-                </td>
-                <td>{{ emp.store.store_name }}</td>
-                <td>{{ emp.employee_addr }}, {{ emp.city.city_name }}</td>
-                <td>{{ emp.date_of_joining }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Store</th>
+                  <th>Address</th>
+                  <th>Date of Joining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emp in employees %}
+                <tr>
+                  <td>{{ emp.employee_id }}</td>
+                  <td><strong>{{ emp.first_name }} {{ emp.last_name }}</strong></td>
+                  <td>{{ emp.employee_role.role_name }}</td>
+                  <td>
+                    {% if emp.status.status == "Active" %}
+                    <span class="badge bg-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ emp.status.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ emp.store.store_name }}</td>
+                  <td>{{ emp.employee_addr }}, {{ emp.city.city_name }}</td>
+                  <td>{{ emp.date_of_joining }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

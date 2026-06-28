@@ -21,26 +21,28 @@
         <div class="card-body">
           <h5 class="card-title">Status Configuration</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Status Name</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for s in statuses %}
-              <tr>
-                <td>{{ s.status_id }}</td>
-                <td><strong>{{ s.status }}</strong></td>
-                <td>{{ s.created_at }}</td>
-                <td>{{ s.updated_at }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Status Name</th>
+                  <th>Created At</th>
+                  <th>Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in statuses %}
+                <tr>
+                  <td>{{ s.status_id }}</td>
+                  <td><strong>{{ s.status }}</strong></td>
+                  <td>{{ s.created_at }}</td>
+                  <td>{{ s.updated_at }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

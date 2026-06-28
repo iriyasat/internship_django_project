@@ -21,26 +21,28 @@
         <div class="card-body">
           <h5 class="card-title">Manufacturer Brands</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Brand Name</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for ind in industries %}
-              <tr>
-                <td>{{ ind.make_id }}</td>
-                <td><strong>{{ ind.make_name }}</strong></td>
-                <td>{{ ind.created_at }}</td>
-                <td>{{ ind.updated_at }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Brand Name</th>
+                  <th>Created At</th>
+                  <th>Updated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ind in industries %}
+                <tr>
+                  <td>{{ ind.make_id }}</td>
+                  <td><strong>{{ ind.make_name }}</strong></td>
+                  <td>{{ ind.created_at }}</td>
+                  <td>{{ ind.updated_at }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

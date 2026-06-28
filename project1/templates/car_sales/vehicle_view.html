@@ -1,5 +1,6 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Vehicles - Car Sales{% endblock %}
 
@@ -21,38 +22,40 @@
         <div class="card-body">
           <h5 class="card-title">Vehicle Inventory</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>VIN</th>
-                <th>Brand / Make</th>
-                <th>Model</th>
-                <th>Trim</th>
-                <th>Body</th>
-                <th>Transmission</th>
-                <th>Odometer</th>
-                <th>Color</th>
-                <th>MMR ($)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for v in vehicles %}
-              <tr>
-                <td>{{ v.id }}</td>
-                <td><span class="badge bg-secondary">{{ v.vin }}</span></td>
-                <td><strong>{{ v.make.make_name }}</strong></td>
-                <td>{{ v.vehicle_model }}</td>
-                <td>{{ v.trim|default:"-" }}</td>
-                <td>{{ v.body|default:"-" }}</td>
-                <td>{{ v.transmission|default:"-" }}</td>
-                <td>{{ v.odometer|default:"0" }}</td>
-                <td>{{ v.color|default:"-" }}</td>
-                <td>${{ v.mmr }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>VIN</th>
+                  <th>Brand / Make</th>
+                  <th>Model</th>
+                  <th>Trim</th>
+                  <th>Body</th>
+                  <th>Transmission</th>
+                  <th>Odometer</th>
+                  <th>Color</th>
+                  <th>MMR ($)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in vehicles %}
+                <tr>
+                  <td>{{ v.id }}</td>
+                  <td><span class="badge bg-secondary">{{ v.vin }}</span></td>
+                  <td><strong>{{ v.make.make_name }}</strong></td>
+                  <td>{{ v.vehicle_model }}</td>
+                  <td>{{ v.trim|default:"-" }}</td>
+                  <td>{{ v.body|default:"-" }}</td>
+                  <td>{{ v.transmission|default:"-" }}</td>
+                  <td>{{ v.odometer|default:"0"|intcomma }}</td>
+                  <td>{{ v.color|default:"-" }}</td>
+                  <td>${{ v.mmr|intcomma }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
 
           <!-- Django Server-side pagination controls -->
           <nav aria-label="Page navigation" class="mt-4">

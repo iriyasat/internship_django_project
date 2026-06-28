@@ -1,5 +1,6 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Budgets - Car Sales{% endblock %}
 
@@ -21,32 +22,34 @@
         <div class="card-body">
           <h5 class="card-title">Employee Budget Allocations</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Employee</th>
-                <th>Year</th>
-                <th>Month</th>
-                <th>Store</th>
-                <th>Target Quantity</th>
-                <th>Target Budget</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for b in budgets %}
-              <tr>
-                <td>{{ b.id }}</td>
-                <td><strong>{{ b.employee.first_name }} {{ b.employee.last_name }}</strong></td>
-                <td>{{ b.budget_year }}</td>
-                <td>{{ b.budget_month }}</td>
-                <td>{{ b.store.store_name }}</td>
-                <td>{{ b.budget_qty }} units</td>
-                <td><span class="text-primary fw-bold">${{ b.budget_amount }}</span></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Employee</th>
+                  <th>Year</th>
+                  <th>Month</th>
+                  <th>Store</th>
+                  <th>Target Quantity</th>
+                  <th>Target Budget</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in budgets %}
+                <tr>
+                  <td>{{ b.id }}</td>
+                  <td><strong>{{ b.employee.first_name }} {{ b.employee.last_name }}</strong></td>
+                  <td>{{ b.budget_year }}</td>
+                  <td>{{ b.budget_month }}</td>
+                  <td>{{ b.store.store_name }}</td>
+                  <td>{{ b.budget_qty|intcomma }} units</td>
+                  <td><span class="text-primary fw-bold">${{ b.budget_amount|intcomma }}</span></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
 
           <!-- Django Server-side pagination controls -->
           <nav aria-label="Page navigation" class="mt-4">

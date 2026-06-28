@@ -1,5 +1,6 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Sales - Car Sales{% endblock %}
 
@@ -21,32 +22,34 @@
         <div class="card-body">
           <h5 class="card-title">Transaction Log</h5>
           
-          <table class="table datatable">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Customer</th>
-                <th>Vehicle</th>
-                <th>Sold By (Employee)</th>
-                <th>Store</th>
-                <th>Price</th>
-                <th>Selling Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for sale in sales %}
-              <tr>
-                <td>{{ sale.sell_id }}</td>
-                <td>{{ sale.customer.firstname }} {{ sale.customer.lastname }}</td>
-                <td><strong>{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</strong></td>
-                <td>{{ sale.employee.first_name }} {{ sale.employee.last_name }}</td>
-                <td>{{ sale.store.store_name }}</td>
-                <td><span class="text-success fw-bold">${{ sale.selling_price }}</span></td>
-                <td>{{ sale.selling_date }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Vehicle</th>
+                  <th>Sold By (Employee)</th>
+                  <th>Store</th>
+                  <th>Price</th>
+                  <th>Selling Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for sale in sales %}
+                <tr>
+                  <td>{{ sale.sell_id }}</td>
+                  <td>{{ sale.customer.firstname }} {{ sale.customer.lastname }}</td>
+                  <td><strong>{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</strong></td>
+                  <td>{{ sale.employee.first_name }} {{ sale.employee.last_name }}</td>
+                  <td>{{ sale.store.store_name }}</td>
+                  <td><span class="text-success fw-bold">${{ sale.selling_price|intcomma }}</span></td>
+                  <td>{{ sale.selling_date }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
 
           <!-- Django Server-side pagination controls -->
           <nav aria-label="Page navigation" class="mt-4">

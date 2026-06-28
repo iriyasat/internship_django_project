@@ -16,7 +16,9 @@
 
   <!-- Google Fonts -->
   <link href="https://fonts.gstatic.com" rel="preconnect">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i"
+    rel="stylesheet">
 
   <!-- Vendor CSS Files -->
   <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
@@ -29,6 +31,154 @@
 
   <!-- Template Main CSS File -->
   <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
+
+  <style>
+    /* Modern Table Customizations */
+    .card .table {
+      margin-bottom: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100% !important;
+    }
+    
+    .card .table thead th {
+      background-color: #f6f9ff !important;
+      color: #4154f1 !important;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px !important;
+      border-bottom: 2px solid #e0e6ff !important;
+    }
+    
+    .card .table tbody td {
+      padding: 14px 16px !important;
+      vertical-align: middle;
+      font-size: 0.875rem;
+      border-bottom: 1px solid #eee !important;
+      transition: all 0.2s ease;
+    }
+    
+    /* Zebra striping & hover transition */
+    .card .table tbody tr:nth-child(even) {
+      background-color: #fafbfc;
+    }
+    
+    .card .table tbody tr:hover td {
+      background-color: #f1f4fb !important;
+      color: #012970;
+    }
+    
+    /* Datatable Pagination Modern & Mobile Touchups */
+    .datatable-pagination {
+      margin-top: 15px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    @media (max-width: 576px) {
+      .datatable-pagination {
+        justify-content: center;
+      }
+    }
+    
+    .datatable-pagination-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding-left: 0;
+      list-style: none;
+      margin-bottom: 0;
+    }
+    
+    .datatable-pagination-list-item {
+      display: inline-block;
+    }
+    
+    .datatable-pagination-list-item-link {
+      background-color: #ffffff;
+      color: #4154f1;
+      border: 1px solid #e0e6ff;
+      padding: 0;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      outline: none;
+      box-shadow: none;
+      text-decoration: none;
+    }
+    
+    .datatable-pagination-list-item-link:hover {
+      background-color: #f1f4fb;
+      border-color: #4154f1;
+      color: #012970;
+    }
+    
+    /* Active Item */
+    .datatable-pagination-list-item.datatable-active .datatable-pagination-list-item-link,
+    .datatable-pagination-list-item.active .datatable-pagination-list-item-link {
+      background-color: #4154f1 !important;
+      border-color: #4154f1 !important;
+      color: #ffffff !important;
+      font-weight: bold;
+      cursor: default;
+    }
+    
+    /* Disabled Item (like ellipsis or disabled buttons) */
+    .datatable-pagination-list-item.datatable-disabled .datatable-pagination-list-item-link,
+    .datatable-pagination-list-item.disabled .datatable-pagination-list-item-link {
+      background-color: #f8f9fa;
+      border-color: #e9ecef;
+      color: #6c757d;
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    /* Bootstrap Pagination Sync */
+    .pagination {
+      gap: 5px;
+      margin-top: 20px;
+    }
+    .pagination .page-item .page-link {
+      color: #4154f1;
+      border: 1px solid #e0e6ff;
+      border-radius: 6px !important;
+      width: auto;
+      min-width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0 10px;
+      transition: all 0.2s ease-in-out;
+    }
+    .pagination .page-item .page-link:hover {
+      background-color: #f1f4fb;
+      border-color: #4154f1;
+      color: #012970;
+    }
+    .pagination .page-item.active .page-link {
+      background-color: #4154f1;
+      border-color: #4154f1;
+      color: #ffffff;
+      font-weight: bold;
+    }
+    .pagination .page-item.disabled .page-link {
+      background-color: #f8f9fa;
+      border-color: #e9ecef;
+      color: #6c757d;
+    }
+  </style>
 </head>
 
 <body>
@@ -51,14 +201,54 @@
 
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
             <img src="{% static 'assets/img/profile-img.jpg' %}" alt="Profile" class="rounded-circle">
-            <span class="d-none d-md-block dropdown-toggle ps-2">Admin User</span>
+            <span class="d-none d-md-block dropdown-toggle ps-2">
+              {% if user.is_authenticated %}
+                {{ user.username }}
+              {% else %}
+                Guest
+              {% endif %}
+            </span>
           </a><!-- End Profile Image Icon -->
 
           <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
+            {% if user.is_authenticated %}
             <li class="dropdown-header">
-              <h6>Administrator</h6>
-              <span>Car Sales Manager</span>
+              <h6>{{ user.get_full_name|default:user.username }}</h6>
+              <span>{{ user.email|default:"Car Sales Manager" }}</span>
             </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="/admin/">
+                <i class="bi bi-gear"></i>
+                <span>Admin Panel</span>
+              </a>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="/admin/logout/">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Sign Out</span>
+              </a>
+            </li>
+            {% else %}
+            <li class="dropdown-header">
+              <h6>Guest User</h6>
+              <span>Not logged in</span>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="/admin/login/?next=/">
+                <i class="bi bi-box-arrow-in-right"></i>
+                <span>Sign In</span>
+              </a>
+            </li>
+            {% endif %}
           </ul><!-- End Profile Dropdown Items -->
         </li><!-- End Profile Nav -->
 
@@ -177,7 +367,8 @@
     </div>
   </footer><!-- End Footer -->
 
-  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i
+      class="bi bi-arrow-up-short"></i></a>
 
   <!-- Vendor JS Files -->
   <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
