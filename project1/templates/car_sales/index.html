@@ -141,6 +141,21 @@
                           x: {
                             format: 'yyyy-MM-dd'
                           },
+                          y: {
+                            formatter: function (value, { seriesIndex }) {
+                              if (seriesIndex === 0) {
+                                return value.toLocaleString();
+                              }
+                              return '$' + value.toLocaleString();
+                            }
+                          }
+                        },
+                        yaxis: {
+                          labels: {
+                            formatter: function (value) {
+                              return value.toLocaleString();
+                            }
+                          }
                         }
                       }).render();
                     });
