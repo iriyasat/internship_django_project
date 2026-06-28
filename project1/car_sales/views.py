@@ -158,6 +158,7 @@ from django.forms import modelform_factory
 from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 
 class SellingInfoForm(ModelForm):
     customer = IntegerField(label="Customer ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Customer ID (e.g. 5)'}))
@@ -189,6 +190,7 @@ class SellingInfoForm(ModelForm):
         except VehicleInfo.DoesNotExist:
             raise forms.ValidationError("Vehicle with this ID does not exist.")
 
+@staff_member_required
 def admin_panel_view(request):
     stats = {
         'countries': {'name': 'Countries', 'count': Country.objects.count(), 'url': '/countries/', 'slug': 'country'},
@@ -209,6 +211,7 @@ def admin_panel_view(request):
     }
     return render(request, 'car_sales/admin_panel.html', context)
 
+@staff_member_required
 def admin_crud_view(request, model_name, action, pk=None):
     model_mapping = {
         'country': 'Country',
