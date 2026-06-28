@@ -40,7 +40,7 @@
       border-spacing: 0;
       width: 100% !important;
     }
-    
+
     .card .table thead th {
       background-color: #f6f9ff !important;
       color: #4154f1 !important;
@@ -51,7 +51,7 @@
       padding: 12px 16px !important;
       border-bottom: 2px solid #e0e6ff !important;
     }
-    
+
     .card .table tbody td {
       padding: 14px 16px !important;
       vertical-align: middle;
@@ -59,30 +59,30 @@
       border-bottom: 1px solid #eee !important;
       transition: all 0.2s ease;
     }
-    
+
     /* Zebra striping & hover transition */
     .card .table tbody tr:nth-child(even) {
       background-color: #fafbfc;
     }
-    
+
     .card .table tbody tr:hover td {
       background-color: #f1f4fb !important;
       color: #012970;
     }
-    
+
     /* Datatable Pagination Modern & Mobile Touchups */
     .datatable-pagination {
       margin-top: 15px;
       display: flex;
       justify-content: flex-end;
     }
-    
+
     @media (max-width: 576px) {
       .datatable-pagination {
         justify-content: center;
       }
     }
-    
+
     .datatable-pagination-list {
       display: flex;
       flex-wrap: wrap;
@@ -91,11 +91,11 @@
       list-style: none;
       margin-bottom: 0;
     }
-    
+
     .datatable-pagination-list-item {
       display: inline-block;
     }
-    
+
     .datatable-pagination-list-item-link {
       background-color: #ffffff;
       color: #4154f1;
@@ -115,13 +115,13 @@
       box-shadow: none;
       text-decoration: none;
     }
-    
+
     .datatable-pagination-list-item-link:hover {
       background-color: #f1f4fb;
       border-color: #4154f1;
       color: #012970;
     }
-    
+
     /* Active Item */
     .datatable-pagination-list-item.datatable-active .datatable-pagination-list-item-link,
     .datatable-pagination-list-item.active .datatable-pagination-list-item-link {
@@ -131,7 +131,7 @@
       font-weight: bold;
       cursor: default;
     }
-    
+
     /* Disabled Item (like ellipsis or disabled buttons) */
     .datatable-pagination-list-item.datatable-disabled .datatable-pagination-list-item-link,
     .datatable-pagination-list-item.disabled .datatable-pagination-list-item-link {
@@ -147,6 +147,7 @@
       gap: 5px;
       margin-top: 20px;
     }
+
     .pagination .page-item .page-link {
       color: #4154f1;
       border: 1px solid #e0e6ff;
@@ -162,17 +163,20 @@
       padding: 0 10px;
       transition: all 0.2s ease-in-out;
     }
+
     .pagination .page-item .page-link:hover {
       background-color: #f1f4fb;
       border-color: #4154f1;
       color: #012970;
     }
+
     .pagination .page-item.active .page-link {
       background-color: #4154f1;
       border-color: #4154f1;
       color: #ffffff;
       font-weight: bold;
     }
+
     .pagination .page-item.disabled .page-link {
       background-color: #f8f9fa;
       border-color: #e9ecef;
@@ -236,175 +240,213 @@
       color: var(--text-main) !important;
       transition: background-color 0.3s ease, color 0.3s ease;
     }
-    
+
     .header {
       background-color: var(--bg-header) !important;
       border-bottom: 1px solid var(--border-color) !important;
       box-shadow: 0px 2px 20px rgba(1, 41, 112, 0.05) !important;
       transition: background-color 0.3s ease, border-color 0.3s ease;
     }
+
     .header .logo span {
       color: var(--text-title) !important;
     }
+
     .header .toggle-sidebar-btn {
       color: var(--text-title) !important;
     }
+
     .header-nav .nav-profile span {
       color: var(--text-title) !important;
     }
-    
+
     .sidebar {
       background-color: var(--bg-sidebar) !important;
       border-right: 1px solid var(--border-color) !important;
       transition: background-color 0.3s ease, border-color 0.3s ease;
     }
+
     .sidebar-nav .nav-link {
       background-color: var(--hover-sidebar) !important;
       color: var(--text-title) !important;
     }
+
     .sidebar-nav .nav-link.collapsed {
       background-color: transparent !important;
       color: var(--text-main) !important;
     }
+
     .sidebar-nav .nav-link:hover {
       color: var(--text-title) !important;
       background-color: var(--hover-sidebar) !important;
     }
+
     .sidebar-nav .nav-link.collapsed:hover {
       color: var(--text-title) !important;
       background-color: var(--hover-sidebar) !important;
     }
-    
+
     .card {
       background-color: var(--bg-card) !important;
       border: 1px solid var(--border-color) !important;
       box-shadow: 0px 0 30px rgba(1, 41, 112, 0.08) !important;
       transition: background-color 0.3s ease, border-color 0.3s ease;
     }
+
     .card-title {
       color: var(--card-title-color) !important;
     }
+
     .card-title span {
       color: var(--text-muted) !important;
     }
+
     .pagetitle h1 {
       color: var(--pagetitle-h1) !important;
     }
-    
+
     .card .table thead th {
       background-color: var(--table-head-bg) !important;
       color: var(--card-title-color) !important;
       border-bottom: 2px solid var(--table-head-border) !important;
     }
+
     .card .table tbody td {
       color: var(--text-main) !important;
       border-bottom: 1px solid var(--border-color) !important;
     }
+
     .card .table tbody tr:nth-child(even) td,
     .card .table tbody tr:nth-child(even) th {
       background-color: var(--table-row-even) !important;
     }
+
     .card .table tbody tr:nth-child(odd) td,
     .card .table tbody tr:nth-child(odd) th {
       background-color: var(--table-row-odd) !important;
     }
+
     .card .table tbody tr:hover td,
     .card .table tbody tr:hover th {
       background-color: var(--table-row-hover) !important;
       color: var(--text-title) !important;
     }
-    
+
     .breadcrumb-item a {
       color: var(--text-main) !important;
     }
+
     .breadcrumb-item.active {
       color: var(--breadcrumb-active) !important;
     }
-    
+
     .dropdown-menu {
       background-color: var(--dropdown-bg) !important;
       border: 1px solid var(--border-color) !important;
       box-shadow: 0px 0px 30px rgba(1, 41, 112, 0.1) !important;
     }
+
     .dropdown-menu .dropdown-header h6 {
       color: var(--text-title) !important;
     }
+
     .dropdown-menu .dropdown-header span {
       color: var(--text-muted) !important;
     }
+
     .dropdown-menu .dropdown-item {
       color: var(--dropdown-text) !important;
       transition: all 0.2s ease;
     }
+
     .dropdown-menu .dropdown-item:hover {
       background-color: var(--dropdown-hover) !important;
       color: var(--text-title) !important;
     }
+
     .dropdown-divider {
       border-color: var(--border-color) !important;
     }
-    
+
     .activity .activity-item .activite-label {
       color: var(--text-main) !important;
     }
+
     .activity .activity-item .activity-badge {
       background-color: var(--recent-activity-badge-bg) !important;
     }
+
     .activity .activity-item .activity-content {
       color: var(--text-main) !important;
     }
+
     .activity .activity-item::before {
       background-color: var(--timeline-item-border) !important;
     }
-    
+
     #theme-toggle {
       color: var(--text-title) !important;
       transition: all 0.3s ease;
     }
+
     #theme-toggle:hover {
       background-color: var(--hover-sidebar);
     }
-    
-    h1, h2, h3, h4, h5, h6, .text-dark {
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .text-dark {
       color: var(--text-title) !important;
     }
-    .text-muted, .text-muted.small {
+
+    .text-muted,
+    .text-muted.small {
       color: var(--text-muted) !important;
     }
-    
+
     .datatable-selector {
       background-color: var(--bg-card) !important;
       color: var(--text-main) !important;
       border-color: var(--border-color) !important;
     }
+
     .datatable-input {
       background-color: var(--bg-card) !important;
       color: var(--text-main) !important;
       border-color: var(--border-color) !important;
     }
+
     .datatable-info {
       color: var(--text-muted) !important;
     }
+
     .datatable-pagination-list-item-link {
       background-color: var(--bg-card) !important;
       border-color: var(--border-color) !important;
       color: var(--text-main) !important;
     }
+
     .datatable-pagination-list-item-link:hover {
       background-color: var(--hover-sidebar) !important;
       color: var(--text-title) !important;
     }
-    
-    body.dark-theme .apexcharts-text, 
+
+    body.dark-theme .apexcharts-text,
     body.dark-theme .apexcharts-tooltip-title,
     body.dark-theme .apexcharts-tooltip-text {
       fill: #ffffff !important;
       color: #ffffff !important;
     }
+
     body.dark-theme .apexcharts-tooltip {
       background: #151c2c !important;
       border: 1px solid #222d42 !important;
     }
+
     body.dark-theme .apexcharts-legend-text {
       color: #ffffff !important;
     }
@@ -434,7 +476,9 @@
 
         <!-- Dark Mode Toggle -->
         <li class="nav-item pe-3">
-          <button id="theme-toggle" class="btn btn-link nav-link p-0 d-flex align-items-center justify-content-center" style="font-size: 1.25rem; border: none; box-shadow: none; width: 36px; height: 36px; border-radius: 50%;" aria-label="Toggle dark theme">
+          <button id="theme-toggle" class="btn btn-link nav-link p-0 d-flex align-items-center justify-content-center"
+            style="font-size: 1.25rem; border: none; box-shadow: none; width: 36px; height: 36px; border-radius: 50%;"
+            aria-label="Toggle dark theme">
             <i class="bi bi-moon" id="theme-icon"></i>
           </button>
         </li>
@@ -442,15 +486,18 @@
         <li class="nav-item dropdown pe-3">
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
             {% if user.is_authenticated %}
-              <img src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&background=4154f1&color=fff&size=128" alt="Profile" class="rounded-circle" style="width: 36px; height: 36px;">
+            <img
+              src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&background=4154f1&color=fff&size=128"
+              alt="Profile" class="rounded-circle" style="width: 36px; height: 36px;">
             {% else %}
-              <img src="https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff&size=128" alt="Profile" class="rounded-circle" style="width: 36px; height: 36px;">
+            <img src="https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff&size=128" alt="Profile"
+              class="rounded-circle" style="width: 36px; height: 36px;">
             {% endif %}
             <span class="d-none d-md-block dropdown-toggle ps-2">
               {% if user.is_authenticated %}
-                {{ user.username }}
+              {{ user.username }}
               {% else %}
-                Guest
+              Guest
               {% endif %}
             </span>
           </a><!-- End Profile Image Icon -->
@@ -648,7 +695,7 @@
         themeToggle.addEventListener("click", () => {
           body.classList.toggle("dark-theme");
           const isDark = body.classList.contains("dark-theme");
-          
+
           if (isDark) {
             localStorage.setItem("theme", "dark");
             if (themeIcon) {
