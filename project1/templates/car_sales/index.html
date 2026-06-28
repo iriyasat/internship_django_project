@@ -88,15 +88,23 @@
                   <!-- Line Chart -->
                   <div id="reportsChart"></div>
 
+                  {{ chart_sales|json_script:"chart-sales-data" }}
+                  {{ chart_revenue|json_script:"chart-revenue-data" }}
+                  {{ chart_dates|json_script:"chart-dates-data" }}
+
                   <script>
                     document.addEventListener("DOMContentLoaded", () => {
+                      const chartSales = JSON.parse(document.getElementById('chart-sales-data').textContent);
+                      const chartRevenue = JSON.parse(document.getElementById('chart-revenue-data').textContent);
+                      const chartDates = JSON.parse(document.getElementById('chart-dates-data').textContent);
+
                       new ApexCharts(document.querySelector("#reportsChart"), {
                         series: [{
                           name: 'Sales Count',
-                          data: {{ chart_sales|safe }}
+                          data: chartSales
                         }, {
                           name: 'Revenue ($)',
-                          data: {{ chart_revenue|safe }}
+                          data: chartRevenue
                         }],
                         chart: {
                           height: 350,
@@ -127,7 +135,7 @@
                         },
                         xaxis: {
                           type: 'category',
-                          categories: {{ chart_dates|safe }}
+                          categories: chartDates
                         },
                         tooltip: {
                           x: {
