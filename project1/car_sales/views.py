@@ -11,7 +11,7 @@ from django import forms
 from django.forms import ModelForm, IntegerField
 from django.apps import apps
 from django.forms import modelform_factory
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -301,8 +301,8 @@ def admin_crud_view(request, model_name, action, pk=None):
 
 
 def employee_report_view(request):
-    date_from = request.GET.get('date_from') or '2014-01-01'
-    date_to = request.GET.get('date_to') or '2014-01-31'
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
     
     total_employees = Employee.objects.count()
     active_employees = Employee.objects.filter(status__status='Active').count()
@@ -329,6 +329,32 @@ def employee_report_view(request):
         sales_count=Count('sales', filter=sales_filter),
         sales_revenue=Sum('sales__selling_price', filter=sales_filter)
     ).order_by(F('sales_revenue').desc(nulls_last=True), '-sales_count', 'employee_id')
+    
+    # JSON download support
+    if request.GET.get('download') == 'json':
+        data = {
+            'report_type': 'Employee Performance Report',
+            'date_range': {'from': date_from, 'to': date_to},
+            'summary': {
+                'total_employees': total_employees,
+                'active_employees': active_employees,
+                'inactive_employees': total_employees - active_employees,
+            },
+            'employees': [
+                {
+                    'id': emp.employee_id,
+                    'name': f"{emp.first_name} {emp.last_name}",
+                    'role': emp.employee_role.role_name if emp.employee_role else None,
+                    'store': emp.store.store_name if emp.store else None,
+                    'sales_count': emp.sales_count,
+                    'sales_revenue': float(emp.sales_revenue or 0),
+                }
+                for emp in employee_leaderboard_qs
+            ]
+        }
+        response = JsonResponse(data, json_dumps_params={'indent': 2})
+        response['Content-Disposition'] = f'attachment; filename="employee_report_{date_from}_to_{date_to}.json"'
+        return response
     
     # For the chart: Top 10 performers
     top_performers = employee_leaderboard_qs[:10]
@@ -364,8 +390,8 @@ def employee_report_view(request):
 
 
 def vehicle_report_view(request):
-    date_from = request.GET.get('date_from') or '2014-01-01'
-    date_to = request.GET.get('date_to') or '2014-01-31'
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
     
     total_vehicles = VehicleInfo.objects.count()
     avg_mmr = VehicleInfo.objects.aggregate(avg_mmr=Avg('mmr'))['avg_mmr'] or 0
@@ -394,6 +420,37 @@ def vehicle_report_view(request):
     expensive_sold_qs = sales_qs.select_related('vehicle__make', 'customer', 'store').annotate(
         margin=F('selling_price') - F('vehicle__mmr')
     ).order_by('-selling_price')
+    
+    # JSON download support
+    if request.GET.get('download') == 'json':
+        data = {
+            'report_type': 'Vehicle Report',
+            'date_range': {'from': date_from, 'to': date_to},
+            'summary': {
+                'total_vehicles': total_vehicles,
+                'average_mmr': float(avg_mmr),
+                'average_condition': float(condition_stats['avg_condition'] or 0),
+                'average_odometer': float(condition_stats['avg_odometer'] or 0),
+            },
+            'transactions': [
+                {
+                    'sale_id': sale.sell_id,
+                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
+                    'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
+                    'model': sale.vehicle.vehicle_model if sale.vehicle else None,
+                    'vin': sale.vehicle.vin if sale.vehicle else None,
+                    'customer': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
+                    'store': sale.store.store_name if sale.store else None,
+                    'mmr': float(sale.vehicle.mmr or 0) if sale.vehicle else 0.0,
+                    'selling_price': float(sale.selling_price or 0),
+                    'margin': float(sale.margin or 0),
+                }
+                for sale in expensive_sold_qs
+            ]
+        }
+        response = JsonResponse(data, json_dumps_params={'indent': 2})
+        response['Content-Disposition'] = f'attachment; filename="vehicle_report_{date_from}_to_{date_to}.json"'
+        return response
     
     # Pagination for premium sales table
     paginator = Paginator(expensive_sold_qs, 10)  # 10 records per page
@@ -486,6 +543,36 @@ def sales_report_view(request):
     
     # 4. Detailed Sales Transactions (paginated)
     detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee', 'store').order_by('-selling_date', '-sell_id')
+    
+    # JSON download support
+    if request.GET.get('download') == 'json':
+        data = {
+            'report_type': 'Sales Revenue Report',
+            'date_range': {'from': date_from, 'to': date_to},
+            'summary': {
+                'total_sales': total_sales,
+                'total_revenue': float(total_revenue),
+                'average_price': float(avg_price),
+                'total_margin': float(total_margin),
+                'average_margin': float(avg_margin),
+            },
+            'transactions': [
+                {
+                    'sale_id': sale.sell_id,
+                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
+                    'customer': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
+                    'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
+                    'model': sale.vehicle.vehicle_model if sale.vehicle else None,
+                    'store': sale.store.store_name if sale.store else None,
+                    'employee': f"{sale.employee.first_name} {sale.employee.last_name}" if sale.employee else None,
+                    'selling_price': float(sale.selling_price or 0),
+                }
+                for sale in detailed_sales_qs
+            ]
+        }
+        response = JsonResponse(data, json_dumps_params={'indent': 2})
+        response['Content-Disposition'] = f'attachment; filename="sales_report_{date_from}_to_{date_to}.json"'
+        return response
     paginator = Paginator(detailed_sales_qs, 10)  # 10 records per page
     page_number = request.GET.get('page')
     sales_page = paginator.get_page(page_number)

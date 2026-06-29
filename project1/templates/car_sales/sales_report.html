@@ -20,7 +20,7 @@
   
   <div class="row">
     <!-- Revenue Card -->
-    <div class="col-lg-3 col-md-6 col-sm-12">
+    <div class="col-lg-6 col-md-6 col-sm-12">
       <div class="card info-card revenue-card">
         <div class="card-body">
           <h5 class="card-title">Total Revenue</h5>
@@ -38,7 +38,7 @@
     </div>
 
     <!-- Sales Count Card -->
-    <div class="col-lg-3 col-md-6 col-sm-12">
+    <div class="col-lg-6 col-md-6 col-sm-12">
       <div class="card info-card sales-card">
         <div class="card-body">
           <h5 class="card-title">Transactions</h5>
@@ -56,7 +56,7 @@
     </div>
 
     <!-- Average Deal Card -->
-    <div class="col-lg-3 col-md-6 col-sm-12">
+    <div class="col-lg-6 col-md-6 col-sm-12">
       <div class="card info-card sales-card">
         <div class="card-body">
           <h5 class="card-title">Average Deal</h5>
@@ -74,7 +74,7 @@
     </div>
 
     <!-- Margin Card -->
-    <div class="col-lg-3 col-md-6 col-sm-12">
+    <div class="col-lg-6 col-md-6 col-sm-12">
       <div class="card info-card revenue-card">
         <div class="card-body">
           <h5 class="card-title">Net MMR Margin</h5>
@@ -114,36 +114,37 @@
   <div class="card mb-4">
     <div class="card-body pt-3">
       <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Filter Report by Date Range</h5>
-      <form method="GET" action="" class="row g-3 align-items-center">
+      <form method="GET" action="" class="row g-3 align-items-end">
         <div class="col-lg-5 col-md-6 col-sm-12">
-          <div class="d-flex align-items-center">
-            <label for="date_from" class="me-3 text-nowrap fw-bold text-muted">From Date</label>
-            <div class="input-group date datepicker-el" id="datepicker_from" style="flex-grow: 1;">
-              <input type="text" class="form-control" name="date_from" id="date_from" value="{{ date_from }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
-              <span class="input-group-append">
-                <span class="input-group-text bg-light d-block">
-                  <i class="fa fa-calendar"></i>
-                </span>
-              </span>
-            </div>
+          <label for="date_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
+          <div class="input-group datepicker-el" id="datepicker_from">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control border-start-0" name="date_from" id="date_from" value="{{ date_from|default:'' }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
         <div class="col-lg-5 col-md-6 col-sm-12">
-          <div class="d-flex align-items-center">
-            <label for="date_to" class="me-3 text-nowrap fw-bold text-muted">To Date</label>
-            <div class="input-group date datepicker-el" id="datepicker_to" style="flex-grow: 1;">
-              <input type="text" class="form-control" name="date_to" id="date_to" value="{{ date_to }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
-              <span class="input-group-append">
-                <span class="input-group-text bg-light d-block">
-                  <i class="fa fa-calendar"></i>
-                </span>
-              </span>
-            </div>
+          <label for="date_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
+          <div class="input-group datepicker-el" id="datepicker_to">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control border-start-0" name="date_to" id="date_to" value="{{ date_to|default:'' }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
-        <div class="col-lg-2 col-md-12 text-end d-flex gap-2">
-          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
-          <a href="?" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Reset</a>
+        <div class="col-lg-2 col-md-12 text-end">
+          <div class="btn-group w-100" role="group">
+            <button type="submit" class="btn btn-primary" title="Apply Filter">
+              <i class="bi bi-filter"></i> Filter
+            </button>
+            <a href="?" class="btn btn-outline-secondary" title="Reset Filters">
+              <i class="bi bi-arrow-clockwise"></i>
+            </a>
+            <button type="button" id="download-json-btn" class="btn btn-outline-success" title="Download Report Data (JSON)">
+              <i class="bi bi-download"></i>
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -293,15 +294,34 @@
 {% block extra_js %}
 <script>
 $(function(){
-  $('#datepicker_from').datepicker({
+  $('#date_from').datepicker({
     format: 'yyyy-mm-dd',
     autoclose: true,
     todayHighlight: true
   });
-  $('#datepicker_to').datepicker({
+  $('#date_to').datepicker({
     format: 'yyyy-mm-dd',
     autoclose: true,
     todayHighlight: true
+  });
+
+  // Open datepicker when clicking on calendar icon span
+  $('.input-group-text').on('click', function() {
+    $(this).siblings('input').focus();
+  });
+
+  // Download JSON handler
+  $('#download-json-btn').on('click', function(e) {
+    e.preventDefault();
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('download', 'json');
+    
+    const dateFrom = $('#date_from').val();
+    const dateTo = $('#date_to').val();
+    if (dateFrom) urlParams.set('date_from', dateFrom);
+    if (dateTo) urlParams.set('date_to', dateTo);
+    
+    window.location.href = window.location.pathname + '?' + urlParams.toString();
   });
 });
 
