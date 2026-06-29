@@ -32,6 +32,10 @@
   <!-- Template Main CSS File -->
   <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
   <link href="{% static 'assets/css/custom.css' %}" rel="stylesheet">
+  
+  <!-- FontAwesome & Bootstrap Datepicker CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
 
   <!-- Theme Initialization Script -->
   <script src="{% static 'assets/js/theme-init.js' %}"></script>
@@ -224,6 +228,29 @@
         </a>
       </li>
 
+      <li class="nav-item">
+        <a class="nav-link {% if active_parent == 'reports' %}{% else %}collapsed{% endif %}" data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
+          <i class="bi bi-bar-chart-line"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="reports-nav" class="nav-content collapse {% if active_parent == 'reports' %}show{% endif %}" data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="/reports/employee/" class="{% if active_tab == 'report_employee' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Employee Report</span>
+            </a>
+          </li>
+          <li>
+            <a href="/reports/vehicle/" class="{% if active_tab == 'report_vehicle' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Vehicle Report</span>
+            </a>
+          </li>
+          <li>
+            <a href="/reports/sales/" class="{% if active_tab == 'report_sales' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Sales Report</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
     </ul>
 
   </aside><!-- End Sidebar-->
@@ -258,6 +285,10 @@
   <!-- Template Main JS File -->
   <script src="{% static 'assets/js/main.js' %}"></script>
   <script src="{% static 'assets/js/theme-toggle.js' %}"></script>
+
+  <!-- jQuery & Bootstrap Datepicker JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
 
   {% block extra_js %}{% endblock %}
 

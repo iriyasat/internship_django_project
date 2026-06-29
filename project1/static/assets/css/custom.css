@@ -431,3 +431,7 @@ body.dark-theme .apexcharts-tooltip {
 body.dark-theme .apexcharts-legend-text {
   color: #ffffff !important;
 }
+
+.input-group-append {
+  cursor: pointer;
+}

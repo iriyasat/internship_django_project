@@ -1,0 +1,403 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Employee Report - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Employee Report</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item">Reports</li>
+      <li class="breadcrumb-item active">Employee Report</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  
+  <div class="row">
+    <!-- Metric Cards -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card info-card sales-card">
+        <div class="card-body">
+          <h5 class="card-title">Total Employees</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+              <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="ps-3">
+              <h6>{{ total_employees|intcomma }}</h6>
+              <span class="text-muted small pt-2 ps-1">registered workforce</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+      <div class="card info-card revenue-card">
+        <div class="card-body">
+          <h5 class="card-title">Active Employees</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+              <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="ps-3">
+              <h6>{{ active_employees|intcomma }}</h6>
+              <span class="text-muted small pt-2 ps-1">currently active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 col-md-12">
+      <div class="card info-card customers-card">
+        <div class="card-body">
+          <h5 class="card-title">Inactive Employees</h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="color: #6c757d; background: #f6f6fe;">
+              <i class="bi bi-person-x-fill" style="color: #6c757d;"></i>
+            </div>
+            <div class="ps-3">
+              <h6>{{ inactive_employees|intcomma }}</h6>
+              <span class="text-muted small pt-2 ps-1">terminated or on-leave</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Top Performers Chart -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Top Performers Chart <span>| Units & Revenue {% if date_from or date_to %}(Filtered){% endif %}</span></h5>
+          <div id="employeePerformanceChart"></div>
+          
+          {{ chart_names|json_script:"chart-names-data" }}
+          {{ chart_revenue|json_script:"chart-revenue-data" }}
+          {{ chart_sales|json_script:"chart-sales-data" }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Filter Form -->
+  <div class="card mb-4">
+    <div class="card-body pt-3">
+      <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Filter Report by Date Range</h5>
+      <form method="GET" action="" class="row g-3 align-items-center">
+        <div class="col-lg-5 col-md-6 col-sm-12">
+          <div class="d-flex align-items-center">
+            <label for="date_from" class="me-3 text-nowrap fw-bold text-muted">From Date</label>
+            <div class="input-group date datepicker-el" id="datepicker_from" style="flex-grow: 1;">
+              <input type="text" class="form-control" name="date_from" id="date_from" value="{{ date_from }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
+              <span class="input-group-append">
+                <span class="input-group-text bg-light d-block">
+                  <i class="fa fa-calendar"></i>
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5 col-md-6 col-sm-12">
+          <div class="d-flex align-items-center">
+            <label for="date_to" class="me-3 text-nowrap fw-bold text-muted">To Date</label>
+            <div class="input-group date datepicker-el" id="datepicker_to" style="flex-grow: 1;">
+              <input type="text" class="form-control" name="date_to" id="date_to" value="{{ date_to }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
+              <span class="input-group-append">
+                <span class="input-group-text bg-light d-block">
+                  <i class="fa fa-calendar"></i>
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-12 text-end d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
+          <a href="?" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Leaderboard Table -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Leaderboard <span>| Sales Registry</span></h5>
+          
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" style="width: 70px;">Rank</th>
+                  <th scope="col">Employee Name</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Store</th>
+                  <th scope="col" class="text-center">Units Sold</th>
+                  <th scope="col" class="text-end">Total Revenue</th>
+                  <th scope="col" class="text-end">Average Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for emp in employee_leaderboard %}
+                <tr>
+                  <td>
+                    {% if leaderboard_page.start_index|default:1 == 1 and forloop.counter == 1 %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-trophy-fill me-1"></i> 1st</span>
+                    {% elif leaderboard_page.start_index|default:1 == 1 and forloop.counter == 2 %}
+                      <span class="badge bg-light text-dark"><i class="bi bi-award-fill me-1"></i> 2nd</span>
+                    {% elif leaderboard_page.start_index|default:1 == 1 and forloop.counter == 3 %}
+                      <span class="badge bg-light text-dark" style="color: #cd7f32 !important;"><i class="bi bi-award me-1"></i> 3rd</span>
+                    {% else %}
+                      <span class="text-muted fw-bold ps-2">
+                        {% if employee_leaderboard.start_index %}
+                          {{ employee_leaderboard.start_index|add:forloop.counter0 }}
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td><strong>{{ emp.first_name }} {{ emp.last_name }}</strong></td>
+                  <td>{{ emp.employee_role.role_name }}</td>
+                  <td>{{ emp.store.store_name }}</td>
+                  <td class="text-center fw-bold text-dark">{{ emp.sales_count|default:0 }}</td>
+                  <td class="text-end text-success fw-bold">${{ emp.sales_revenue|default:0|intcomma }}</td>
+                  <td class="text-end text-primary">
+                    {% if emp.sales_count > 0 %}
+                      {% widthratio emp.sales_revenue emp.sales_count 1 as avg_price %}
+                      ${{ avg_price|intcomma }}
+                    {% else %}
+                      $0
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No employee statistics found for the selected date range</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Matching Pagination controls -->
+          {% if employee_leaderboard.paginator.num_pages > 1 %}
+          <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+              {% if employee_leaderboard.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1&date_from={{ date_from }}&date_to={{ date_to }}">&laquo; First</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.previous_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}">Previous</a></li>
+              {% endif %}
+              
+              <li class="page-item disabled"><span class="page-link text-dark">Page {{ employee_leaderboard.number }} of {{ employee_leaderboard.paginator.num_pages }}</span></li>
+              
+              {% if employee_leaderboard.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.next_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.paginator.num_pages }}&date_from={{ date_from }}&date_to={{ date_to }}">Last &raquo;</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Role Breakdown -->
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Staffing by Employee Role</h5>
+          
+          <div class="row align-items-center">
+            <div class="col-md-6">
+              <div id="rolePieChart"></div>
+            </div>
+            <div class="col-md-6">
+              <div class="table-responsive">
+                <table class="table table-sm table-borderless">
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th class="text-end">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for r in role_distribution %}
+                    <tr>
+                      <td><i class="bi bi-circle-fill me-2" style="font-size: 8px; color: {% cycle '#4154f1' '#2eca6a' '#ff771d' '#198754' '#0dcaf0' '#6610f2' '#6f42c1' '#d63384' '#dc3545' '#fd7e14' %};"></i>{{ r.employee_role__role_name }}</td>
+                      <td class="text-end fw-bold">{{ r.count }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- Store Breakdown -->
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Staffing by Store</h5>
+          
+          <div class="table-responsive">
+            <table class="table datatable">
+              <thead>
+                <tr>
+                  <th>Store</th>
+                  <th class="text-end">Employee Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in store_distribution %}
+                <tr>
+                  <td><strong>{{ s.store__store_name }}</strong></td>
+                  <td class="text-end text-primary fw-bold">{{ s.count }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function(){
+  $('#datepicker_from').datepicker({
+    format: 'yyyy-mm-dd',
+    autoclose: true,
+    todayHighlight: true
+  });
+  $('#datepicker_to').datepicker({
+    format: 'yyyy-mm-dd',
+    autoclose: true,
+    todayHighlight: true
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  // 1. Leaderboard Performance Chart
+  const chartNames = JSON.parse(document.getElementById('chart-names-data').textContent);
+  const chartRevenue = JSON.parse(document.getElementById('chart-revenue-data').textContent);
+  const chartSales = JSON.parse(document.getElementById('chart-sales-data').textContent);
+
+  if (chartNames.length > 0) {
+    new ApexCharts(document.querySelector("#employeePerformanceChart"), {
+      series: [{
+        name: 'Total Revenue ($)',
+        type: 'column',
+        data: chartRevenue
+      }, {
+        name: 'Units Sold',
+        type: 'line',
+        data: chartSales
+      }],
+      chart: {
+        height: 350,
+        type: 'line',
+        stacked: false,
+        toolbar: {
+          show: false
+        }
+      },
+      stroke: {
+        width: [0, 3],
+        curve: 'smooth'
+      },
+      colors: ['#4154f1', '#2eca6a'],
+      dataLabels: {
+        enabled: false
+      },
+      labels: chartNames,
+      xaxis: {
+        type: 'category'
+      },
+      yaxis: [
+        {
+          title: {
+            text: 'Revenue ($)',
+          },
+          labels: {
+            formatter: function (value) {
+              return '$' + value.toLocaleString();
+            }
+          }
+        },
+        {
+          opposite: true,
+          title: {
+            text: 'Units Sold',
+          },
+          labels: {
+            formatter: function (value) {
+              return value.toLocaleString();
+            }
+          }
+        }
+      ],
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: function (value, { seriesIndex }) {
+            if (seriesIndex === 0) {
+              return '$' + value.toLocaleString();
+            }
+            return value.toLocaleString() + ' units';
+          }
+        }
+      }
+    }).render();
+  }
+
+  // 2. Role Pie Chart
+  const roleLabels = [];
+  const roleSeries = [];
+  {% for r in role_distribution %}
+    roleLabels.push("{{ r.employee_role__role_name }}");
+    roleSeries.push({{ r.count }});
+  {% endfor %}
+
+  if (roleSeries.length > 0) {
+    new ApexCharts(document.querySelector("#rolePieChart"), {
+      series: roleSeries,
+      chart: {
+        height: 250,
+        type: 'donut',
+      },
+      labels: roleLabels,
+      legend: {
+        show: false
+      },
+      dataLabels: {
+        enabled: false
+      },
+      colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+    }).render();
+  }
+});
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.core.paginator import Paginator
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg, F, Q
 from django.db.models.functions import TruncMonth
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
@@ -298,4 +298,215 @@ def admin_crud_view(request, model_name, action, pk=None):
         'next': next_url
     }
     return render(request, 'car_sales/admin_crud.html', context)
+
+
+def employee_report_view(request):
+    date_from = request.GET.get('date_from') or '2014-01-01'
+    date_to = request.GET.get('date_to') or '2014-01-31'
+    
+    total_employees = Employee.objects.count()
+    active_employees = Employee.objects.filter(status__status='Active').count()
+    
+    # Setup date filters for annotations
+    sales_filter = Q()
+    if date_from:
+        sales_filter &= Q(sales__selling_date__gte=date_from)
+    if date_to:
+        sales_filter &= Q(sales__selling_date__lte=date_to)
+        
+    # 1. Role distribution
+    role_dist = Employee.objects.values('employee_role__role_name').annotate(
+        count=Count('employee_id')
+    ).order_by('-count')
+    
+    # 2. Store distribution
+    store_dist = Employee.objects.values('store__store_name').annotate(
+        count=Count('employee_id')
+    ).order_by('-count')
+    
+    # 3. Leaderboard: Rank all employees by sales revenue in the filtered date range
+    employee_leaderboard_qs = Employee.objects.annotate(
+        sales_count=Count('sales', filter=sales_filter),
+        sales_revenue=Sum('sales__selling_price', filter=sales_filter)
+    ).order_by(F('sales_revenue').desc(nulls_last=True), '-sales_count', 'employee_id')
+    
+    # For the chart: Top 10 performers
+    top_performers = employee_leaderboard_qs[:10]
+    chart_names = []
+    chart_revenue = []
+    chart_sales = []
+    for emp in top_performers:
+        chart_names.append(f"{emp.first_name} {emp.last_name}")
+        chart_revenue.append(int(emp.sales_revenue or 0))
+        chart_sales.append(emp.sales_count or 0)
+        
+    # Pagination for leaderboard table
+    paginator = Paginator(employee_leaderboard_qs, 10)  # 10 employees per page
+    page_number = request.GET.get('page')
+    leaderboard_page = paginator.get_page(page_number)
+    
+    context = {
+        'active_parent': 'reports',
+        'active_tab': 'report_employee',
+        'total_employees': total_employees,
+        'active_employees': active_employees,
+        'inactive_employees': total_employees - active_employees,
+        'role_distribution': role_dist,
+        'store_distribution': store_dist,
+        'employee_leaderboard': leaderboard_page,
+        'chart_names': chart_names,
+        'chart_revenue': chart_revenue,
+        'chart_sales': chart_sales,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+    }
+    return render(request, 'car_sales/employee_report.html', context)
+
+
+def vehicle_report_view(request):
+    date_from = request.GET.get('date_from') or '2014-01-01'
+    date_to = request.GET.get('date_to') or '2014-01-31'
+    
+    total_vehicles = VehicleInfo.objects.count()
+    avg_mmr = VehicleInfo.objects.aggregate(avg_mmr=Avg('mmr'))['avg_mmr'] or 0
+    
+    # Filter sales by date range
+    sales_qs = SellingInfo.objects.all()
+    if date_from:
+        sales_qs = sales_qs.filter(selling_date__gte=date_from)
+    if date_to:
+        sales_qs = sales_qs.filter(selling_date__lte=date_to)
+        
+    # 1. Top Selling makes
+    brand_sales = sales_qs.values('vehicle__make__make_name').annotate(
+        sold_count=Count('sell_id'),
+        revenue=Sum('selling_price'),
+        avg_price=Avg('selling_price')
+    ).order_by('-revenue')[:10]
+    
+    # 2. Vehicle Condition stats
+    condition_stats = VehicleInfo.objects.aggregate(
+        avg_condition=Avg('condition'),
+        avg_odometer=Avg('odometer')
+    )
+    
+    # 3. Premium transactions (expensive sold vehicles, paginated)
+    expensive_sold_qs = sales_qs.select_related('vehicle__make', 'customer', 'store').annotate(
+        margin=F('selling_price') - F('vehicle__mmr')
+    ).order_by('-selling_price')
+    
+    # Pagination for premium sales table
+    paginator = Paginator(expensive_sold_qs, 10)  # 10 records per page
+    page_number = request.GET.get('page')
+    expensive_sold_page = paginator.get_page(page_number)
+    
+    for sale in expensive_sold_page:
+        sale.abs_margin = abs(sale.margin or 0)
+        
+    # 4. Make distribution in inventory
+    make_inventory = VehicleInfo.objects.values('make__make_name').annotate(
+        count=Count('id'),
+        avg_mmr=Avg('mmr')
+    ).order_by('-count')[:10]
+    
+    # Pre-format chart data
+    chart_makes = [item['vehicle__make__make_name'] for item in brand_sales]
+    chart_sold_count = [item['sold_count'] for item in brand_sales]
+    chart_revenue = [int(item['revenue'] or 0) for item in brand_sales]
+    
+    context = {
+        'active_parent': 'reports',
+        'active_tab': 'report_vehicle',
+        'total_vehicles': total_vehicles,
+        'avg_mmr': avg_mmr,
+        'brand_sales': brand_sales,
+        'condition_stats': condition_stats,
+        'expensive_sold': expensive_sold_page,
+        'make_inventory': make_inventory,
+        'chart_makes': chart_makes,
+        'chart_sold_count': chart_sold_count,
+        'chart_revenue': chart_revenue,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+    }
+    return render(request, 'car_sales/vehicle_report.html', context)
+
+
+def sales_report_view(request):
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    
+    # Filter sales by date range
+    sales_qs = SellingInfo.objects.all()
+    if date_from:
+        sales_qs = sales_qs.filter(selling_date__gte=date_from)
+    if date_to:
+        sales_qs = sales_qs.filter(selling_date__lte=date_to)
+        
+    total_sales = sales_qs.count()
+    total_revenue = sales_qs.aggregate(total=Sum('selling_price'))['total'] or 0
+    avg_price = sales_qs.aggregate(avg=Avg('selling_price'))['avg'] or 0
+    
+    # Margin analysis (selling_price - mmr)
+    margin_stats = sales_qs.annotate(
+        margin=F('selling_price') - F('vehicle__mmr')
+    ).aggregate(
+        total_margin=Sum('margin'),
+        avg_margin=Avg('margin')
+    )
+    total_margin = margin_stats['total_margin'] or 0
+    avg_margin = margin_stats['avg_margin'] or 0
+    
+    # 1. Sales by Store
+    store_sales = sales_qs.values('store__store_name').annotate(
+        sales_count=Count('sell_id'),
+        revenue=Sum('selling_price'),
+        avg_price=Avg('selling_price')
+    ).order_by('-revenue')
+    
+    # 2. Top Customers by purchases
+    top_customers = sales_qs.values(
+        'customer__customer_id', 'customer__firstname', 'customer__lastname', 'customer__city__city_name'
+    ).annotate(
+        purchase_count=Count('sell_id'),
+        total_spent=Sum('selling_price')
+    ).order_by('-total_spent')[:10]
+    
+    # 3. Monthly Trend
+    monthly_sales = sales_qs.annotate(
+        month=TruncMonth('selling_date')
+    ).values('month').annotate(
+        count=Count('sell_id'),
+        revenue=Sum('selling_price')
+    ).order_by('month')
+    
+    chart_dates = [item['month'].strftime('%b %Y') for item in monthly_sales]
+    chart_sales = [item['count'] for item in monthly_sales]
+    chart_revenue = [int(item['revenue'] or 0) for item in monthly_sales]
+    
+    # 4. Detailed Sales Transactions (paginated)
+    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee', 'store').order_by('-selling_date', '-sell_id')
+    paginator = Paginator(detailed_sales_qs, 10)  # 10 records per page
+    page_number = request.GET.get('page')
+    sales_page = paginator.get_page(page_number)
+    
+    context = {
+        'active_parent': 'reports',
+        'active_tab': 'report_sales',
+        'total_sales': total_sales,
+        'total_revenue': total_revenue,
+        'avg_price': avg_price,
+        'total_margin': total_margin,
+        'avg_margin': avg_margin,
+        'store_sales': store_sales,
+        'top_customers': top_customers,
+        'chart_dates': chart_dates,
+        'chart_sales': chart_sales,
+        'chart_revenue': chart_revenue,
+        'detailed_sales': sales_page,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+    }
+    return render(request, 'car_sales/sales_report.html', context)
+
 
