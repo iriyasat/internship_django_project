@@ -51,22 +51,7 @@
             </table>
           </div>
 
-          <!-- Django Server-side pagination controls -->
-          <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-              {% if budgets.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page=1">&laquo; First</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ budgets.previous_page_number }}">Previous</a></li>
-              {% endif %}
-              
-              <li class="page-item disabled"><span class="page-link text-dark">Page {{ budgets.number }} of {{ budgets.paginator.num_pages }}</span></li>
-              
-              {% if budgets.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ budgets.next_page_number }}">Next</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ budgets.paginator.num_pages }}">Last &raquo;</a></li>
-              {% endif %}
-            </ul>
-          </nav>
+
           
         </div>
       </div>

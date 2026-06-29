@@ -37,8 +37,6 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
 
-  <!-- Theme Initialization Script -->
-  <script src="{% static 'assets/js/theme-init.js' %}"></script>
 </head>
 
 <body>
@@ -57,14 +55,6 @@
     <nav class="header-nav ms-auto">
       <ul class="d-flex align-items-center">
 
-        <!-- Dark Mode Toggle -->
-        <li class="nav-item pe-3">
-          <button id="theme-toggle" class="btn btn-link nav-link p-0 d-flex align-items-center justify-content-center"
-            style="font-size: 1.25rem; border: none; box-shadow: none; width: 36px; height: 36px; border-radius: 50%;"
-            aria-label="Toggle dark theme">
-            <i class="bi bi-moon" id="theme-icon"></i>
-          </button>
-        </li>
 
         <li class="nav-item dropdown pe-3">
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
@@ -284,7 +274,6 @@
 
   <!-- Template Main JS File -->
   <script src="{% static 'assets/js/main.js' %}"></script>
-  <script src="{% static 'assets/js/theme-toggle.js' %}"></script>
 
   <!-- jQuery & Bootstrap Datepicker JS -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

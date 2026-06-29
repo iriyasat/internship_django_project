@@ -174,30 +174,6 @@
   --timeline-item-border: #eceef2;
 }
 
-body.dark-theme {
-  --bg-body: #0b0f19;
-  --bg-card: #151c2c;
-  --border-color: #222d42;
-  --text-title: #ffffff;
-  --text-main: #d1d5db;
-  --text-muted: #9ca3af;
-  --bg-sidebar: #111827;
-  --hover-sidebar: #1f2937;
-  --bg-header: #111827;
-  --table-row-odd: #151c2c;
-  --table-row-even: #1d263b;
-  --table-row-hover: #222d42;
-  --table-head-bg: #1d263b;
-  --table-head-border: #222d42;
-  --card-title-color: #3b82f6;
-  --dropdown-bg: #151c2c;
-  --dropdown-text: #f3f4f6;
-  --dropdown-hover: #222d42;
-  --breadcrumb-active: #9ca3af;
-  --recent-activity-badge-bg: #151c2c;
-  --pagetitle-h1: #ffffff;
-  --timeline-item-border: #222d42;
-}
 
 /* Theme overrides using CSS Variables */
 body {
@@ -416,21 +392,6 @@ h6,
   color: var(--text-title) !important;
 }
 
-body.dark-theme .apexcharts-text,
-body.dark-theme .apexcharts-tooltip-title,
-body.dark-theme .apexcharts-tooltip-text {
-  fill: #ffffff !important;
-  color: #ffffff !important;
-}
-
-body.dark-theme .apexcharts-tooltip {
-  background: #151c2c !important;
-  border: 1px solid #222d42 !important;
-}
-
-body.dark-theme .apexcharts-legend-text {
-  color: #ffffff !important;
-}
 
 .input-group-append {
   cursor: pointer;

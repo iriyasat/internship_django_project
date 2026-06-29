@@ -71,22 +71,7 @@
             </table>
           </div>
 
-          <!-- Django Server-side pagination controls -->
-          <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-              {% if vehicles.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page=1">&laquo; First</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ vehicles.previous_page_number }}">Previous</a></li>
-              {% endif %}
-              
-              <li class="page-item disabled"><span class="page-link text-dark">Page {{ vehicles.number }} of {{ vehicles.paginator.num_pages }}</span></li>
-              
-              {% if vehicles.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ vehicles.next_page_number }}">Next</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ vehicles.paginator.num_pages }}">Last &raquo;</a></li>
-              {% endif %}
-            </ul>
-          </nav>
+
           
         </div>
       </div>

@@ -367,7 +367,7 @@ def employee_report_view(request):
         chart_sales.append(emp.sales_count or 0)
         
     # Pagination for leaderboard table
-    paginator = Paginator(employee_leaderboard_qs, 10)  # 10 employees per page
+    paginator = Paginator(employee_leaderboard_qs, 1000)  # 1000 employees per page
     page_number = request.GET.get('page')
     leaderboard_page = paginator.get_page(page_number)
     
@@ -415,6 +415,9 @@ def vehicle_report_view(request):
         avg_condition=Avg('condition'),
         avg_odometer=Avg('odometer')
     )
+    if condition_stats['avg_condition'] is not None:
+        condition_stats['avg_condition'] /= 10.0
+
     
     # 3. Premium transactions (expensive sold vehicles, paginated)
     expensive_sold_qs = sales_qs.select_related('vehicle__make', 'customer', 'store').annotate(
@@ -434,7 +437,6 @@ def vehicle_report_view(request):
             },
             'transactions': [
                 {
-                    'sale_id': sale.sell_id,
                     'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
                     'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
                     'model': sale.vehicle.vehicle_model if sale.vehicle else None,
@@ -453,7 +455,7 @@ def vehicle_report_view(request):
         return response
     
     # Pagination for premium sales table
-    paginator = Paginator(expensive_sold_qs, 10)  # 10 records per page
+    paginator = Paginator(expensive_sold_qs, 1000)  # 1000 records per page
     page_number = request.GET.get('page')
     expensive_sold_page = paginator.get_page(page_number)
     
@@ -542,7 +544,7 @@ def sales_report_view(request):
     chart_revenue = [int(item['revenue'] or 0) for item in monthly_sales]
     
     # 4. Detailed Sales Transactions (paginated)
-    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee', 'store').order_by('-selling_date', '-sell_id')
+    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee').order_by('-selling_date', '-sell_id')
     
     # JSON download support
     if request.GET.get('download') == 'json':
@@ -563,7 +565,6 @@ def sales_report_view(request):
                     'customer': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
                     'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
                     'model': sale.vehicle.vehicle_model if sale.vehicle else None,
-                    'store': sale.store.store_name if sale.store else None,
                     'employee': f"{sale.employee.first_name} {sale.employee.last_name}" if sale.employee else None,
                     'selling_price': float(sale.selling_price or 0),
                 }
@@ -573,7 +574,7 @@ def sales_report_view(request):
         response = JsonResponse(data, json_dumps_params={'indent': 2})
         response['Content-Disposition'] = f'attachment; filename="sales_report_{date_from}_to_{date_to}.json"'
         return response
-    paginator = Paginator(detailed_sales_qs, 10)  # 10 records per page
+    paginator = Paginator(detailed_sales_qs, 1000)  # 1000 records per page
     page_number = request.GET.get('page')
     sales_page = paginator.get_page(page_number)
     
@@ -585,6 +586,8 @@ def sales_report_view(request):
         'avg_price': avg_price,
         'total_margin': total_margin,
         'avg_margin': avg_margin,
+        'total_margin_abs': abs(total_margin),
+        'avg_margin_abs': abs(avg_margin),
         'store_sales': store_sales,
         'top_customers': top_customers,
         'chart_dates': chart_dates,

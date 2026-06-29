@@ -77,7 +77,15 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Top Performers Chart <span>| Units & Revenue {% if date_from or date_to %}(Filtered){% endif %}</span></h5>
+          <h5 class="card-title">
+            Top Performers Chart
+            <span>
+              | Units & Revenue
+              {% if date_from or date_to %}
+                (Filtered)
+              {% endif %}
+            </span>
+          </h5>
           <div id="employeePerformanceChart"></div>
           
           {{ chart_names|json_script:"chart-names-data" }}
@@ -93,7 +101,7 @@
     <div class="card-body pt-3">
       <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Filter Report by Date Range</h5>
       <form method="GET" action="" class="row g-3 align-items-end">
-        <div class="col-lg-5 col-md-6 col-sm-12">
+        <div class="col-lg-4 col-md-6 col-sm-12">
           <label for="date_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
           <div class="input-group datepicker-el" id="datepicker_from">
             <span class="input-group-text bg-white border-end-0 text-muted">
@@ -102,7 +110,7 @@
             <input type="text" class="form-control border-start-0" name="date_from" id="date_from" value="{{ date_from|default:'' }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
-        <div class="col-lg-5 col-md-6 col-sm-12">
+        <div class="col-lg-4 col-md-6 col-sm-12">
           <label for="date_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
           <div class="input-group datepicker-el" id="datepicker_to">
             <span class="input-group-text bg-white border-end-0 text-muted">
@@ -111,16 +119,16 @@
             <input type="text" class="form-control border-start-0" name="date_to" id="date_to" value="{{ date_to|default:'' }}" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
-        <div class="col-lg-2 col-md-12 text-end">
-          <div class="btn-group w-100" role="group">
-            <button type="submit" class="btn btn-primary" title="Apply Filter">
-              <i class="bi bi-filter"></i> Filter
+        <div class="col-lg-4 col-md-12">
+          <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-lg-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-filter me-1"></i> Filter
             </button>
-            <a href="?" class="btn btn-outline-secondary" title="Reset Filters">
-              <i class="bi bi-arrow-clockwise"></i>
+            <a href="?" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-clockwise me-1"></i> Reset
             </a>
-            <button type="button" id="download-json-btn" class="btn btn-outline-success" title="Download Report Data (JSON)">
-              <i class="bi bi-download"></i>
+            <button type="button" id="download-json-btn" class="btn btn-outline-success">
+              <i class="bi bi-download me-1"></i> Download JSON
             </button>
           </div>
         </div>
@@ -136,7 +144,7 @@
           <h5 class="card-title">Leaderboard <span>| Sales Registry</span></h5>
           
           <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle datatable">
               <thead class="table-light">
                 <tr>
                   <th scope="col" style="width: 70px;">Rank</th>
@@ -191,24 +199,7 @@
             </table>
           </div>
 
-          <!-- Matching Pagination controls -->
-          {% if employee_leaderboard.paginator.num_pages > 1 %}
-          <nav aria-label="Page navigation" class="mt-4">
-            <ul class="pagination justify-content-center">
-              {% if employee_leaderboard.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page=1&date_from={{ date_from }}&date_to={{ date_to }}">&laquo; First</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.previous_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}">Previous</a></li>
-              {% endif %}
-              
-              <li class="page-item disabled"><span class="page-link text-dark">Page {{ employee_leaderboard.number }} of {{ employee_leaderboard.paginator.num_pages }}</span></li>
-              
-              {% if employee_leaderboard.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.next_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}">Next</a></li>
-                <li class="page-item"><a class="page-link" href="?page={{ employee_leaderboard.paginator.num_pages }}&date_from={{ date_from }}&date_to={{ date_to }}">Last &raquo;</a></li>
-              {% endif %}
-            </ul>
-          </nav>
-          {% endif %}
+
 
         </div>
       </div>
@@ -222,29 +213,25 @@
         <div class="card-body">
           <h5 class="card-title">Staffing by Employee Role</h5>
           
-          <div class="row align-items-center">
-            <div class="col-md-6">
-              <div id="rolePieChart"></div>
-            </div>
-            <div class="col-md-6">
-              <div class="table-responsive">
-                <table class="table table-sm table-borderless">
-                  <thead>
-                    <tr>
-                      <th>Role</th>
-                      <th class="text-end">Count</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for r in role_distribution %}
-                    <tr>
-                      <td><i class="bi bi-circle-fill me-2" style="font-size: 8px; color: {% cycle '#4154f1' '#2eca6a' '#ff771d' '#198754' '#0dcaf0' '#6610f2' '#6f42c1' '#d63384' '#dc3545' '#fd7e14' %};"></i>{{ r.employee_role__role_name }}</td>
-                      <td class="text-end fw-bold">{{ r.count }}</td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
+          <div class="d-flex flex-column align-items-center">
+            <div id="rolePieChart" class="w-100 d-flex justify-content-center"></div>
+            <div class="table-responsive w-100 mt-3">
+              <table class="table table-sm table-borderless">
+                <thead>
+                  <tr>
+                    <th>Role</th>
+                    <th class="text-end">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in role_distribution %}
+                  <tr>
+                    <td><i class="bi bi-circle-fill me-2" style="font-size: 8px; color: {% cycle '#4154f1' '#2eca6a' '#ff771d' '#198754' '#0dcaf0' '#6610f2' '#6f42c1' '#d63384' '#dc3545' '#fd7e14' %};"></i>{{ r.employee_role__role_name }}</td>
+                    <td class="text-end fw-bold">{{ r.count }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
           </div>
           
