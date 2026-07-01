@@ -1,0 +1,507 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Store Sales API Page - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Store Sales API Page</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item">API</li>
+      <li class="breadcrumb-item active">Store Sales API</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <!-- Date Filter Form (Client-side) -->
+  <div class="card mb-4">
+    <div class="card-body pt-3">
+      <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Store Sales</h5>
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-4 col-md-6 col-sm-12">
+          <label for="date_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control" id="date_from" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-sm-12">
+          <label for="date_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control" id="date_to" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-12">
+          <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-lg-end">
+            <button id="fetch-api-btn" class="btn btn-primary">
+              <i class="bi bi-cpu me-1"></i> Fetch API Data
+            </button>
+            <button id="reset-btn" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-clockwise me-1"></i> Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards (Calculated client-side from API data) -->
+  <div class="row" id="summary-cards" style="display: none;">
+    <!-- Total Units -->
+    <div class="col-lg-4 col-md-6 col-sm-12">
+      <div class="card info-card sales-card">
+        <div class="card-body">
+          <h5 class="card-title">Total Units Sold <span>| API Computed</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+              <i class="bi bi-cart-fill"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="summary-units-count">0</h6>
+              <span class="text-muted small pt-2 ps-1">from JSON payload</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue -->
+    <div class="col-lg-4 col-md-6 col-sm-12">
+      <div class="card info-card revenue-card">
+        <div class="card-body">
+          <h5 class="card-title">Gross Sales Revenue <span>| API Computed</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+              <i class="bi bi-currency-dollar"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="summary-total-revenue">$0</h6>
+              <span class="text-muted small pt-2 ps-1">sales volume value</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profit margin -->
+    <div class="col-lg-4 col-md-12 col-sm-12">
+      <div class="card info-card revenue-card">
+        <div class="card-body">
+          <h5 class="card-title">Net MMR Margin <span>| API Computed</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
+              style="color: #ff771d; background: #ffecdf;" id="margin-icon-wrapper">
+              <i class="bi bi-shield-check" style="color: #ff771d;"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="summary-net-margin">$0</h6>
+              <span class="text-muted small pt-2 ps-1" id="summary-margin-subtitle">margin vs valuation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Table Status Info / Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <!-- API Data Table -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Store Sales Records <span>| Client-side API Rendered</span></h5>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
+              <select class="form-select form-select-sm" id="page-size-select" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div>
+              <input type="text" class="form-control form-control-sm" id="search-input" placeholder="Search records...">
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5" style="display: none;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Calling Store Sales API...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Store Name</th>
+                  <th>Customer Name</th>
+                  <th>Vehicle Details</th>
+                  <th>Selling Date</th>
+                  <th class="text-end">MMR Valuation</th>
+                  <th class="text-end">Selling Price</th>
+                  <th class="text-center">Sale vs. MMR</th>
+                </tr>
+              </thead>
+              <tbody id="api-table-body">
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none !important;">
+            <div class="small text-muted" id="pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                <!-- Populated via Javascript -->
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Datepickers if bootstrap-datepicker is loaded
+  if (typeof $.fn.datepicker !== 'undefined') {
+    $('#date_from, #date_to').datepicker({
+      format: 'yyyy-mm-dd',
+      autoclose: true,
+      todayHighlight: true
+    });
+  }
+
+  // Elements
+  const fetchBtn = document.getElementById('fetch-api-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const dateFromInput = document.getElementById('date_from');
+  const dateToInput = document.getElementById('date_to');
+  
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const tableWrapper = document.getElementById('table-wrapper');
+  const tableBody = document.getElementById('api-table-body');
+  const alertContainer = document.getElementById('alert-container');
+  const summaryCards = document.getElementById('summary-cards');
+  
+  const summaryUnitsCount = document.getElementById('summary-units-count');
+  const summaryTotalRevenue = document.getElementById('summary-total-revenue');
+  const summaryNetMargin = document.getElementById('summary-net-margin');
+  const marginIconWrapper = document.getElementById('margin-icon-wrapper');
+  const summaryMarginSubtitle = document.getElementById('summary-margin-subtitle');
+  
+  const pageSizeSelect = document.getElementById('page-size-select');
+  const searchInput = document.getElementById('search-input');
+  const paginationControls = document.getElementById('pagination-controls');
+  const paginationInfo = document.getElementById('pagination-info');
+  const paginationList = document.getElementById('pagination-list');
+
+  // State Variables
+  let allRecords = [];
+  let filteredRecords = [];
+  let currentPage = 1;
+  let pageSize = parseInt(pageSizeSelect.value);
+
+  // Event Listeners
+  fetchBtn.addEventListener('click', fetchData);
+  resetBtn.addEventListener('click', function() {
+    dateFromInput.value = '';
+    dateToInput.value = '';
+    searchInput.value = '';
+    pageSizeSelect.value = '25';
+    pageSize = 25;
+    allRecords = [];
+    filteredRecords = [];
+    summaryCards.style.display = 'none';
+    alertContainer.innerHTML = '';
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
+    paginationControls.style.setProperty('display', 'none', 'important');
+  });
+
+  pageSizeSelect.addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    if (allRecords.length > 0) {
+      renderTable();
+    }
+  });
+
+  searchInput.addEventListener('input', function() {
+    if (allRecords.length > 0) {
+      filterRecords();
+    }
+  });
+
+  // Fetch Data Function
+  function fetchData() {
+    const fromDate = dateFromInput.value.trim();
+    const toDate = dateToInput.value.trim();
+    
+    if (!fromDate || !toDate) {
+      showError('Please specify both From Date and To Date.');
+      return;
+    }
+
+    // Reset Table UI
+    loadingSpinner.style.display = 'block';
+    tableWrapper.style.display = 'none';
+    paginationControls.style.setProperty('display', 'none', 'important');
+    summaryCards.style.display = 'none';
+    alertContainer.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    // API URL with query params
+    const apiUrl = `/api/store_sales/?dt_from=${encodeURIComponent(fromDate)}&dt_to=${encodeURIComponent(toDate)}`;
+
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          allRecords = res.data;
+          filteredRecords = [...allRecords];
+          
+          // Calculate stats
+          calculateStats();
+          
+          currentPage = 1;
+          renderTable();
+        } else {
+          showError(res.message || 'API request succeeded but returned no valid data.');
+          loadingSpinner.style.display = 'none';
+        }
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        showError(`Failed to fetch data from API: ${err.message}`);
+        loadingSpinner.style.display = 'none';
+      });
+  }
+
+  // Calculate and display summary stats client-side
+  function calculateStats() {
+    const count = allRecords.length;
+    let totalRevenue = 0;
+    let totalMmr = 0;
+    
+    allRecords.forEach(rec => {
+      totalRevenue += parseFloat(rec.selling_price || 0);
+      totalMmr += parseFloat(rec.mmr || 0);
+    });
+
+    const netMargin = totalRevenue - totalMmr;
+
+    summaryUnitsCount.textContent = count.toLocaleString();
+    summaryTotalRevenue.textContent = '$' + totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    
+    // Style and format Net Margin
+    if (netMargin >= 0) {
+      summaryNetMargin.textContent = '+$' + netMargin.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      summaryNetMargin.className = 'text-success';
+      marginIconWrapper.style.color = '#198754';
+      marginIconWrapper.style.background = '#e2f0d9';
+      marginIconWrapper.innerHTML = '<i class="bi bi-arrow-up-right-circle-fill" style="color: #198754; font-size: 1.5rem;"></i>';
+    } else {
+      summaryNetMargin.textContent = '-$' + Math.abs(netMargin).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      summaryNetMargin.className = 'text-danger';
+      marginIconWrapper.style.color = '#dc3545';
+      marginIconWrapper.style.background = '#f8d7da';
+      marginIconWrapper.innerHTML = '<i class="bi bi-arrow-down-left-circle-fill" style="color: #dc3545; font-size: 1.5rem;"></i>';
+    }
+
+    const avgMargin = count > 0 ? (netMargin / count) : 0;
+    summaryMarginSubtitle.textContent = `Avg Margin: ${avgMargin >= 0 ? '+' : '-'}$${Math.abs(Math.round(avgMargin)).toLocaleString()} / deal`;
+    
+    summaryCards.style.display = 'flex';
+  }
+
+  // Search/Filter records local search
+  function filterRecords() {
+    const query = searchInput.value.toLowerCase().trim();
+    if (!query) {
+      filteredRecords = [...allRecords];
+    } else {
+      filteredRecords = allRecords.filter(rec => {
+        return (
+          (rec.store_name && rec.store_name.toLowerCase().includes(query)) ||
+          (rec.customer_name && rec.customer_name.toLowerCase().includes(query)) ||
+          (rec.brand_name && rec.brand_name.toLowerCase().includes(query)) ||
+          (rec.vehicle_name && rec.vehicle_name.toLowerCase().includes(query)) ||
+          (rec.selling_date && rec.selling_date.includes(query))
+        );
+      });
+    }
+    currentPage = 1;
+    renderTable();
+  }
+
+  // Render Table Page
+  function renderTable() {
+    loadingSpinner.style.display = 'none';
+    tableBody.innerHTML = '';
+    
+    if (filteredRecords.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No matching records found.</td></tr>`;
+      tableWrapper.style.display = 'block';
+      paginationControls.style.setProperty('display', 'none', 'important');
+      return;
+    }
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filteredRecords.length);
+    const paginatedItems = filteredRecords.slice(startIndex, endIndex);
+
+    paginatedItems.forEach(rec => {
+      const row = document.createElement('tr');
+      row.style.opacity = '0';
+      row.style.transition = 'opacity 0.25s ease-in-out';
+      
+      const mmrVal = parseFloat(rec.mmr || 0);
+      const priceVal = parseFloat(rec.selling_price || 0);
+      const marginVal = priceVal - mmrVal;
+      const absMargin = Math.abs(marginVal);
+
+      const formattedMmr = '$' + mmrVal.toLocaleString(undefined, {minimumFractionDigits: 0});
+      const formattedPrice = '$' + priceVal.toLocaleString(undefined, {minimumFractionDigits: 0});
+      
+      let badgeHtml = '';
+      if (marginVal >= 0) {
+        badgeHtml = `<span class="badge bg-success-light text-success"><i class="bi bi-arrow-up-right me-1"></i> +$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0})}</span>`;
+      } else {
+        badgeHtml = `<span class="badge bg-danger-light text-danger"><i class="bi bi-arrow-down-left me-1"></i> -$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0})}</span>`;
+      }
+      
+      row.innerHTML = `
+        <td><strong>${escapeHtml(rec.store_name || 'N/A')}</strong></td>
+        <td>${escapeHtml(rec.customer_name || 'N/A')}</td>
+        <td><strong>${escapeHtml(rec.brand_name || '')}</strong> ${escapeHtml(rec.vehicle_name || 'N/A')}</td>
+        <td><span class="badge bg-light text-dark">${escapeHtml(rec.selling_date || 'N/A')}</span></td>
+        <td class="text-end text-muted">${formattedMmr}</td>
+        <td class="text-end text-dark fw-bold">${formattedPrice}</td>
+        <td class="text-center">${badgeHtml}</td>
+      `;
+      
+      tableBody.appendChild(row);
+      setTimeout(() => row.style.opacity = '1', 50);
+    });
+
+    tableWrapper.style.display = 'block';
+    
+    // Pagination Controls update
+    updatePagination(startIndex, endIndex);
+  }
+
+  // Generate pagination links
+  function updatePagination(startIndex, endIndex) {
+    paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredRecords.length} entries`;
+    
+    const totalPages = Math.ceil(filteredRecords.length / pageSize);
+    paginationList.innerHTML = '';
+
+    if (totalPages <= 1) {
+      paginationControls.style.setProperty('display', 'none', 'important');
+      return;
+    }
+
+    paginationControls.style.display = 'flex';
+
+    // Previous Button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous">&laquo;</a>`;
+    prevLi.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
+    });
+    paginationList.appendChild(prevLi);
+
+    // Page Numbers (Show max 5 pages with ellipsis)
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const pageLi = document.createElement('li');
+      pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+      pageLi.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+      pageLi.addEventListener('click', function(e) {
+        e.preventDefault();
+        currentPage = i;
+        renderTable();
+      });
+      paginationList.appendChild(pageLi);
+    }
+
+    // Next Button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next">&raquo;</a>`;
+    nextLi.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+      }
+    });
+    paginationList.appendChild(nextLi);
+  }
+
+  // Helpers
+  function showError(message) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-octagon me-1"></i>
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});
+</script>
+{% endblock %}

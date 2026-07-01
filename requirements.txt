@@ -1,14 +1,82 @@
-asgiref==3.11.1
+# ==========================================
+# Core Web Framework and API Infrastructure
+# ==========================================
+
+# Core Django framework for the project web application
 Django==6.0.6
+
+# ASGI spec implementation for Django async capabilities
+asgiref==3.11.1
+
+# Environment variable loading helper for database credentials and settings
 django-environ==0.13.0
+
+# Django REST Framework (DRF) for building API endpoints
 djangorestframework==3.17.1
-et_xmlfile==2.0.0
-numpy==2.5.0
-openpyxl==3.1.5
-pandas==3.0.3
-pillow==12.2.0
+
+
+# ==========================================
+# Database Adapters and Query Parsers
+# ==========================================
+
+# Pure-python MySQL client database driver
 PyMySQL==1.2.0
-python-dateutil==2.9.0.post0
-six==1.17.0
+
+# SQL statement parsing and formatting helper
 sqlparse==0.5.5
+
+
+# ==========================================
+# Data Processing and Reporting Libraries
+# ==========================================
+
+# Data analysis and manipulation library used for report generation
+pandas==3.0.3
+
+# Fundamental package for scientific computing, dependency of pandas
+numpy==2.5.0
+
+# Excel workbook reader/writer engine used for loading datasets
+openpyxl==3.1.5
+
+# Low-level XML utility needed by openpyxl
+et_xmlfile==2.0.0
+
+# Date and time parsing utilities
+python-dateutil==2.9.0.post0
+
+# Timezone support database for handling timezone-aware dates
 tzdata==2026.2
+
+
+# ==========================================
+# Image and Media Support
+# ==========================================
+
+# Python Imaging Library (PIL) fork for handling vehicle/image attachments
+pillow==12.2.0
+
+
+# ==========================================
+# Utilities and Compatibility Layers
+# ==========================================
+
+# Python 2 and 3 compatibility utilities
+six==1.17.0
+
+
+# ==========================================
+# Supervisor's System Dependencies
+# ==========================================
+
+# Asynchronous HTTP client/server framework (imported in views)
+aiohttp==3.14.1
+
+# Event-driven networking engine (imported in views)
+twisted==26.4.0
+
+# Django cache backend provider integrated with Redis
+django-redis==7.0.0
+
+# Redis database client library for Python
+redis==8.0.1

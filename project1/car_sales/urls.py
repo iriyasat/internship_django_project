@@ -20,4 +20,8 @@ urlpatterns = [
     path('admin-panel/', admin_panel_view, name='admin_panel'),
     path('admin-panel/crud/<str:model_name>/<str:action>/', admin_crud_view, name='admin_crud'),
     path('admin-panel/crud/<str:model_name>/<str:action>/<int:pk>/', admin_crud_view, name='admin_crud_pk'),
+    path('api/employee_sales/', employee_sales_api, name='employee_sales_api'),
+    path('api/store_sales/', store_sales_api, name='store_sales_api'),
+    path('api-page/employee-sales/', employee_sales_page_view, name='employee_sales_page_view'),
+    path('api-page/store-sales/', store_sales_page_view, name='store_sales_page_view'),
 ]

@@ -1,18 +1,33 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import authenticate, login, logout
+import json
+import logging
+# from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import connection, connections, transaction, DatabaseError
+from rest_framework.views import APIView
+from django.utils.datastructures import MultiValueDictKeyError
+from django.apps import apps
+from .models import *
+from django.views.decorators.csrf import csrf_exempt
+from django.http import Http404, JsonResponse, HttpResponseRedirect, HttpResponseForbidden, StreamingHttpResponse, HttpResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from .serializers import *
+from rest_framework import status
+from django_redis import cache
+# from django.core.cache import cache
+from collections import defaultdict
+from django.urls import reverse
+from django.contrib.auth.models import User
+# from django.forms.model import model_to_dict
+
+# Required imports for the original views
 from django.db.models import Sum, Count, Avg, F, Q
 from django.db.models.functions import TruncMonth
-from .models import (
-    Country, City, Store, EmployeeRole, EmployeeStatus,
-    Employee, IndustryInfo, VehicleInfo, CustomerInfo,
-    SellingInfo, EmployeeBudget
-)
 from django import forms
 from django.forms import ModelForm, IntegerField
-from django.apps import apps
 from django.forms import modelform_factory
-from django.http import Http404, HttpResponseRedirect, JsonResponse
-from django.urls import reverse
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -323,7 +338,7 @@ def employee_report_view(request):
     ).order_by('-count')
     
     # 3. Leaderboard: Rank all employees by sales revenue in the filtered date range
-    employee_leaderboard_qs = Employee.objects.annotate(
+    employee_leaderboard_qs = Employee.objects.select_related('employee_role', 'store').annotate(
         sales_count=Count('sales', filter=sales_filter),
         sales_revenue=Sum('sales__selling_price', filter=sales_filter)
     ).order_by(F('sales_revenue').desc(nulls_last=True), '-sales_count', 'employee_id')
@@ -542,7 +557,9 @@ def sales_report_view(request):
     chart_revenue = [int(item['revenue'] or 0) for item in monthly_sales]
     
     # 4. Detailed Sales Transactions (paginated)
-    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee').order_by('-selling_date', '-sell_id')
+    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee').annotate(
+        margin=F('selling_price') - F('vehicle__mmr')
+    ).order_by('-selling_date', '-sell_id')
     
     # JSON download support
     if request.GET.get('download') == 'json':
@@ -576,6 +593,9 @@ def sales_report_view(request):
     page_number = request.GET.get('page')
     sales_page = paginator.get_page(page_number)
     
+    for sale in sales_page:
+        sale.abs_margin = abs(sale.margin or 0)
+        
     context = {
         'active_parent': 'reports',
         'active_tab': 'report_sales',
@@ -597,4 +617,80 @@ def sales_report_view(request):
     }
     return render(request, 'car_sales/sales_report.html', context)
 
+
+# --- API Endpoint implementing Supervisor's Stored-Procedure/Raw SQL approach ---
+@api_view(['GET', 'POST'])
+def employee_sales_api(request):
+    dt_from = None
+    dt_to = None
+
+    # Try parsing from request body first
+    if hasattr(request, 'data') and request.data:
+        if isinstance(request.data, dict) or hasattr(request.data, 'get'):
+            dt_from = request.data.get('dt_from')
+            dt_to = request.data.get('dt_to')
+
+    # Fall back to query parameters
+    if not dt_from:
+        dt_from = request.GET.get('dt_from')
+    if not dt_to:
+        dt_to = request.GET.get('dt_to')
+
+    if not dt_from or not dt_to:
+        return Response(
+            {"status": False, "message": "dt_from and dt_to parameters are required (YYYY-MM-DD)."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        data = employeesalesserializers.fetch(dt_from, dt_to)
+        return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'POST'])
+def store_sales_api(request):
+    dt_from = None
+    dt_to = None
+
+    # Try parsing from request body first
+    if hasattr(request, 'data') and request.data:
+        if isinstance(request.data, dict) or hasattr(request.data, 'get'):
+            dt_from = request.data.get('dt_from')
+            dt_to = request.data.get('dt_to')
+
+    # Fall back to query parameters
+    if not dt_from:
+        dt_from = request.GET.get('dt_from')
+    if not dt_to:
+        dt_to = request.GET.get('dt_to')
+
+    if not dt_from or not dt_to:
+        return Response(
+            {"status": False, "message": "dt_from and dt_to parameters are required (YYYY-MM-DD)."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        data = storesalesserializer.fetch(dt_from, dt_to)
+        return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def employee_sales_page_view(request):
+    context = {
+        'active_parent': 'api_pages',
+        'active_tab': 'api_employee_sales',
+    }
+    return render(request, 'car_sales/api_employee_sales.html', context)
+
+
+def store_sales_page_view(request):
+    context = {
+        'active_parent': 'api_pages',
+        'active_tab': 'api_store_sales',
+    }
+    return render(request, 'car_sales/api_store_sales.html', context)
 

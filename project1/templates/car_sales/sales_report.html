@@ -269,7 +269,8 @@
                   <th>Customer<br>Name</th>
                   <th>Brand<br>Name</th>
                   <th>Model<br>Name</th>
-                  <th>Price<br><small class="text-muted fw-normal">($)</small></th>
+                  <th class="text-end">MMR Valuation</th>
+                  <th class="text-end">Selling Price</th>
                   <th>Selling<br>Date</th>
                 </tr>
               </thead>
@@ -280,12 +281,13 @@
                   <td>{{ sale.customer.firstname }} {{ sale.customer.lastname }}</td>
                   <td>{{ sale.vehicle.make.make_name }}</td>
                   <td>{{ sale.vehicle.vehicle_model }}</td>
+                  <td class="text-end text-muted">${{ sale.vehicle.mmr|intcomma }}</td>
                   <td class="text-end text-success fw-bold">${{ sale.selling_price|intcomma }}</td>
                   <td class="text-center">{{ sale.selling_date }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="6" class="text-center text-muted">No transactions found for the selected date range</td>
+                  <td colspan="7" class="text-center text-muted">No transactions found for the selected date range</td>
                 </tr>
                 {% endfor %}
               </tbody>

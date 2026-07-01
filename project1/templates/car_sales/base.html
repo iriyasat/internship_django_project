@@ -245,6 +245,26 @@
         </ul>
       </li>
 
+      <li class="nav-item">
+        <a class="nav-link {% if active_parent == 'api_pages' %}{% else %}collapsed{% endif %}"
+          data-bs-target="#api-nav" data-bs-toggle="collapse" href="#">
+          <i class="bi bi-cpu"></i><span>API</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="api-nav" class="nav-content collapse {% if active_parent == 'api_pages' %}show{% endif %}"
+          data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="/api-page/employee-sales/" class="{% if active_tab == 'api_employee_sales' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Employee Sales API</span>
+            </a>
+          </li>
+          <li>
+            <a href="/api-page/store-sales/" class="{% if active_tab == 'api_store_sales' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Store Sales API</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
     </ul>
 
   </aside><!-- End Sidebar-->
