@@ -32,10 +32,11 @@
   <!-- Template Main CSS File -->
   <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
   <link href="{% static 'assets/css/custom.css' %}" rel="stylesheet">
-  
+
   <!-- FontAwesome & Bootstrap Datepicker CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css"
+    rel="stylesheet">
 
 </head>
 
@@ -47,7 +48,7 @@
     <div class="d-flex align-items-center justify-content-between">
       <a href="/" class="logo d-flex align-items-center">
         <img src="{% static 'assets/img/logo.png' %}" alt="">
-        <span class="d-none d-lg-block">NiceAdmin</span>
+        <span class="d-none d-lg-block">Car Sales Management</span>
       </a>
       <i class="bi bi-list toggle-sidebar-btn"></i>
     </div><!-- End Logo -->
@@ -58,17 +59,17 @@
 
         <li class="nav-item dropdown pe-3">
           <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-            {% if user.is_authenticated %}
+            {% if request.user.is_authenticated %}
             <img
-              src="https://ui-avatars.com/api/?name={{ user.get_full_name|default:user.username|urlencode }}&background=4154f1&color=fff&size=128"
+              src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username|urlencode }}&background=4154f1&color=fff&size=128"
               alt="Profile" class="rounded-circle" style="width: 36px; height: 36px;">
             {% else %}
             <img src="https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff&size=128" alt="Profile"
               class="rounded-circle" style="width: 36px; height: 36px;">
             {% endif %}
             <span class="d-none d-md-block dropdown-toggle ps-2">
-              {% if user.is_authenticated %}
-              {{ user.username }}
+              {% if request.user.is_authenticated %}
+              {{ request.user.username }}
               {% else %}
               Guest
               {% endif %}
@@ -76,15 +77,15 @@
           </a><!-- End Profile Image Icon -->
 
           <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-            {% if user.is_authenticated %}
+            {% if request.user.is_authenticated %}
             <li class="dropdown-header">
-              <h6>{{ user.get_full_name|default:user.username }}</h6>
-              <span>{{ user.email|default:"Car Sales Manager" }}</span>
+              <h6>{{ request.user.get_full_name|default:request.user.username }}</h6>
+              <span>{{ request.user.email|default:"Car Sales Manager" }}</span>
             </li>
             <li>
               <hr class="dropdown-divider">
             </li>
-            {% if user.is_staff %}
+            {% if request.user.is_staff %}
             <li>
               <a class="dropdown-item d-flex align-items-center" href="/admin-panel/">
                 <i class="bi bi-gear"></i>
@@ -98,7 +99,8 @@
             <li>
               <form action="/django-admin/logout/" method="post" style="margin: 0; padding: 0;">
                 {% csrf_token %}
-                <button type="submit" class="dropdown-item d-flex align-items-center" style="border: none; background: transparent; width: 100%;">
+                <button type="submit" class="dropdown-item d-flex align-items-center"
+                  style="border: none; background: transparent; width: 100%;">
                   <i class="bi bi-box-arrow-right"></i>
                   <span class="ps-2">Sign Out</span>
                 </button>
@@ -219,10 +221,12 @@
       </li>
 
       <li class="nav-item">
-        <a class="nav-link {% if active_parent == 'reports' %}{% else %}collapsed{% endif %}" data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
+        <a class="nav-link {% if active_parent == 'reports' %}{% else %}collapsed{% endif %}"
+          data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
           <i class="bi bi-bar-chart-line"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto"></i>
         </a>
-        <ul id="reports-nav" class="nav-content collapse {% if active_parent == 'reports' %}show{% endif %}" data-bs-parent="#sidebar-nav">
+        <ul id="reports-nav" class="nav-content collapse {% if active_parent == 'reports' %}show{% endif %}"
+          data-bs-parent="#sidebar-nav">
           <li>
             <a href="/reports/employee/" class="{% if active_tab == 'report_employee' %}active{% endif %}">
               <i class="bi bi-circle"></i><span>Employee Report</span>
@@ -253,10 +257,10 @@
   <!-- ======= Footer ======= -->
   <footer id="footer" class="footer">
     <div class="copyright">
-      &copy; Copyright <strong><span>NiceAdmin</span></strong>. All Rights Reserved
+      &copy; Copyright <strong><span>Car Sales Management</span></strong>. All Rights Reserved
     </div>
     <div class="credits">
-      Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
+      Designed by <strong><span>Ibrahim Hasan</span></strong>
     </div>
   </footer><!-- End Footer -->
 
@@ -277,7 +281,8 @@
 
   <!-- jQuery & Bootstrap Datepicker JS -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
 
   {% block extra_js %}{% endblock %}
 

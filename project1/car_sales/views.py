@@ -214,6 +214,10 @@ def admin_panel_view(request):
 
 @staff_member_required
 def admin_crud_view(request, model_name, action, pk=None):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        messages.error(request, "Access denied. Only administrators are allowed to perform CRUD operations.")
+        return HttpResponseRedirect(reverse('home'))
+
     model_mapping = {
         'country': 'Country',
         'city': 'City',

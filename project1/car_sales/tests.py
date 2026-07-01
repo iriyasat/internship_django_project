@@ -157,3 +157,45 @@ class CarSalesModelTestCase(TestCase):
                     budget_qty=5,
                     budget_amount=10000
                 )
+
+
+class CarSalesCrudPermissionTestCase(TestCase):
+    """Test suite verifying that only admin/staff users can perform CRUD operations on models."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        # Create users
+        self.admin_user = User.objects.create_user(username="admin", password="password123", is_staff=True)
+        self.regular_user = User.objects.create_user(username="regular", password="password123", is_staff=False)
+
+    def test_anonymous_user_crud_denied(self):
+        """Verify that anonymous users are redirected/blocked from CRUD endpoints."""
+        from django.urls import reverse
+        for model in ['customerinfo', 'vehicleinfo', 'sellinginfo']:
+            url = reverse('admin_crud', args=[model, 'create'])
+            response = self.client.get(url)
+            # Should redirect to login since they are anonymous (handled by @staff_member_required)
+            self.assertEqual(response.status_code, 302)
+            self.assertIn('login', response.url)
+
+    def test_regular_user_crud_denied(self):
+        """Verify that authenticated regular users are redirected/blocked from CRUD endpoints."""
+        from django.urls import reverse
+        self.client.login(username="regular", password="password123")
+        for model in ['customerinfo', 'vehicleinfo', 'sellinginfo']:
+            url = reverse('admin_crud', args=[model, 'create'])
+            response = self.client.get(url)
+            # Should redirect to login since they are not staff (handled by @staff_member_required)
+            self.assertEqual(response.status_code, 302)
+            self.assertIn('login', response.url)
+
+    def test_staff_user_crud_allowed(self):
+        """Verify that staff/admin users can access CRUD endpoints."""
+        from django.urls import reverse
+        self.client.login(username="admin", password="password123")
+        for model in ['customerinfo', 'vehicleinfo', 'sellinginfo']:
+            url = reverse('admin_crud', args=[model, 'create'])
+            response = self.client.get(url)
+            # Staff user should get the page
+            self.assertEqual(response.status_code, 200)
+
