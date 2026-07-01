@@ -53,43 +53,6 @@
     </div>
   </div>
 
-  <!-- Summary Cards (Calculated client-side from API data) -->
-  <div class="row" id="summary-cards" style="display: none;">
-    <div class="col-lg-6 col-md-6 col-sm-12">
-      <div class="card info-card sales-card">
-        <div class="card-body">
-          <h5 class="card-title">Total Units Sold <span>| API Computed</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-cart-fill"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="summary-units-count">0</h6>
-              <span class="text-muted small pt-2 ps-1">from JSON payload</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-6 col-md-6 col-sm-12">
-      <div class="card info-card revenue-card">
-        <div class="card-body">
-          <h5 class="card-title">Total MMR Value <span>| API Computed</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-currency-dollar"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="summary-total-mmr">$0</h6>
-              <span class="text-muted small pt-2 ps-1">gross MMR valuation</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="row">
     <!-- Table Status Info / Alerts -->
     <div class="col-12" id="alert-container"></div>
@@ -128,17 +91,18 @@
             <table class="table table-hover align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>Employee Name</th>
-                  <th>Customer Name</th>
-                  <th>Brand Name</th>
-                  <th>Vehicle Name</th>
-                  <th>Selling Date</th>
-                  <th class="text-end">MMR Valuation</th>
+                  <th>Sold By<br><small class="text-muted fw-normal">(Employee)</small></th>
+                  <th>Customer<br>Name</th>
+                  <th>Brand<br>Name</th>
+                  <th>Model<br>Name</th>
+                  <th class="text-end">MMR<br><small class="text-muted fw-normal">(Valuation)</small></th>
+                  <th class="text-end">Selling<br><small class="text-muted fw-normal">(Price)</small></th>
+                  <th>Selling<br>Date</th>
                 </tr>
               </thead>
               <tbody id="api-table-body">
                 <tr>
-                  <td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
+                  <td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
                 </tr>
               </tbody>
             </table>
@@ -185,10 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const tableWrapper = document.getElementById('table-wrapper');
   const tableBody = document.getElementById('api-table-body');
   const alertContainer = document.getElementById('alert-container');
-  const summaryCards = document.getElementById('summary-cards');
-  
-  const summaryUnitsCount = document.getElementById('summary-units-count');
-  const summaryTotalMmr = document.getElementById('summary-total-mmr');
   
   const pageSizeSelect = document.getElementById('page-size-select');
   const searchInput = document.getElementById('search-input');
@@ -212,9 +172,8 @@ document.addEventListener('DOMContentLoaded', function() {
     pageSize = 25;
     allRecords = [];
     filteredRecords = [];
-    summaryCards.style.display = 'none';
     alertContainer.innerHTML = '';
-    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
     paginationControls.style.setProperty('display', 'none', 'important');
   });
 
@@ -246,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadingSpinner.style.display = 'block';
     tableWrapper.style.display = 'none';
     paginationControls.style.setProperty('display', 'none', 'important');
-    summaryCards.style.display = 'none';
     alertContainer.innerHTML = '';
     tableBody.innerHTML = '';
 
@@ -265,9 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
           allRecords = res.data;
           filteredRecords = [...allRecords];
           
-          // Calculate stats
-          calculateStats();
-          
           currentPage = 1;
           renderTable();
         } else {
@@ -280,21 +235,6 @@ document.addEventListener('DOMContentLoaded', function() {
         showError(`Failed to fetch data from API: ${err.message}`);
         loadingSpinner.style.display = 'none';
       });
-  }
-
-  // Calculate and display summary stats client-side
-  function calculateStats() {
-    const count = allRecords.length;
-    let totalMmr = 0;
-    
-    allRecords.forEach(rec => {
-      totalMmr += parseFloat(rec.mmr || 0);
-    });
-
-    summaryUnitsCount.textContent = count.toLocaleString();
-    summaryTotalMmr.textContent = '$' + totalMmr.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    
-    summaryCards.style.display = 'flex';
   }
 
   // Search/Filter records local search
@@ -323,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '';
     
     if (filteredRecords.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No matching records found.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No matching records found.</td></tr>`;
       tableWrapper.style.display = 'block';
       paginationControls.style.setProperty('display', 'none', 'important');
       return;
@@ -339,14 +279,16 @@ document.addEventListener('DOMContentLoaded', function() {
       row.style.transition = 'opacity 0.25s ease-in-out';
       
       const formattedMmr = rec.mmr ? ('$' + parseFloat(rec.mmr).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
+      const formattedPrice = rec.selling_price ? ('$' + parseFloat(rec.selling_price).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
       
       row.innerHTML = `
         <td><strong>${escapeHtml(rec.employee_name || 'N/A')}</strong></td>
         <td>${escapeHtml(rec.customer_name || 'N/A')}</td>
         <td>${escapeHtml(rec.brand_name || 'N/A')}</td>
         <td>${escapeHtml(rec.vehicle_name || 'N/A')}</td>
-        <td><span class="badge bg-light text-dark">${escapeHtml(rec.selling_date || 'N/A')}</span></td>
         <td class="text-end text-muted">${formattedMmr}</td>
+        <td class="text-end text-success fw-bold">${formattedPrice}</td>
+        <td><span class="badge bg-light text-dark">${escapeHtml(rec.selling_date || 'N/A')}</span></td>
       `;
       
       tableBody.appendChild(row);
@@ -432,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
   }
 
+  // HTML escape helper
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)

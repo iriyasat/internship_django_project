@@ -14,7 +14,8 @@ class employeesalesserializers:
             ii.make_name AS brand_name,
             vi.vehicle_model AS vehicle_name, 
             si.selling_date, 
-            vi.mmr
+            vi.mmr,
+            si.selling_price
         FROM selling_info si
         INNER JOIN employee e ON si.employee_id = e.employee_id
         INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id

@@ -53,64 +53,6 @@
     </div>
   </div>
 
-  <!-- Summary Cards (Calculated client-side from API data) -->
-  <div class="row" id="summary-cards" style="display: none;">
-    <!-- Total Units -->
-    <div class="col-lg-4 col-md-6 col-sm-12">
-      <div class="card info-card sales-card">
-        <div class="card-body">
-          <h5 class="card-title">Total Units Sold <span>| API Computed</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-cart-fill"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="summary-units-count">0</h6>
-              <span class="text-muted small pt-2 ps-1">from JSON payload</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Revenue -->
-    <div class="col-lg-4 col-md-6 col-sm-12">
-      <div class="card info-card revenue-card">
-        <div class="card-body">
-          <h5 class="card-title">Gross Sales Revenue <span>| API Computed</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-currency-dollar"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="summary-total-revenue">$0</h6>
-              <span class="text-muted small pt-2 ps-1">sales volume value</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Profit margin -->
-    <div class="col-lg-4 col-md-12 col-sm-12">
-      <div class="card info-card revenue-card">
-        <div class="card-body">
-          <h5 class="card-title">Net MMR Margin <span>| API Computed</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center"
-              style="color: #ff771d; background: #ffecdf;" id="margin-icon-wrapper">
-              <i class="bi bi-shield-check" style="color: #ff771d;"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="summary-net-margin">$0</h6>
-              <span class="text-muted small pt-2 ps-1" id="summary-margin-subtitle">margin vs valuation</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="row">
     <!-- Table Status Info / Alerts -->
     <div class="col-12" id="alert-container"></div>
@@ -207,13 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const tableWrapper = document.getElementById('table-wrapper');
   const tableBody = document.getElementById('api-table-body');
   const alertContainer = document.getElementById('alert-container');
-  const summaryCards = document.getElementById('summary-cards');
-  
-  const summaryUnitsCount = document.getElementById('summary-units-count');
-  const summaryTotalRevenue = document.getElementById('summary-total-revenue');
-  const summaryNetMargin = document.getElementById('summary-net-margin');
-  const marginIconWrapper = document.getElementById('margin-icon-wrapper');
-  const summaryMarginSubtitle = document.getElementById('summary-margin-subtitle');
   
   const pageSizeSelect = document.getElementById('page-size-select');
   const searchInput = document.getElementById('search-input');
@@ -237,7 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
     pageSize = 25;
     allRecords = [];
     filteredRecords = [];
-    summaryCards.style.display = 'none';
     alertContainer.innerHTML = '';
     tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
     paginationControls.style.setProperty('display', 'none', 'important');
@@ -271,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadingSpinner.style.display = 'block';
     tableWrapper.style.display = 'none';
     paginationControls.style.setProperty('display', 'none', 'important');
-    summaryCards.style.display = 'none';
     alertContainer.innerHTML = '';
     tableBody.innerHTML = '';
 
@@ -290,9 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
           allRecords = res.data;
           filteredRecords = [...allRecords];
           
-          // Calculate stats
-          calculateStats();
-          
           currentPage = 1;
           renderTable();
         } else {
@@ -305,43 +235,6 @@ document.addEventListener('DOMContentLoaded', function() {
         showError(`Failed to fetch data from API: ${err.message}`);
         loadingSpinner.style.display = 'none';
       });
-  }
-
-  // Calculate and display summary stats client-side
-  function calculateStats() {
-    const count = allRecords.length;
-    let totalRevenue = 0;
-    let totalMmr = 0;
-    
-    allRecords.forEach(rec => {
-      totalRevenue += parseFloat(rec.selling_price || 0);
-      totalMmr += parseFloat(rec.mmr || 0);
-    });
-
-    const netMargin = totalRevenue - totalMmr;
-
-    summaryUnitsCount.textContent = count.toLocaleString();
-    summaryTotalRevenue.textContent = '$' + totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    
-    // Style and format Net Margin
-    if (netMargin >= 0) {
-      summaryNetMargin.textContent = '+$' + netMargin.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-      summaryNetMargin.className = 'text-success';
-      marginIconWrapper.style.color = '#198754';
-      marginIconWrapper.style.background = '#e2f0d9';
-      marginIconWrapper.innerHTML = '<i class="bi bi-arrow-up-right-circle-fill" style="color: #198754; font-size: 1.5rem;"></i>';
-    } else {
-      summaryNetMargin.textContent = '-$' + Math.abs(netMargin).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-      summaryNetMargin.className = 'text-danger';
-      marginIconWrapper.style.color = '#dc3545';
-      marginIconWrapper.style.background = '#f8d7da';
-      marginIconWrapper.innerHTML = '<i class="bi bi-arrow-down-left-circle-fill" style="color: #dc3545; font-size: 1.5rem;"></i>';
-    }
-
-    const avgMargin = count > 0 ? (netMargin / count) : 0;
-    summaryMarginSubtitle.textContent = `Avg Margin: ${avgMargin >= 0 ? '+' : '-'}$${Math.abs(Math.round(avgMargin)).toLocaleString()} / deal`;
-    
-    summaryCards.style.display = 'flex';
   }
 
   // Search/Filter records local search
@@ -493,6 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
   }
 
+  // HTML escape helper
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)

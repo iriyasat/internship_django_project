@@ -396,3 +396,77 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
         self.assertEqual(data['summary']['total_sales'], 0)
         self.assertEqual(data['summary']['total_revenue'], 0.0)
         self.assertEqual(len(data['transactions']), 0)
+
+
+class AllPagesAndApiTestCase(CarSalesBaseTestCase):
+    """Test suite ensuring all HTML views and JSON API endpoints load correctly."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # Set up a staff user to test logged-in status if pages require login.
+        cls.user = User.objects.create_user(username="testuser", password="testpassword123")
+        cls.staff_user = User.objects.create_user(username="staffuser", password="testpassword123", is_staff=True)
+
+    def test_frontend_pages_render_successfully(self):
+        """Verify that all main dashboard, listing, and report pages load (status 200)."""
+        self.client.login(username="testuser", password="testpassword123")
+        urls = [
+            'home',
+            'employee',
+            'country',
+            'city',
+            'store',
+            'emprole',
+            'status',
+            'industry',
+            'vehicle',
+            'customer',
+            'selling',
+            'budget',
+            'employee_report',
+            'vehicle_report',
+            'sales_report',
+            'employee_sales_page_view',
+            'store_sales_page_view'
+        ]
+        for url_name in urls:
+            url = reverse(url_name)
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 200,
+                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200."
+            )
+
+    def test_employee_sales_api_endpoints(self):
+        """Verify that the employee sales API returns 200 for valid ranges and 400 for bad ranges."""
+        url = reverse('employee_sales_api')
+        
+        # 1. No parameters (should return 400)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['status'])
+
+        # 2. Valid range (should return 200)
+        response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['status'])
+        self.assertIsInstance(data['data'], list)
+
+    def test_store_sales_api_endpoints(self):
+        """Verify that the store sales API returns 200 for valid ranges and 400 for bad ranges."""
+        url = reverse('store_sales_api')
+        
+        # 1. No parameters (should return 400)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['status'])
+
+        # 2. Valid range (should return 200)
+        response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['status'])
+        self.assertIsInstance(data['data'], list)
+
