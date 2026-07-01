@@ -199,3 +199,141 @@ class CarSalesCrudPermissionTestCase(TestCase):
             # Staff user should get the page
             self.assertEqual(response.status_code, 200)
 
+
+class EmployeeReportTestCase(TestCase):
+    """Test suite verifying the employee performance report views and templates."""
+
+    def setUp(self):
+        from django.urls import reverse
+        # Create standard location, store, role, status, employee
+        self.country = Country.objects.create(country_name="United States")
+        self.city = City.objects.create(city_name="New York", country=self.country)
+        self.store = Store.objects.create(
+            store_name="New York Motors",
+            store_code="ST0001",
+            city=self.city,
+            country=self.country,
+            address="26 Highway Rd, New York"
+        )
+        self.role = EmployeeRole.objects.create(role_name="Sales Executive")
+        self.status = EmployeeStatus.objects.create(status="Active")
+        
+        # Create three employees to see 1st, 2nd, 3rd ranking badges
+        self.emp1 = Employee.objects.create(
+            first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
+            employee_role=self.role, status=self.status, store=self.store, city=self.city, country=self.country
+        )
+        self.emp2 = Employee.objects.create(
+            first_name="Bob", last_name="Jones", date_of_joining=datetime.date(2020, 1, 1),
+            employee_role=self.role, status=self.status, store=self.store, city=self.city, country=self.country
+        )
+        self.emp3 = Employee.objects.create(
+            first_name="Charlie", last_name="Brown", date_of_joining=datetime.date(2020, 1, 1),
+            employee_role=self.role, status=self.status, store=self.store, city=self.city, country=self.country
+        )
+
+        # Let's create sales records to rank them: emp1 > emp2 > emp3
+        self.make = IndustryInfo.objects.create(make_name="Toyota")
+        self.vehicle1 = VehicleInfo.objects.create(vehicle_model="Camry", make=self.make, mmr=16000, vin="VIN111")
+        self.vehicle2 = VehicleInfo.objects.create(vehicle_model="Camry", make=self.make, mmr=16000, vin="VIN222")
+        self.vehicle3 = VehicleInfo.objects.create(vehicle_model="Camry", make=self.make, mmr=16000, vin="VIN333")
+        self.customer = CustomerInfo.objects.create(firstname="John", lastname="Doe", customer_status="Regular", city=self.city, country=self.country)
+
+        # Sales
+        SellingInfo.objects.create(
+            customer=self.customer, vehicle=self.vehicle1, employee=self.emp1, store=self.store,
+            selling_price=30000, selling_date=datetime.date(2026, 6, 1)
+        )
+        SellingInfo.objects.create(
+            customer=self.customer, vehicle=self.vehicle2, employee=self.emp2, store=self.store,
+            selling_price=20000, selling_date=datetime.date(2026, 6, 1)
+        )
+        SellingInfo.objects.create(
+            customer=self.customer, vehicle=self.vehicle3, employee=self.emp3, store=self.store,
+            selling_price=10000, selling_date=datetime.date(2026, 6, 1)
+        )
+
+        self.url = reverse('employee_report')
+
+    def test_employee_report_view_renders_correctly(self):
+        """Verify the employee performance report lists and ranks employees correctly."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('employee_leaderboard', response.context)
+        
+        # Verify pagination start index displays correctly
+        self.assertEqual(response.context['employee_leaderboard'].start_index(), 1)
+        
+        # Check rendered HTML for the top 3 ranking badges
+        content = response.content.decode('utf-8')
+        self.assertIn('1st', content)
+        self.assertIn('2nd', content)
+        self.assertIn('3rd', content)
+
+
+class ReportJsonExportTestCase(TestCase):
+    """Test suite verifying the JSON export functionality of report pages."""
+
+    def setUp(self):
+        from django.urls import reverse
+        self.country = Country.objects.create(country_name="United States")
+        self.city = City.objects.create(city_name="New York", country=self.country)
+        self.store = Store.objects.create(
+            store_name="New York Motors",
+            store_code="ST0001",
+            city=self.city,
+            country=self.country,
+            address="26 Highway Rd, New York"
+        )
+        self.role = EmployeeRole.objects.create(role_name="Sales Executive")
+        self.status = EmployeeStatus.objects.create(status="Active")
+        self.emp = Employee.objects.create(
+            first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
+            employee_role=self.role, status=self.status, store=self.store, city=self.city, country=self.country
+        )
+        self.make = IndustryInfo.objects.create(make_name="Toyota")
+        self.vehicle = VehicleInfo.objects.create(vehicle_model="Camry", make=self.make, mmr=16000, vin="VIN111")
+        self.customer = CustomerInfo.objects.create(firstname="John", lastname="Doe", customer_status="Regular", city=self.city, country=self.country)
+
+        # Sales
+        SellingInfo.objects.create(
+            customer=self.customer, vehicle=self.vehicle, employee=self.emp, store=self.store,
+            selling_price=30000, selling_date=datetime.date(2026, 6, 1)
+        )
+
+        self.employee_report_url = reverse('employee_report')
+        self.vehicle_report_url = reverse('vehicle_report')
+        self.sales_report_url = reverse('sales_report')
+
+    def test_employee_report_json_download(self):
+        """Verify employee report returns JSON data with download=json query parameter."""
+        response = self.client.get(self.employee_report_url, {'download': 'json'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = response.json()
+        self.assertEqual(data['report_type'], 'Employee Performance Report')
+        self.assertTrue(len(data['employees']) > 0)
+        self.assertEqual(data['employees'][0]['name'], "Alice Smith")
+
+    def test_vehicle_report_json_download(self):
+        """Verify vehicle report returns JSON data with download=json query parameter."""
+        response = self.client.get(self.vehicle_report_url, {'download': 'json'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = response.json()
+        self.assertEqual(data['report_type'], 'Vehicle Report')
+        self.assertTrue(len(data['transactions']) > 0)
+        self.assertEqual(data['transactions'][0]['model'], "Camry")
+
+    def test_sales_report_json_download(self):
+        """Verify sales report returns JSON data with download=json query parameter."""
+        response = self.client.get(self.sales_report_url, {'download': 'json'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = response.json()
+        self.assertEqual(data['report_type'], 'Sales Revenue Report')
+        self.assertTrue(len(data['transactions']) > 0)
+        self.assertEqual(data['transactions'][0]['selling_price'], 30000.0)
+
+
+

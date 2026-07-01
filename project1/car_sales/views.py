@@ -139,7 +139,7 @@ def customer_view(request):
     return render(request, 'car_sales/customer_view.html', context)
 
 def selling_view(request):
-    sales_list = SellingInfo.objects.prefetch_related('customer', 'vehicle__make', 'employee', 'store').order_by('sell_id').all()
+    sales_list = SellingInfo.objects.select_related('customer', 'vehicle__make', 'employee', 'store').order_by('sell_id').all()
     paginator = Paginator(sales_list, 1000)  # Show 1000 sales per page
     page_number = request.GET.get('page')
     sales_page = paginator.get_page(page_number)
@@ -150,7 +150,7 @@ def selling_view(request):
     return render(request, 'car_sales/selling_view.html', context)
 
 def budget_view(request):
-    budgets_list = EmployeeBudget.objects.prefetch_related('employee', 'store').order_by('id').all()
+    budgets_list = EmployeeBudget.objects.select_related('employee', 'store').order_by('id').all()
     paginator = Paginator(budgets_list, 1000)  # Show 1000 budgets per page
     page_number = request.GET.get('page')
     budgets_page = paginator.get_page(page_number)
@@ -272,27 +272,21 @@ def admin_crud_view(request, model_name, action, pk=None):
     
     if request.method == 'POST':
         form = form_class(request.POST, instance=instance)
-        for name, field in form.fields.items():
-            if isinstance(field.widget, forms.Select):
-                field.widget.attrs.update({'class': 'form-select'})
-            elif isinstance(field.widget, forms.CheckboxInput):
-                field.widget.attrs.update({'class': 'form-check-input'})
-            else:
-                field.widget.attrs.update({'class': 'form-control'})
-                
-        if form.is_valid():
-            form.save()
-            messages.success(request, f"Successfully {'updated' if instance else 'created'} {model._meta.verbose_name} record.")
-            return HttpResponseRedirect(next_url)
     else:
         form = form_class(instance=instance)
-        for name, field in form.fields.items():
-            if isinstance(field.widget, forms.Select):
-                field.widget.attrs.update({'class': 'form-select'})
-            elif isinstance(field.widget, forms.CheckboxInput):
-                field.widget.attrs.update({'class': 'form-check-input'})
-            else:
-                field.widget.attrs.update({'class': 'form-control'})
+
+    for name, field in form.fields.items():
+        if isinstance(field.widget, forms.Select):
+            field.widget.attrs.update({'class': 'form-select'})
+        elif isinstance(field.widget, forms.CheckboxInput):
+            field.widget.attrs.update({'class': 'form-check-input'})
+        else:
+            field.widget.attrs.update({'class': 'form-control'})
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"Successfully {'updated' if instance else 'created'} {model._meta.verbose_name} record.")
+        return HttpResponseRedirect(next_url)
 
     context = {
         'form': form,
