@@ -22,21 +22,21 @@
       <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Employee Sales</h5>
       <div class="row g-3 align-items-end">
         <div class="col-lg-4 col-md-6 col-sm-12">
-          <label for="date_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
+          <label for="dt_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
           <div class="input-group">
             <span class="input-group-text bg-white text-muted">
               <i class="bi bi-calendar3"></i>
             </span>
-            <input type="text" class="form-control" id="date_from" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+            <input type="text" class="form-control" id="dt_from" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
         <div class="col-lg-4 col-md-6 col-sm-12">
-          <label for="date_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
+          <label for="dt_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
           <div class="input-group">
             <span class="input-group-text bg-white text-muted">
               <i class="bi bi-calendar3"></i>
             </span>
-            <input type="text" class="form-control" id="date_to" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+            <input type="text" class="form-control" id="dt_to" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
           </div>
         </div>
         <div class="col-lg-4 col-md-12">
@@ -132,7 +132,7 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize Datepickers if bootstrap-datepicker is loaded
   if (typeof $.fn.datepicker !== 'undefined') {
-    $('#date_from, #date_to').datepicker({
+    $('#dt_from, #dt_to').datepicker({
       format: 'yyyy-mm-dd',
       autoclose: true,
       todayHighlight: true
@@ -142,8 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Elements
   const fetchBtn = document.getElementById('fetch-api-btn');
   const resetBtn = document.getElementById('reset-btn');
-  const dateFromInput = document.getElementById('date_from');
-  const dateToInput = document.getElementById('date_to');
+  const dtFromInput = document.getElementById('dt_from');
+  const dtToInput = document.getElementById('dt_to');
   
   const loadingSpinner = document.getElementById('loading-spinner');
   const tableWrapper = document.getElementById('table-wrapper');
@@ -162,11 +162,15 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPage = 1;
   let pageSize = parseInt(pageSizeSelect.value);
 
+  // Initialize Default Dates & Load initial data
+  setDefaultDates();
+  fetchData();
+
   // Event Listeners
   fetchBtn.addEventListener('click', fetchData);
   resetBtn.addEventListener('click', function() {
-    dateFromInput.value = '';
-    dateToInput.value = '';
+    dtFromInput.value = '';
+    dtToInput.value = '';
     searchInput.value = '';
     pageSizeSelect.value = '25';
     pageSize = 25;
@@ -193,8 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Fetch Data Function
   function fetchData() {
-    const fromDate = dateFromInput.value.trim();
-    const toDate = dateToInput.value.trim();
+    const fromDate = dtFromInput.value.trim();
+    const toDate = dtToInput.value.trim();
     
     if (!fromDate || !toDate) {
       showError('Please specify both From Date and To Date.');
@@ -383,6 +387,35 @@ document.addEventListener('DOMContentLoaded', function() {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  function formatDateCustom(dateStr) {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const monthNames = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  /* ---------------- DATE ---------------- */
+  function formatDateBD(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0'); // month 0-11
+    const dd = String(date.getDate()).padStart(2, '0');
+
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function setDefaultDates() {
+    // Get current BD time
+    const now = new Date();
+    const bdNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }));
+
+    const firstOfMonth = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
+
+    $('#dt_from').val(formatDateBD(firstOfMonth));
+    $('#dt_to').val(formatDateBD(bdNow));
   }
 });
 </script>
