@@ -95,13 +95,14 @@
                   <th>Sold By <br><small class="text-muted fw-normal">(Employee)</small></th>
                   <th>Vehicle Details <br><small class="text-muted fw-normal">(Brand & Model)</small></th>
                   <th class="text-center">Units Sold</th>
-                  <th class="text-end">MMR Valuation</th>
-                  <th class="text-end">Total Revenue</th>
+                  <th class="text-end">Total MMR Valuation</th>
+                  <th class="text-end">Total Selling Price</th>
+                  <th class="text-center">Sale vs. MMR</th>
                 </tr>
               </thead>
               <tbody id="api-table-body">
                 <tr>
-                  <td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
+                  <td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
                 </tr>
               </tbody>
             </table>
@@ -175,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
     allRecords = [];
     filteredRecords = [];
     alertContainer.innerHTML = '';
-    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
     paginationControls.style.setProperty('display', 'none', 'important');
   });
 
@@ -261,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadingSpinner.style.display = 'none';
     
     if (filteredRecords.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No records found matching criteria.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No records found matching criteria.</td></tr>`;
       tableWrapper.style.display = 'block';
       paginationControls.style.setProperty('display', 'none', 'important');
       return;
@@ -274,15 +275,35 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '';
     paginatedRecords.forEach(rec => {
       const tr = document.createElement('tr');
+      tr.style.opacity = '0';
+      tr.style.transition = 'opacity 0.25s ease-in-out';
+      
+      const mmrVal = parseFloat(rec.mmr || 0) * parseInt(rec.quantity_sold || 1);
+      const priceVal = parseFloat(rec.total_selling_price || 0);
+      const marginVal = priceVal - mmrVal;
+      const absMargin = Math.abs(marginVal);
+
+      const formattedMmr = '$' + mmrVal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+      const formattedPrice = '$' + priceVal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+      
+      let badgeHtml = '';
+      if (marginVal >= 0) {
+        badgeHtml = `<span class="badge bg-success-light text-success"><i class="bi bi-arrow-up-right me-1"></i> +$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span>`;
+      } else {
+        badgeHtml = `<span class="badge bg-danger-light text-danger"><i class="bi bi-arrow-down-left me-1"></i> -$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span>`;
+      }
+
       tr.innerHTML = `
         <td class="fw-bold text-dark">${escapeHtml(rec.store_name)}</td>
         <td>${escapeHtml(rec.employee_name)}</td>
         <td><span class="badge bg-light text-secondary border">${escapeHtml(rec.vehicle_info)}</span></td>
         <td class="text-center fw-bold text-primary">${rec.quantity_sold}</td>
-        <td class="text-end fw-bold text-muted">${formatCurrency(rec.mmr)}</td>
-        <td class="text-end fw-bold text-success">${formatCurrency(rec.total_selling_price)}</td>
+        <td class="text-end text-muted">${formattedMmr}</td>
+        <td class="text-end text-dark fw-bold">${formattedPrice}</td>
+        <td class="text-center">${badgeHtml}</td>
       `;
       tableBody.appendChild(tr);
+      setTimeout(() => tr.style.opacity = '1', 50);
     });
 
     tableWrapper.style.display = 'block';
