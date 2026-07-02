@@ -17,11 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include 
 from django.http import JsonResponse
+from django.views.generic import RedirectView
 
 def chrome_devtools_json(request):
     return JsonResponse({})
 
 urlpatterns = [
+    path('django-admin/login/', RedirectView.as_view(url='/login/', query_string=True)),
+    path('django-admin/logout/', RedirectView.as_view(url='/logout/', query_string=True)),
     path('django-admin/', admin.site.urls),
     path('.well-known/appspecific/com.chrome.devtools.json', chrome_devtools_json),
     path('', include('car_sales.urls')),

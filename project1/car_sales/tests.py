@@ -264,6 +264,7 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
+        cls.test_user = User.objects.create_user(username="testuser", password="testpassword123")
         # Create three employees
         cls.emp1 = Employee.objects.create(
             first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
@@ -283,7 +284,6 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
         cls.vehicle2 = VehicleInfo.objects.create(vehicle_model="Civic", make=cls.make, mmr=14000, vin="HONDA22")
         cls.vehicle3 = VehicleInfo.objects.create(vehicle_model="Civic", make=cls.make, mmr=14000, vin="HONDA33")
         cls.customer = CustomerInfo.objects.create(firstname="John", lastname="Doe", customer_status="Regular", city=cls.city, country=cls.country)
-
         # Sales records to establish leaderboard ranks (emp1 > emp2 > emp3)
         SellingInfo.objects.create(
             customer=cls.customer, vehicle=cls.vehicle1, employee=cls.emp1, store=cls.store,
@@ -299,6 +299,9 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
         )
 
         cls.url = reverse('employee_report')
+
+    def setUp(self):
+        self.client.login(username="testuser", password="testpassword123")
 
     def test_employee_report_view_renders_correctly(self):
         """Verify the employee performance report lists and ranks employees correctly."""
@@ -335,6 +338,7 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
+        cls.test_user = User.objects.create_user(username="testuser", password="testpassword123")
         cls.emp = Employee.objects.create(
             first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
             employee_role=cls.role, status=cls.status_active, store=cls.store, city=cls.city, country=cls.country
@@ -352,6 +356,9 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
         cls.employee_report_url = reverse('employee_report')
         cls.vehicle_report_url = reverse('vehicle_report')
         cls.sales_report_url = reverse('sales_report')
+
+    def setUp(self):
+        self.client.login(username="testuser", password="testpassword123")
 
     def test_employee_report_json_download(self):
         """Verify employee report returns valid structured JSON with correct fields."""
@@ -427,8 +434,6 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'employee_report',
             'vehicle_report',
             'sales_report',
-            'employee_sales_page_view',
-            'store_sales_page_view'
         ]
         for url_name in urls:
             url = reverse(url_name)
@@ -438,16 +443,38 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
                 f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200."
             )
 
+        # Login as staff user for restricted API pages
+        self.client.login(username="staffuser", password="testpassword123")
+        restricted_urls = [
+            'employee_sales_page_view',
+            'store_sales_page_view',
+            'store_vehicle_sales_page_view'
+        ]
+        for url_name in restricted_urls:
+            url = reverse(url_name)
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 200,
+                f"Restricted page reverse('{url_name}') returned status code {response.status_code} instead of 200."
+            )
+
     def test_employee_sales_api_endpoints(self):
         """Verify that the employee sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('employee_sales_api')
         
-        # 1. No parameters (should return 400)
+        # 1. Without login (should return 401)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+        
+        # Log in as staff
+        self.client.login(username="staffuser", password="testpassword123")
+        
+        # 2. No parameters (should return 400)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['status'])
 
-        # 2. Valid range (should return 200)
+        # 3. Valid range (should return 200)
         response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -458,15 +485,131 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         """Verify that the store sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('store_sales_api')
         
-        # 1. No parameters (should return 400)
+        # 1. Without login (should return 401)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+        
+        # Log in as staff
+        self.client.login(username="staffuser", password="testpassword123")
+        
+        # 2. No parameters (should return 400)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['status'])
 
-        # 2. Valid range (should return 200)
+        # 3. Valid range (should return 200)
         response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data['status'])
         self.assertIsInstance(data['data'], list)
+
+    def test_store_vehicle_sales_api_endpoints(self):
+        """Verify that the store vehicle sales API returns 200 for valid ranges and 400 for bad ranges."""
+        url = reverse('store_vehicle_sales_api')
+        
+        # 1. Without login (should return 401)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+        
+        # Log in as staff
+        self.client.login(username="staffuser", password="testpassword123")
+        
+        # 2. No parameters (should return 400)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['status'])
+
+        # 3. Valid range (should return 200)
+        response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['status'])
+        self.assertIsInstance(data['data'], list)
+
+
+class CustomAuthTestCase(CarSalesBaseTestCase):
+    """Test suite verifying custom authentication, login, registration, and logout flows."""
+
+    def setUp(self):
+        self.login_url = reverse('login')
+        self.register_url = reverse('register')
+        self.logout_url = reverse('logout')
+        self.user = User.objects.create_user(username="validuser", email="valid@example.com", password="password123")
+        
+        # Create a test employee with a default password
+        self.employee = Employee.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            date_of_joining=datetime.date(2020, 1, 1),
+            employee_addr="123 Test St",
+            employee_role=self.role,
+            status=self.status_active,
+            store=self.store,
+            city=self.city,
+            country=self.country,
+            password="CAr$@lse2014"
+        )
+
+    def test_login_view_get(self):
+        """GET request to login page should render login form."""
+        response = self.client.get(self.login_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'car_sales/login.html')
+
+    def test_login_view_post_employee_id_success(self):
+        """POST with valid Employee ID and password should authenticate and redirect to home."""
+        response = self.client.post(self.login_url, {
+            'username': str(self.employee.employee_id),
+            'password': 'CAr$@lse2014'
+        })
+        self.assertRedirects(response, reverse('home'))
+
+    def test_login_view_post_employee_id_failure(self):
+        """POST with valid Employee ID but incorrect password should fail."""
+        response = self.client.post(self.login_url, {
+            'username': str(self.employee.employee_id),
+            'password': 'wrongpassword'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'car_sales/login.html')
+        self.assertContains(response, "Invalid username or password.")
+
+    def test_login_view_post_django_user_fallback_success(self):
+        """POST with valid standard Django user credentials should authenticate and redirect to home."""
+        response = self.client.post(self.login_url, {
+            'username': 'validuser',
+            'password': 'password123'
+        })
+        self.assertRedirects(response, reverse('home'))
+
+    def test_login_terminated_employee_failure(self):
+        """Terminated employee should not be allowed to log in."""
+        terminated_status = EmployeeStatus.objects.create(status="Terminated")
+        term_employee = Employee.objects.create(
+            first_name="Terminated",
+            last_name="User",
+            date_of_joining=datetime.date(2020, 1, 1),
+            employee_addr="123 Test St",
+            employee_role=self.role,
+            status=terminated_status,
+            store=self.store,
+            city=self.city,
+            country=self.country,
+            password="CAr$@lse2014"
+        )
+        response = self.client.post(self.login_url, {
+            'username': str(term_employee.employee_id),
+            'password': 'CAr$@lse2014'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'car_sales/login.html')
+        self.assertContains(response, "Invalid username or password.")
+
+    def test_logout_view(self):
+        """Request to logout view should terminate session and redirect to login."""
+        self.client.login(username="validuser", password="password123")
+        response = self.client.post(self.logout_url)
+        self.assertRedirects(response, self.login_url)
+
 

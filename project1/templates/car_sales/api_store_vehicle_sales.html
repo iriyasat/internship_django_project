@@ -1,16 +1,16 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
 
-{% block title %}Employee Sales API Page - Car Sales{% endblock %}
+{% block title %}Store Vehicle Sales API Page - Car Sales{% endblock %}
 
 {% block content %}
 <div class="pagetitle">
-  <h1>Employee Sales API Page</h1>
+  <h1>Store Vehicle Sales API Page</h1>
   <nav>
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
       <li class="breadcrumb-item">API</li>
-      <li class="breadcrumb-item active">Employee Sales API</li>
+      <li class="breadcrumb-item active">Store Vehicle Sales API</li>
     </ol>
   </nav>
 </div>
@@ -19,7 +19,7 @@
   <!-- Date Filter Form (Client-side) -->
   <div class="card mb-4">
     <div class="card-body pt-3">
-      <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Employee Sales</h5>
+      <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Store Vehicle Sales</h5>
       <div class="row g-3 align-items-end">
         <div class="col-lg-4 col-md-6 col-sm-12">
           <label for="dt_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
@@ -61,7 +61,7 @@
     <div class="col-12">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Employee Sales Records <span>| Client-side API Rendered</span></h5>
+          <h5 class="card-title">Vehicle Sales Summary <span>| Client-side API Rendered</span></h5>
           
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex align-items-center gap-2">
@@ -74,7 +74,7 @@
               </select>
             </div>
             <div>
-              <input type="text" class="form-control form-control-sm" id="search-input" placeholder="Search records...">
+              <input type="text" class="form-control form-control-sm" id="search-input" placeholder="Search summary...">
             </div>
           </div>
 
@@ -83,7 +83,7 @@
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-muted mt-2">Calling Employee Sales API...</p>
+            <p class="text-muted mt-2">Calling Store Vehicle Sales API...</p>
           </div>
 
           <!-- Table Wrapper -->
@@ -91,18 +91,17 @@
             <table class="table table-hover align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>Sold By<br><small class="text-muted fw-normal">(Employee)</small></th>
-                  <th>Customer<br>Name</th>
-                  <th>Brand<br>Name</th>
-                  <th>Model<br>Name</th>
-                  <th class="text-end">MMR<br><small class="text-muted fw-normal">(Valuation)</small></th>
-                  <th class="text-end">Selling<br><small class="text-muted fw-normal">(Price)</small></th>
-                  <th>Selling<br>Date</th>
+                  <th>Store Name</th>
+                  <th>Sold By <br><small class="text-muted fw-normal">(Employee)</small></th>
+                  <th>Vehicle Details <br><small class="text-muted fw-normal">(Brand & Model)</small></th>
+                  <th class="text-center">Units Sold</th>
+                  <th class="text-end">MMR Valuation</th>
+                  <th class="text-end">Total Revenue</th>
                 </tr>
               </thead>
               <tbody id="api-table-body">
                 <tr>
-                  <td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
+                  <td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
                 </tr>
               </tbody>
             </table>
@@ -162,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPage = 1;
   let pageSize = parseInt(pageSizeSelect.value);
 
-  // Initialize Default Dates
+  // Initialize Default Dates (without triggering fetch on load)
   setDefaultDates();
 
   // Event Listeners
@@ -176,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
     allRecords = [];
     filteredRecords = [];
     alertContainer.innerHTML = '';
-    tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
     paginationControls.style.setProperty('display', 'none', 'important');
   });
 
@@ -212,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '';
 
     // API URL with query params
-    const apiUrl = `/api/employee_sales/?dt_from=${encodeURIComponent(fromDate)}&dt_to=${encodeURIComponent(toDate)}`;
+    const apiUrl = `/api/store_vehicle_sales/?dt_from=${encodeURIComponent(fromDate)}&dt_to=${encodeURIComponent(toDate)}`;
 
     fetch(apiUrl)
       .then(response => {
@@ -247,26 +246,22 @@ document.addEventListener('DOMContentLoaded', function() {
       filteredRecords = [...allRecords];
     } else {
       filteredRecords = allRecords.filter(rec => {
-        return (
-          (rec.employee_name && rec.employee_name.toLowerCase().includes(query)) ||
-          (rec.customer_name && rec.customer_name.toLowerCase().includes(query)) ||
-          (rec.brand_name && rec.brand_name.toLowerCase().includes(query)) ||
-          (rec.vehicle_name && rec.vehicle_name.toLowerCase().includes(query)) ||
-          (rec.selling_date && rec.selling_date.includes(query))
-        );
+        const storeName = (rec.store_name || '').toLowerCase();
+        const empName = (rec.employee_name || '').toLowerCase();
+        const vInfo = (rec.vehicle_info || '').toLowerCase();
+        return storeName.includes(query) || empName.includes(query) || vInfo.includes(query);
       });
     }
     currentPage = 1;
     renderTable();
   }
 
-  // Render Table Page
+  // Render HTML table rows
   function renderTable() {
     loadingSpinner.style.display = 'none';
-    tableBody.innerHTML = '';
     
     if (filteredRecords.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No matching records found.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No records found matching criteria.</td></tr>`;
       tableWrapper.style.display = 'block';
       paginationControls.style.setProperty('display', 'none', 'important');
       return;
@@ -274,28 +269,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, filteredRecords.length);
-    const paginatedItems = filteredRecords.slice(startIndex, endIndex);
+    const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
 
-    paginatedItems.forEach(rec => {
-      const row = document.createElement('tr');
-      row.style.opacity = '0';
-      row.style.transition = 'opacity 0.25s ease-in-out';
-      
-      const formattedMmr = rec.mmr ? ('$' + parseFloat(rec.mmr).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
-      const formattedPrice = rec.selling_price ? ('$' + parseFloat(rec.selling_price).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
-      
-      row.innerHTML = `
-        <td><strong>${escapeHtml(rec.employee_name || 'N/A')}</strong></td>
-        <td>${escapeHtml(rec.customer_name || 'N/A')}</td>
-        <td>${escapeHtml(rec.brand_name || 'N/A')}</td>
-        <td>${escapeHtml(rec.vehicle_name || 'N/A')}</td>
-        <td class="text-end text-muted">${formattedMmr}</td>
-        <td class="text-end text-success fw-bold">${formattedPrice}</td>
-        <td><span class="badge bg-light text-dark">${escapeHtml(rec.selling_date || 'N/A')}</span></td>
+    tableBody.innerHTML = '';
+    paginatedRecords.forEach(rec => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="fw-bold text-dark">${escapeHtml(rec.store_name)}</td>
+        <td>${escapeHtml(rec.employee_name)}</td>
+        <td><span class="badge bg-light text-secondary border">${escapeHtml(rec.vehicle_info)}</span></td>
+        <td class="text-center fw-bold text-primary">${rec.quantity_sold}</td>
+        <td class="text-end fw-bold text-muted">${formatCurrency(rec.mmr)}</td>
+        <td class="text-end fw-bold text-success">${formatCurrency(rec.total_selling_price)}</td>
       `;
-      
-      tableBody.appendChild(row);
-      setTimeout(() => row.style.opacity = '1', 50);
+      tableBody.appendChild(tr);
     });
 
     tableWrapper.style.display = 'block';
@@ -388,22 +375,9 @@ document.addEventListener('DOMContentLoaded', function() {
       .replace(/'/g, '&#039;');
   }
 
-  function formatDateCustom(dateStr) {
-    const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, '0');
-    const monthNames = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-    const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-
-  /* ---------------- DATE ---------------- */
-  function formatDateBD(date) {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0'); // month 0-11
-    const dd = String(date.getDate()).padStart(2, '0');
-
-    return `${yyyy}-${mm}-${dd}`;
+  function formatCurrency(val) {
+    if (val === null || val === undefined) return '$0';
+    return '$' + parseFloat(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   function setDefaultDates() {

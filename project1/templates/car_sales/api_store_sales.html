@@ -162,9 +162,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPage = 1;
   let pageSize = parseInt(pageSizeSelect.value);
 
-  // Initialize Default Dates & Load initial data
+  // Initialize Default Dates
   setDefaultDates();
-  fetchData();
 
   // Event Listeners
   fetchBtn.addEventListener('click', fetchData);
@@ -420,14 +419,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function setDefaultDates() {
-    // Get current BD time
-    const now = new Date();
-    const bdNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }));
-
-    const firstOfMonth = new Date(bdNow.getFullYear(), bdNow.getMonth(), 1);
-
-    $('#dt_from').val(formatDateBD(firstOfMonth));
-    $('#dt_to').val(formatDateBD(bdNow));
+    $('#dt_from').val('2014-01-01');
+    $('#dt_to').val('2014-01-31');
   }
 });
 </script>

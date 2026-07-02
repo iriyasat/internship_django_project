@@ -2,6 +2,9 @@ from django.urls import path, include
 from .views import *
 
 urlpatterns = [
+    path('login/', login_view, name='login'),
+    path('register/', register_view, name='register'),
+    path('logout/', logout_view, name='logout'),
     path('', home_view, name='home'),
     path('employees/', employee_view, name='employee'),
     path('countries/', country_view, name='country'),
@@ -22,6 +25,8 @@ urlpatterns = [
     path('admin-panel/crud/<str:model_name>/<str:action>/<int:pk>/', admin_crud_view, name='admin_crud_pk'),
     path('api/employee_sales/', employee_sales_api, name='employee_sales_api'),
     path('api/store_sales/', store_sales_api, name='store_sales_api'),
+    path('api/store_vehicle_sales/', store_vehicle_sales_api, name='store_vehicle_sales_api'),
     path('api-page/employee-sales/', employee_sales_page_view, name='employee_sales_page_view'),
     path('api-page/store-sales/', store_sales_page_view, name='store_sales_page_view'),
+    path('api-page/store-vehicle-sales/', store_vehicle_sales_page_view, name='store_vehicle_sales_page_view'),
 ]

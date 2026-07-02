@@ -84,6 +84,7 @@ class Employee(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, db_column='store_id', related_name='employees', verbose_name="Store")
     city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='city_id', related_name='employees', verbose_name="City")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='employees', verbose_name="Country")
+    password = models.CharField(max_length=25, blank = False, null = False, verbose_name="Password", default='CAr$@lse2014')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
 

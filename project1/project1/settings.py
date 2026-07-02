@@ -133,3 +133,11 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+# Authentication Settings
+LOGIN_URL = 'login'
+AUTHENTICATION_BACKENDS = [
+    'car_sales.views.EmployeeBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+
