@@ -122,6 +122,9 @@ def home_view(request):
     }
     return render(request, 'car_sales/index.html', context)
 
+# Alias to support dashboard name referencing
+dashboard_view = home_view
+
 @login_required
 def employee_view(request):
     profile = get_employee_profile(request)
