@@ -27,7 +27,9 @@ urlpatterns = [
     path('api/employee_sales/', employee_sales_api, name='employee_sales_api'),
     path('api/store_sales/', store_sales_api, name='store_sales_api'),
     path('api/store_vehicle_sales/', store_vehicle_sales_api, name='store_vehicle_sales_api'),
+    path('api/customer_vehicle_sales/', customer_vehicle_sales_api, name='customer_vehicle_sales_api'),
     path('api-page/employee-sales/', employee_sales_page_view, name='employee_sales_page_view'),
     path('api-page/store-sales/', store_sales_page_view, name='store_sales_page_view'),
     path('api-page/store-vehicle-sales/', store_vehicle_sales_page_view, name='store_vehicle_sales_page_view'),
+    path('api-page/customer-vehicle-sales/', customer_vehicle_sales_page_view, name='customer_vehicle_sales_page_view'),
 ]

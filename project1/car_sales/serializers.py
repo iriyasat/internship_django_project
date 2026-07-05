@@ -112,3 +112,42 @@ class storevehiclesalesserializer:
             columns = [col[0] for col in cursor.description] if cursor.description else []
             rows = cursor.fetchall()
         return [dict(zip(columns, row)) for row in rows]
+
+
+class customervehiclesalesserializer:
+    DB_NAME = 'default'
+
+    @staticmethod
+    def fetch(dt_from, dt_to, store_id=None, employee_id=None):
+        query = """
+        SELECT
+            CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
+            CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_info,
+            s.store_name,
+            vi.mmr,
+            si.selling_price,
+            (si.selling_price - vi.mmr) AS mmr_vs_selling_price,
+            si.selling_date
+        FROM selling_info si
+        INNER JOIN store s ON si.store_id = s.store_id
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        WHERE si.selling_date BETWEEN %s AND %s
+        """
+        params = [dt_from, dt_to]
+        if store_id is not None:
+            query += " AND si.store_id = %s"
+            params.append(store_id)
+        if employee_id is not None:
+            query += " AND si.employee_id = %s"
+            params.append(employee_id)
+
+        query += " ORDER BY si.selling_date DESC;"
+
+        with connections[customervehiclesalesserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, params)
+            columns = [col[0] for col in cursor.description] if cursor.description else []
+            rows = cursor.fetchall()
+        return [dict(zip(columns, row)) for row in rows]
+
