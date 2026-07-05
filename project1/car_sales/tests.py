@@ -755,7 +755,8 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'employee_sales_page_view',
             'store_sales_page_view',
             'store_vehicle_sales_page_view',
-            'customer_vehicle_sales_page_view'
+            'customer_vehicle_sales_page_view',
+            'customer_store_spending_page_view'
         ]
         for url_name in restricted_urls:
             url = reverse(url_name)
@@ -819,6 +820,23 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     def test_customer_vehicle_sales_api_endpoints(self):
         """Verify that the customer vehicle sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('customer_vehicle_sales_api')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+        
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['status'])
+
+        response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['status'])
+        self.assertIsInstance(data['data'], list)
+
+    def test_customer_store_spending_api_endpoints(self):
+        """Verify that the customer store spending API returns 200 for valid ranges and 400 for bad ranges."""
+        url = reverse('customer_store_spending_api')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         

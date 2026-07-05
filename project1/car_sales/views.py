@@ -1160,6 +1160,87 @@ def customer_vehicle_sales_page_view(request):
     return render(request, 'car_sales/api_customer_vehicle_sales.html', context)
 
 
+@api_view(['GET', 'POST'])
+def customer_store_spending_api(request):
+    if not request.user.is_authenticated:
+        return Response(
+            {"status": False, "message": "Authentication required."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
+    is_allowed = request.user.is_superuser or request.user.is_staff
+    profile = get_employee_profile(request)
+    if not is_allowed and profile and profile.employee_role:
+        role = profile.employee_role.role_name.lower()
+        if "manager" in role or "admin" in role:
+            is_allowed = True
+            
+    if not is_allowed:
+        return Response(
+            {"status": False, "message": "Access Denied. Only administrators and store managers can fetch this API data."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    dt_from = None
+    dt_to = None
+
+    if hasattr(request, 'data') and request.data:
+        if isinstance(request.data, dict) or hasattr(request.data, 'get'):
+            dt_from = request.data.get('dt_from')
+            dt_to = request.data.get('dt_to')
+
+    if not dt_from:
+        dt_from = request.GET.get('dt_from')
+    if not dt_to:
+        dt_to = request.GET.get('dt_to')
+
+    if not dt_from or not dt_to:
+        return Response(
+            {"status": False, "message": "dt_from and dt_to parameters are required (YYYY-MM-DD)."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    store_id = None
+    employee_id = None
+    
+    if not request.user.is_superuser and profile and profile.employee_role:
+        role = profile.employee_role.role_name
+        
+        # Store-Level Roles: filter by their store
+        if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
+            store_id = profile.store.store_id
+        # Employee-Level Roles: filter by themselves
+        elif role not in ["Regional Sales Manager", "Customer Relations Officer"]:
+            employee_id = profile.employee_id
+
+    try:
+        data = customerstorespendingserializer.fetch(dt_from, dt_to, store_id=store_id, employee_id=employee_id)
+        return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@login_required
+def customer_store_spending_page_view(request):
+    profile = get_employee_profile(request)
+    is_allowed = request.user.is_superuser or request.user.is_staff
+    if not is_allowed and profile and profile.employee_role:
+        role = profile.employee_role.role_name.lower()
+        if "manager" in role or "admin" in role:
+            is_allowed = True
+            
+    if not is_allowed:
+        messages.error(request, "Permission denied. Only administrators and store managers can access this page.")
+        return redirect('home')
+        
+    context = {
+        'active_parent': 'api_pages',
+        'active_tab': 'api_customer_store_spending',
+    }
+    return render(request, 'car_sales/api_customer_store_spending.html', context)
+
+
+
 
 def login_view(request):
     if request.user.is_authenticated:

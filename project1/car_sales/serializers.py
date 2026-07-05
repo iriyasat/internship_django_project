@@ -151,3 +151,40 @@ class customervehiclesalesserializer:
             rows = cursor.fetchall()
         return [dict(zip(columns, row)) for row in rows]
 
+
+class customerstorespendingserializer:
+    DB_NAME = 'default'
+
+    @staticmethod
+    def fetch(dt_from, dt_to, store_id=None, employee_id=None):
+        query = """
+        SELECT
+            CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
+            s.store_name,
+            SUM(si.selling_price) AS total_spent,
+            COUNT(si.sell_id) AS total_purchased
+        FROM selling_info si
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN store s ON si.store_id = s.store_id
+        WHERE si.selling_date BETWEEN %s AND %s
+        """
+        params = [dt_from, dt_to]
+        if store_id is not None:
+            query += " AND si.store_id = %s"
+            params.append(store_id)
+        if employee_id is not None:
+            query += " AND si.employee_id = %s"
+            params.append(employee_id)
+
+        query += """
+        GROUP BY ci.customer_id, s.store_id
+        ORDER BY total_spent DESC;
+        """
+
+        with connections[customerstorespendingserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, params)
+            columns = [col[0] for col in cursor.description] if cursor.description else []
+            rows = cursor.fetchall()
+        return [dict(zip(columns, row)) for row in rows]
+
+
