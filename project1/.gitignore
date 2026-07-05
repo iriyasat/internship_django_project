@@ -1,2 +1,0 @@
-# Exclude the large uncompressed SQL dataset file
-dataset/car_sales_final.1.sql
