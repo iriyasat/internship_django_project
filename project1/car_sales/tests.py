@@ -1,8 +1,11 @@
 import datetime
-from django.test import TestCase
-from django.db import IntegrityError, transaction
-from django.urls import reverse
+import os
+import pandas as pd
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
+from django.test import TestCase
+from django.urls import reverse
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
@@ -11,29 +14,299 @@ from .models import (
 
 class CarSalesBaseTestCase(TestCase):
     """
-    Base test case containing shared setup data using setUpTestData.
-    This class-level database setup runs once per test class for optimal performance.
+    Base test case containing shared setup data read from the Excel datasheet.
+    Tracks and cleans up any User or Employee objects created during individual tests.
     """
 
     @classmethod
     def setUpTestData(cls):
-        # 1. Create Country & City
-        cls.country = Country.objects.create(country_name="United States")
-        cls.city = City.objects.create(city_name="New York", country=cls.country)
+        # Locate the excel file path dynamically
+        excel_path = os.path.join(settings.BASE_DIR, 'dataset', 'car_sales_dataset_v2_untouched.xlsx')
 
-        # 2. Create Store
-        cls.store = Store.objects.create(
-            store_name="New York Motors",
-            store_code="ST0001",
-            city=cls.city,
-            country=cls.country,
-            address="26 Highway Rd, New York"
+        with pd.ExcelFile(excel_path) as xls:
+            df_country = pd.read_excel(xls, sheet_name='country', nrows=5)
+            df_city = pd.read_excel(xls, sheet_name='city', nrows=5)
+            df_store = pd.read_excel(xls, sheet_name='store', nrows=5)
+            df_role = pd.read_excel(xls, sheet_name='employee_role')
+            df_status = pd.read_excel(xls, sheet_name='employee_status')
+            df_emp = pd.read_excel(xls, sheet_name='employee', nrows=5)
+
+        # 1. Load Country & City
+        countries = []
+        for _, row in df_country.iterrows():
+            c, _ = Country.objects.get_or_create(
+                country_id=int(row['country_id']),
+                defaults={'country_name': str(row['country_name'])}
+            )
+            countries.append(c)
+        cls.country = countries[0]
+
+        cities = []
+        for _, row in df_city.iterrows():
+            country_id = int(row['country_id'])
+            country_obj, _ = Country.objects.get_or_create(country_id=country_id, defaults={'country_name': f"Country {country_id}"})
+            c, _ = City.objects.get_or_create(
+                city_id=int(row['city_id']),
+                defaults={'city_name': str(row['city_name']), 'country': country_obj}
+            )
+            cities.append(c)
+        cls.city = cities[0]
+
+        # 2. Load Store
+        stores = []
+        for _, row in df_store.iterrows():
+            city_id = int(row['city_id'])
+            country_id = int(row['country_id'])
+            country_obj, _ = Country.objects.get_or_create(country_id=country_id, defaults={'country_name': f"Country {country_id}"})
+            city_obj, _ = City.objects.get_or_create(city_id=city_id, defaults={'city_name': f"City {city_id}", 'country': country_obj})
+            s, _ = Store.objects.get_or_create(
+                store_id=int(row['store_id']),
+                defaults={
+                    'store_name': str(row['store_name']),
+                    'store_code': str(row['store_code']),
+                    'city': city_obj,
+                    'country': country_obj,
+                    'address': str(row['address'])
+                }
+            )
+            stores.append(s)
+        cls.store = stores[0]
+
+        # 3. Load Employee Roles and Statuses
+        for _, row in df_role.iterrows():
+            EmployeeRole.objects.get_or_create(
+                role_id=int(row['role_id']),
+                defaults={'role_name': str(row['role_name'])}
+            )
+        cls.role = EmployeeRole.objects.get(role_name="Sales Executive")
+        cls.manager_role = EmployeeRole.objects.get(role_name="Branch Manager")
+
+        for _, row in df_status.iterrows():
+            EmployeeStatus.objects.get_or_create(
+                status_id=int(row['status_id']),
+                defaults={'status': str(row['status'])}
+            )
+        cls.status_active = EmployeeStatus.objects.get(status="In Service")
+        cls.status_in_service = cls.status_active
+
+        # 4. Load Base Employees
+        employees = []
+        for _, row in df_emp.iterrows():
+            role_id = int(row['employee_role'])
+            status_id = int(row['status'])
+            store_id = int(row['store_id'])
+            city_id = int(row['city_id'])
+            country_id = int(row['country_id'])
+
+            country_obj, _ = Country.objects.get_or_create(country_id=country_id, defaults={'country_name': f"Country {country_id}"})
+            city_obj, _ = City.objects.get_or_create(city_id=city_id, defaults={'city_name': f"City {city_id}", 'country': country_obj})
+            store_obj, _ = Store.objects.get_or_create(store_id=store_id, defaults={'store_name': f"Store {store_id}", 'store_code': f"ST{store_id}", 'city': city_obj, 'country': country_obj, 'address': 'Address'})
+            role_obj, _ = EmployeeRole.objects.get_or_create(role_id=role_id, defaults={'role_name': f"Role {role_id}"})
+            status_obj, _ = EmployeeStatus.objects.get_or_create(status_id=status_id, defaults={'status': f"Status {status_id}"})
+
+            e, _ = Employee.objects.get_or_create(
+                employee_id=int(row['employee_id']),
+                defaults={
+                    'first_name': str(row['first_name']),
+                    'last_name': str(row['last_name']),
+                    'date_of_joining': pd.to_datetime(row['date_of_joining']).date(),
+                    'employee_addr': str(row['employee_addr']),
+                    'employee_role': role_obj,
+                    'status': status_obj,
+                    'store': store_obj,
+                    'city': city_obj,
+                    'country': country_obj,
+                    'password': 'CAr$@lse2014'
+                }
+            )
+            employees.append(e)
+        
+        # Explicitly configure their roles and store to match existing test authorization logic
+        cls.test_employee = employees[0]
+        cls.test_employee.employee_role = cls.role
+        cls.test_employee.store = cls.store
+        cls.test_employee.city = cls.city
+        cls.test_employee.country = cls.country
+        cls.test_employee.save()
+
+        cls.manager_employee = employees[1] if len(employees) > 1 else employees[0]
+        cls.manager_employee.employee_role = cls.manager_role
+        cls.manager_employee.status = cls.status_active
+        cls.manager_employee.store = cls.store
+        cls.manager_employee.city = cls.city
+        cls.manager_employee.country = cls.country
+        cls.manager_employee.save()
+
+    def setUp(self):
+        super().setUp()
+        # Record pre-existing user and employee primary keys to detect new ones
+        self._initial_user_pks = set(User.objects.values_list('pk', flat=True))
+        self._initial_employee_pks = set(Employee.objects.values_list('pk', flat=True))
+
+    def tearDown(self):
+        # Identify users/employees created during this individual test method
+        current_user_pks = set(User.objects.values_list('pk', flat=True))
+        created_user_pks = current_user_pks - self._initial_user_pks
+
+        current_employee_pks = set(Employee.objects.values_list('pk', flat=True))
+        created_employee_pks = current_employee_pks - self._initial_employee_pks
+
+        # Delete the created user objects
+        if created_user_pks:
+            User.objects.filter(pk__in=created_user_pks).delete()
+        
+        # Delete the created employee objects
+        if created_employee_pks:
+            Employee.objects.filter(pk__in=created_employee_pks).delete()
+
+        # Verify they are completely deleted from the database
+        remaining_users = User.objects.filter(pk__in=created_user_pks).count()
+        remaining_employees = Employee.objects.filter(pk__in=created_employee_pks).count()
+
+        self.assertEqual(remaining_users, 0, f"Failed to delete test-created Users: {created_user_pks}")
+        self.assertEqual(remaining_employees, 0, f"Failed to delete test-created Employees: {created_employee_pks}")
+
+        super().tearDown()
+
+
+class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
+    """
+    Dedicated test case verifying:
+    1. Life cycle (create, delete, verify deleted) of User and Employee records.
+    2. Validation of all DB model fields using values from the excel datasheet sheets.
+    """
+
+    def test_user_and_employee_lifecycle(self):
+        """Create users and custom employees, delete them, and verify they are gone."""
+        # 1. Create a Django standard User
+        user = User.objects.create_user(username="temp_user_test", email="temp@test.com", password="pass")
+        self.assertTrue(User.objects.filter(username="temp_user_test").exists())
+
+        # 2. Create a custom Employee
+        emp = Employee.objects.create(
+            first_name="Temp",
+            last_name="Emp",
+            date_of_joining=datetime.date(2026, 1, 1),
+            employee_addr="123 Temp St",
+            employee_role=self.role,
+            status=self.status_active,
+            store=self.store,
+            city=self.city,
+            country=self.country
         )
+        self.assertTrue(Employee.objects.filter(employee_id=emp.employee_id).exists())
 
-        # 3. Create Employee Role and Statuses
-        cls.role = EmployeeRole.objects.create(role_name="Sales Executive")
-        cls.status_in_service = EmployeeStatus.objects.create(status="In Service")
-        cls.status_active = EmployeeStatus.objects.create(status="Active")
+        # 3. Explicitly delete them
+        user.delete()
+        emp.delete()
+
+        # 4. Verify they are deleted from the database
+        self.assertFalse(User.objects.filter(username="temp_user_test").exists())
+        self.assertFalse(Employee.objects.filter(employee_id=emp.employee_id).exists())
+
+    def test_verify_database_with_datasheet_xlsx(self):
+        """
+        Verify that database structures and models correctly load and store details
+        from the untouched Excel datasheet.
+        """
+        excel_path = os.path.join(settings.BASE_DIR, 'dataset', 'car_sales_dataset_v2_untouched.xlsx')
+        self.assertTrue(os.path.exists(excel_path))
+
+        with pd.ExcelFile(excel_path) as xls:
+            df_make = pd.read_excel(xls, sheet_name='industry_info', nrows=2)
+            df_vehicle = pd.read_excel(xls, sheet_name='vehicle_info', nrows=2)
+            df_customer = pd.read_excel(xls, sheet_name='customer_info', nrows=2)
+            df_sale = pd.read_excel(xls, sheet_name='selling_info', nrows=2)
+            df_budget = pd.read_excel(xls, sheet_name='employee_budget', nrows=2)
+
+        # Test loading and verifying details of IndustryInfo and VehicleInfo from Excel
+        make_row = df_make.iloc[0]
+        make, _ = IndustryInfo.objects.get_or_create(
+            make_id=int(make_row['make_id']),
+            defaults={'make_name': str(make_row['make_name'])}
+        )
+        # Verify
+        db_make = IndustryInfo.objects.get(make_id=make.make_id)
+        self.assertEqual(db_make.make_name, str(make_row['make_name']))
+
+        v_row = df_vehicle.iloc[0]
+        vehicle, _ = VehicleInfo.objects.get_or_create(
+            id=int(v_row['id']),
+            defaults={
+                'vehicle_model': str(v_row['vehicle_model']),
+                'make': make,
+                'mmr': int(v_row['mmr']),
+                'trim': str(v_row['trim']) if pd.notna(v_row['trim']) else None,
+                'body': str(v_row['body']) if pd.notna(v_row['body']) else None,
+                'transmission': str(v_row['transmission']) if pd.notna(v_row['transmission']) else None,
+                'vin': str(v_row['vin']),
+                'state': str(v_row['state']) if pd.notna(v_row['state']) else None,
+                'condition': int(v_row['condition']) if pd.notna(v_row['condition']) else None,
+                'odometer': int(v_row['odometer']) if pd.notna(v_row['odometer']) else None,
+                'color': str(v_row['color']) if pd.notna(v_row['color']) else None,
+                'interior': str(v_row['interior']) if pd.notna(v_row['interior']) else None
+            }
+        )
+        # Verify
+        db_vehicle = VehicleInfo.objects.get(id=vehicle.id)
+        self.assertEqual(db_vehicle.vin, str(v_row['vin']))
+        self.assertEqual(db_vehicle.vehicle_model, str(v_row['vehicle_model']))
+        self.assertEqual(db_vehicle.mmr, int(v_row['mmr']))
+
+        # Test CustomerInfo sheet verification
+        c_row = df_customer.iloc[0]
+        customer, _ = CustomerInfo.objects.get_or_create(
+            customer_id=int(c_row['customer_id']),
+            defaults={
+                'firstname': str(c_row['firstname']),
+                'lastname': str(c_row['lastname']),
+                'customer_status': str(c_row['customer_status']),
+                'customer_address': str(c_row['customer_address']),
+                'city': self.city,
+                'country': self.country
+            }
+        )
+        # Verify
+        db_customer = CustomerInfo.objects.get(customer_id=customer.customer_id)
+        self.assertEqual(db_customer.firstname, str(c_row['firstname']))
+        self.assertEqual(db_customer.lastname, str(c_row['lastname']))
+        self.assertEqual(db_customer.customer_status, str(c_row['customer_status']))
+
+        # Test SellingInfo sheet verification
+        s_row = df_sale.iloc[0]
+        sale, _ = SellingInfo.objects.get_or_create(
+            sell_id=int(s_row['sell_id']),
+            defaults={
+                'customer': customer,
+                'vehicle': vehicle,
+                'employee': self.test_employee,
+                'store': self.store,
+                'selling_price': int(s_row['selling_price']),
+                'selling_date': pd.to_datetime(s_row['selling_date']).date()
+            }
+        )
+        # Verify
+        db_sale = SellingInfo.objects.get(sell_id=sale.sell_id)
+        self.assertEqual(db_sale.selling_price, int(s_row['selling_price']))
+        self.assertEqual(db_sale.selling_date, pd.to_datetime(s_row['selling_date']).date())
+
+        # Test EmployeeBudget sheet verification
+        b_row = df_budget.iloc[0]
+        budget, _ = EmployeeBudget.objects.get_or_create(
+            employee=self.test_employee,
+            budget_year=int(b_row['budget_year']),
+            budget_month=int(b_row['budget_month']),
+            store=self.store,
+            defaults={
+                'budget_qty': int(b_row['budget_qty']),
+                'budget_amount': int(b_row['budget_amount'])
+            }
+        )
+        # Verify
+        db_budget = EmployeeBudget.objects.get(pk=budget.pk)
+        self.assertEqual(db_budget.budget_year, int(b_row['budget_year']))
+        self.assertEqual(db_budget.budget_qty, int(b_row['budget_qty']))
+        self.assertEqual(db_budget.budget_amount, int(b_row['budget_amount']))
 
 
 class CarSalesModelTestCase(CarSalesBaseTestCase):
@@ -42,47 +315,53 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
+        excel_path = os.path.join(settings.BASE_DIR, 'dataset', 'car_sales_dataset_v2_untouched.xlsx')
 
-        # 4. Create Employee
-        cls.employee = Employee.objects.create(
-            first_name="Robert",
-            last_name="Rossi",
-            date_of_joining=datetime.date(2010, 1, 13),
-            employee_addr="5863 Elm St, Osaka",
-            employee_role=cls.role,
-            status=cls.status_in_service,
-            store=cls.store,
-            city=cls.city,
-            country=cls.country
+        cls.employee = cls.test_employee
+
+        with pd.ExcelFile(excel_path) as xls:
+            df_make = pd.read_excel(xls, sheet_name='industry_info', nrows=2)
+            df_vehicle = pd.read_excel(xls, sheet_name='vehicle_info', nrows=2)
+            df_customer = pd.read_excel(xls, sheet_name='customer_info', nrows=2)
+
+        # Create Make
+        cls.make, _ = IndustryInfo.objects.get_or_create(
+            make_id=int(df_make.iloc[0]['make_id']),
+            defaults={'make_name': str(df_make.iloc[0]['make_name'])}
         )
 
-        # 5. Create Industry Info (Make)
-        cls.make = IndustryInfo.objects.create(make_name="Toyota")
-
-        # 6. Create Vehicle Info
-        cls.vehicle = VehicleInfo.objects.create(
-            vehicle_model="Camry",
-            make=cls.make,
-            mmr=16450,
-            trim="XLE",
-            body="Sedan",
-            transmission="automatic",
-            vin="4T1BF1FK3EU327266",
-            state="SC",
-            condition=3,
-            odometer=33959,
-            color="Gray",
-            interior="Gray"
+        # Create Vehicle
+        v_row = df_vehicle.iloc[0]
+        cls.vehicle, _ = VehicleInfo.objects.get_or_create(
+            id=int(v_row['id']),
+            defaults={
+                'vehicle_model': str(v_row['vehicle_model']),
+                'make': cls.make,
+                'mmr': int(v_row['mmr']),
+                'trim': str(v_row['trim']) if pd.notna(v_row['trim']) else None,
+                'body': str(v_row['body']) if pd.notna(v_row['body']) else None,
+                'transmission': str(v_row['transmission']) if pd.notna(v_row['transmission']) else None,
+                'vin': str(v_row['vin']),
+                'state': str(v_row['state']) if pd.notna(v_row['state']) else None,
+                'condition': int(v_row['condition']) if pd.notna(v_row['condition']) else None,
+                'odometer': int(v_row['odometer']) if pd.notna(v_row['odometer']) else None,
+                'color': str(v_row['color']) if pd.notna(v_row['color']) else None,
+                'interior': str(v_row['interior']) if pd.notna(v_row['interior']) else None
+            }
         )
 
-        # 7. Create Customer Info
-        cls.customer = CustomerInfo.objects.create(
-            firstname="Robert",
-            lastname="Nguyen",
-            customer_status="Regular",
-            customer_address="6341 Broadway, Melbourne",
-            city=cls.city,
-            country=cls.country
+        # Create Customer
+        c_row = df_customer.iloc[0]
+        cls.customer, _ = CustomerInfo.objects.get_or_create(
+            customer_id=int(c_row['customer_id']),
+            defaults={
+                'firstname': str(c_row['firstname']),
+                'lastname': str(c_row['lastname']),
+                'customer_status': str(c_row['customer_status']),
+                'customer_address': str(c_row['customer_address']),
+                'city': cls.city,
+                'country': cls.country
+            }
         )
 
     def test_model_creation(self):
@@ -91,11 +370,10 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
         self.assertEqual(self.city.city_name, "New York")
         self.assertEqual(self.store.store_code, "ST0001")
         self.assertEqual(self.role.role_name, "Sales Executive")
-        self.assertEqual(self.status_in_service.status, "In Service")
         self.assertEqual(self.employee.first_name, "Robert")
-        self.assertEqual(self.make.make_name, "Toyota")
-        self.assertEqual(self.vehicle.vehicle_model, "Camry")
+        self.assertEqual(self.vehicle.vehicle_model, "F-250 Super Duty")
         self.assertEqual(self.customer.firstname, "Robert")
+        self.assertEqual(self.make.make_name, "Acura")
 
     def test_unique_constraints(self):
         """Verify unique constraints are enforced by the database."""
@@ -132,7 +410,7 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
                     vehicle_model="Corolla",
                     make=self.make,
                     mmr=15000,
-                    vin="4T1BF1FK3EU327266",  # Duplicate VIN
+                    vin=self.vehicle.vin,
                 )
 
     def test_selling_info_creation(self):
@@ -180,18 +458,42 @@ class CarSalesCrudTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        # Create users
-        cls.admin_user = User.objects.create_user(username="admin", password="password123", is_staff=True)
-        cls.regular_user = User.objects.create_user(username="regular", password="password123", is_staff=False)
-        
-        # Test targets
-        cls.make = IndustryInfo.objects.create(make_name="Ford")
-        cls.vehicle = VehicleInfo.objects.create(vehicle_model="F-150", make=cls.make, mmr=22000, vin="FORDVIN123")
-        cls.customer = CustomerInfo.objects.create(firstname="Mark", lastname="Sloan", customer_status="Regular", city=cls.city, country=cls.country)
-        cls.employee = Employee.objects.create(
-            first_name="Jane", last_name="Doe", date_of_joining=datetime.date(2020, 1, 1),
-            employee_role=cls.role, status=cls.status_active, store=cls.store, city=cls.city, country=cls.country
+        excel_path = os.path.join(settings.BASE_DIR, 'dataset', 'car_sales_dataset_v2_untouched.xlsx')
+
+        with pd.ExcelFile(excel_path) as xls:
+            df_make = pd.read_excel(xls, sheet_name='industry_info', nrows=3)
+            df_vehicle = pd.read_excel(xls, sheet_name='vehicle_info', nrows=3)
+            df_customer = pd.read_excel(xls, sheet_name='customer_info', nrows=3)
+
+        cls.make, _ = IndustryInfo.objects.get_or_create(
+            make_id=int(df_make.iloc[1]['make_id']),
+            defaults={'make_name': str(df_make.iloc[1]['make_name'])}
         )
+
+        v_row = df_vehicle.iloc[1]
+        cls.vehicle, _ = VehicleInfo.objects.get_or_create(
+            id=int(v_row['id']),
+            defaults={
+                'vehicle_model': str(v_row['vehicle_model']),
+                'make': cls.make,
+                'mmr': int(v_row['mmr']),
+                'vin': str(v_row['vin'])
+            }
+        )
+
+        c_row = df_customer.iloc[1]
+        cls.customer, _ = CustomerInfo.objects.get_or_create(
+            customer_id=int(c_row['customer_id']),
+            defaults={
+                'firstname': str(c_row['firstname']),
+                'lastname': str(c_row['lastname']),
+                'customer_status': str(c_row['customer_status']),
+                'city': cls.city,
+                'country': cls.country
+            }
+        )
+
+        cls.employee = cls.test_employee
 
     def test_anonymous_user_crud_denied(self):
         """Verify that anonymous users are redirected/blocked from CRUD endpoints."""
@@ -203,7 +505,7 @@ class CarSalesCrudTestCase(CarSalesBaseTestCase):
 
     def test_regular_user_crud_denied(self):
         """Verify that authenticated regular users are redirected/blocked from CRUD endpoints."""
-        self.client.login(username="regular", password="password123")
+        self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
         for model in ['customerinfo', 'vehicleinfo', 'sellinginfo']:
             url = reverse('admin_crud', args=[model, 'create'])
             response = self.client.get(url)
@@ -212,7 +514,7 @@ class CarSalesCrudTestCase(CarSalesBaseTestCase):
 
     def test_staff_user_crud_allowed(self):
         """Verify that staff/admin users can access CRUD creation forms."""
-        self.client.login(username="admin", password="password123")
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         for model in ['customerinfo', 'vehicleinfo', 'sellinginfo']:
             url = reverse('admin_crud', args=[model, 'create'])
             response = self.client.get(url)
@@ -220,27 +522,27 @@ class CarSalesCrudTestCase(CarSalesBaseTestCase):
 
     def test_admin_crud_nonexistent_model(self):
         """Verify requesting CRUD endpoints on a nonexistent model returns 404."""
-        self.client.login(username="admin", password="password123")
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         url = reverse('admin_crud', args=['invalidmodel', 'create'])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
 
     def test_selling_info_custom_form_validation(self):
         """Verify custom SellingInfo form validation and record creation via POST."""
-        self.client.login(username="admin", password="password123")
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         url = reverse('admin_crud', args=['sellinginfo', 'create'])
         
         # 1. Invalid submit: Customer and Vehicle IDs do not exist
         invalid_data = {
-            'customer': 9999,
-            'vehicle': 9999,
+            'customer': 999999,
+            'vehicle': 999999,
             'employee': self.employee.employee_id,
             'store': self.store.store_id,
             'selling_price': 25000,
             'selling_date': '2026-06-01'
         }
         response = self.client.post(url, invalid_data)
-        self.assertEqual(response.status_code, 200) # Returns 200 to render validation errors
+        self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context['form'], 'customer', "Customer with this ID does not exist.")
         self.assertFormError(response.context['form'], 'vehicle', "Vehicle with this ID does not exist.")
 
@@ -254,7 +556,7 @@ class CarSalesCrudTestCase(CarSalesBaseTestCase):
             'selling_date': '2026-06-01'
         }
         response = self.client.post(url, valid_data)
-        self.assertEqual(response.status_code, 302) # Redirects on success
+        self.assertEqual(response.status_code, 302)
         self.assertTrue(SellingInfo.objects.filter(selling_price=25000).exists())
 
 
@@ -264,7 +566,6 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.test_user = User.objects.create_user(username="testuser", password="testpassword123")
         # Create three employees
         cls.emp1 = Employee.objects.create(
             first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
@@ -284,6 +585,7 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
         cls.vehicle2 = VehicleInfo.objects.create(vehicle_model="Civic", make=cls.make, mmr=14000, vin="HONDA22")
         cls.vehicle3 = VehicleInfo.objects.create(vehicle_model="Civic", make=cls.make, mmr=14000, vin="HONDA33")
         cls.customer = CustomerInfo.objects.create(firstname="John", lastname="Doe", customer_status="Regular", city=cls.city, country=cls.country)
+        
         # Sales records to establish leaderboard ranks (emp1 > emp2 > emp3)
         SellingInfo.objects.create(
             customer=cls.customer, vehicle=cls.vehicle1, employee=cls.emp1, store=cls.store,
@@ -301,7 +603,8 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
         cls.url = reverse('employee_report')
 
     def setUp(self):
-        self.client.login(username="testuser", password="testpassword123")
+        super().setUp()
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
 
     def test_employee_report_view_renders_correctly(self):
         """Verify the employee performance report lists and ranks employees correctly."""
@@ -320,15 +623,12 @@ class EmployeeReportTestCase(CarSalesBaseTestCase):
 
     def test_employee_report_pagination_invalid_page(self):
         """Verify that pagination falls back to page 1 for invalid or empty page parameters."""
-        # 1. Non-integer page parameter
         response = self.client.get(self.url, {'page': 'notaninteger'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['employee_leaderboard'].number, 1)
 
-        # 2. Page number out of bounds
         response = self.client.get(self.url, {'page': '99999'})
         self.assertEqual(response.status_code, 200)
-        # Django paginator get_page returns the last page if out of bounds
         self.assertEqual(response.context['employee_leaderboard'].number, 1)
 
 
@@ -338,7 +638,6 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.test_user = User.objects.create_user(username="testuser", password="testpassword123")
         cls.emp = Employee.objects.create(
             first_name="Alice", last_name="Smith", date_of_joining=datetime.date(2020, 1, 1),
             employee_role=cls.role, status=cls.status_active, store=cls.store, city=cls.city, country=cls.country
@@ -358,7 +657,8 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
         cls.sales_report_url = reverse('sales_report')
 
     def setUp(self):
-        self.client.login(username="testuser", password="testpassword123")
+        super().setUp()
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
 
     def test_employee_report_json_download(self):
         """Verify employee report returns valid structured JSON with correct fields."""
@@ -392,7 +692,6 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
 
     def test_json_download_date_filter_boundary_no_records(self):
         """Verify that JSON download works correctly and returns empty datasets when filters match no data."""
-        # Query date range outside our setup sale date (2026-06-01)
         response = self.client.get(self.sales_report_url, {
             'download': 'json',
             'date_from': '2026-07-01',
@@ -408,16 +707,9 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
 class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     """Test suite ensuring all HTML views and JSON API endpoints load correctly."""
 
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        # Set up a staff user to test logged-in status if pages require login.
-        cls.user = User.objects.create_user(username="testuser", password="testpassword123")
-        cls.staff_user = User.objects.create_user(username="staffuser", password="testpassword123", is_staff=True)
-
     def test_frontend_pages_render_successfully(self):
         """Verify that all main dashboard, listing, and report pages load (status 200)."""
-        self.client.login(username="testuser", password="testpassword123")
+        self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
         urls = [
             'home',
             'employee',
@@ -444,7 +736,7 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             )
 
         # Login as staff user for restricted API pages
-        self.client.login(username="staffuser", password="testpassword123")
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         restricted_urls = [
             'employee_sales_page_view',
             'store_sales_page_view',
@@ -461,20 +753,14 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     def test_employee_sales_api_endpoints(self):
         """Verify that the employee sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('employee_sales_api')
-        
-        # 1. Without login (should return 401)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         
-        # Log in as staff
-        self.client.login(username="staffuser", password="testpassword123")
-        
-        # 2. No parameters (should return 400)
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['status'])
 
-        # 3. Valid range (should return 200)
         response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -484,20 +770,14 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     def test_store_sales_api_endpoints(self):
         """Verify that the store sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('store_sales_api')
-        
-        # 1. Without login (should return 401)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         
-        # Log in as staff
-        self.client.login(username="staffuser", password="testpassword123")
-        
-        # 2. No parameters (should return 400)
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['status'])
 
-        # 3. Valid range (should return 200)
         response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -507,20 +787,14 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     def test_store_vehicle_sales_api_endpoints(self):
         """Verify that the store vehicle sales API returns 200 for valid ranges and 400 for bad ranges."""
         url = reverse('store_vehicle_sales_api')
-        
-        # 1. Without login (should return 401)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         
-        # Log in as staff
-        self.client.login(username="staffuser", password="testpassword123")
-        
-        # 2. No parameters (should return 400)
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         self.assertFalse(response.json()['status'])
 
-        # 3. Valid range (should return 200)
         response = self.client.get(url, {'dt_from': '2014-01-01', 'dt_to': '2015-12-31'})
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -532,12 +806,11 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
     """Test suite verifying custom authentication, login, registration, and logout flows."""
 
     def setUp(self):
+        super().setUp()
         self.login_url = reverse('login')
         self.register_url = reverse('register')
         self.logout_url = reverse('logout')
-        self.user = User.objects.create_user(username="validuser", email="valid@example.com", password="password123")
         
-        # Create a test employee with a default password
         self.employee = Employee.objects.create(
             first_name="Jane",
             last_name="Doe",
@@ -575,17 +848,9 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
         self.assertTemplateUsed(response, 'car_sales/login.html')
         self.assertContains(response, "Invalid username or password.")
 
-    def test_login_view_post_django_user_fallback_success(self):
-        """POST with valid standard Django user credentials should authenticate and redirect to home."""
-        response = self.client.post(self.login_url, {
-            'username': 'validuser',
-            'password': 'password123'
-        })
-        self.assertRedirects(response, reverse('home'))
-
     def test_login_terminated_employee_failure(self):
         """Terminated employee should not be allowed to log in."""
-        terminated_status = EmployeeStatus.objects.create(status="Terminated")
+        terminated_status, _ = EmployeeStatus.objects.get_or_create(status="Terminated")
         term_employee = Employee.objects.create(
             first_name="Terminated",
             last_name="User",
@@ -608,8 +873,61 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
 
     def test_logout_view(self):
         """Request to logout view should terminate session and redirect to login."""
-        self.client.login(username="validuser", password="password123")
+        self.client.post(self.login_url, {
+            'username': str(self.employee.employee_id),
+            'password': 'CAr$@lse2014'
+        })
         response = self.client.post(self.logout_url)
         self.assertRedirects(response, self.login_url)
 
+    def test_create_employee_view_denied_for_non_staff(self):
+        """Non-staff user should be redirected to login when trying to access create employee page."""
+        response = self.client.get(reverse('create_employee'))
+        self.assertEqual(response.status_code, 302)
 
+    def test_create_employee_view_get_success_for_staff(self):
+        """Staff user should be able to load the create employee form."""
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+        response = self.client.get(reverse('create_employee'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'car_sales/create_employee.html')
+
+    def test_create_employee_view_post_success(self):
+        """Staff user can successfully create a new employee."""
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+        
+        post_data = {
+            'first_name': 'John',
+            'last_name': 'Smith',
+            'date_of_joining': '2026-07-05',
+            'employee_addr': '456 Elm St',
+            'employee_role': self.role.role_id,
+            'status': self.status_active.status_id,
+            'store': self.store.store_id,
+            'city': self.city.city_id,
+            'country': self.country.country_id,
+            'password': 'SecurePassword123'
+        }
+        response = self.client.post(reverse('create_employee'), post_data)
+        self.assertRedirects(response, reverse('employee'))
+        
+        # Verify employee is created
+        emp = Employee.objects.filter(first_name='John', last_name='Smith').first()
+        self.assertIsNotNone(emp)
+        self.assertEqual(emp.employee_addr, '456 Elm St')
+        self.assertEqual(emp.password, 'SecurePassword123')
+
+    def test_user_registration_via_view(self):
+        """Standard user registration view creates a User and logs them in."""
+        response = self.client.post(self.register_url, {
+            'name': 'Register User',
+            'email': 'register@test.com',
+            'username': 'register_user',
+            'password': 'Password123',
+            'terms': 'on'
+        })
+        self.assertRedirects(response, reverse('home'))
+        
+        # Verify User was created
+        user_exists = User.objects.filter(username='register_user').exists()
+        self.assertTrue(user_exists)

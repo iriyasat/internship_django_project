@@ -276,6 +276,27 @@ class SellingInfoForm(ModelForm):
         except VehicleInfo.DoesNotExist:
             raise forms.ValidationError("Vehicle with this ID does not exist.")
 
+class EmployeeForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        fields = [
+            'first_name', 'last_name', 'date_of_joining', 
+            'employee_addr', 'employee_role', 'status', 
+            'store', 'city', 'country', 'password'
+        ]
+        widgets = {
+            'date_of_joining': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'password': forms.PasswordInput(render_value=True, attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'employee_addr': forms.TextInput(attrs={'class': 'form-control'}),
+            'employee_role': forms.Select(attrs={'class': 'form-select'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'store': forms.Select(attrs={'class': 'form-select'}),
+            'city': forms.Select(attrs={'class': 'form-select'}),
+            'country': forms.Select(attrs={'class': 'form-select'}),
+        }
+
 @staff_member_required(login_url='login')
 def admin_panel_view(request):
     stats = {
@@ -350,6 +371,8 @@ def admin_crud_view(request, model_name, action, pk=None):
 
     if actual_model_name == 'SellingInfo':
         form_class = SellingInfoForm
+    elif actual_model_name == 'Employee':
+        form_class = EmployeeForm
     else:
         form_class = modelform_factory(model, exclude=exclude_fields)
 
@@ -381,6 +404,31 @@ def admin_crud_view(request, model_name, action, pk=None):
         'next': next_url
     }
     return render(request, 'car_sales/admin_crud.html', context)
+
+
+@staff_member_required(login_url='login')
+def create_employee_view(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        messages.error(request, "Access denied. Only administrators are allowed to create employees.")
+        return HttpResponseRedirect(reverse('home'))
+        
+    next_url = request.GET.get('next') or request.POST.get('next') or reverse('employee')
+    
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Successfully created a new employee record.")
+            return HttpResponseRedirect(next_url)
+    else:
+        form = EmployeeForm()
+        
+    context = {
+        'form': form,
+        'next': next_url,
+        'active_tab': 'employees'
+    }
+    return render(request, 'car_sales/create_employee.html', context)
 
 
 @login_required
@@ -1007,6 +1055,7 @@ def register_view(request):
                 first_name=first_name,
                 last_name=last_name
             )
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
             login(request, user)
             messages.success(request, f"Registration successful. Welcome, {user.username}!")
             return redirect('home')
@@ -1024,12 +1073,32 @@ def logout_view(request):
 
 
 from django.contrib.auth.backends import BaseBackend
+import types
 
 class EmployeeBackend(BaseBackend):
     """
     Custom Django authentication backend to authenticate users using their
     Employee ID and plain-text password from the employee table.
     """
+    def _create_in_memory_user(self, employee, uid):
+        role_name = employee.employee_role.role_name.lower() if employee.employee_role else ""
+        is_manager = "manager" in role_name or "admin" in role_name
+        
+        user = User(
+            id=uid,
+            username=f"emp_{employee.employee_id}",
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+            is_staff=is_manager,
+            is_superuser=False,
+            is_active=True,
+            password=employee.password
+        )
+        # Bypass DB operations to prevent writing to auth_user table
+        user.save = types.MethodType(lambda self, *args, **kwargs: None, user)
+        user.delete = types.MethodType(lambda self, *args, **kwargs: (0, {}), user)
+        return user
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         if not username or not str(username).isdigit():
             return None
@@ -1044,30 +1113,29 @@ class EmployeeBackend(BaseBackend):
             return None
             
         if employee and employee.password == password:
-            # We map this Employee to a Django User account
-            user_username = f"emp_{employee.employee_id}"
-            user, created = User.objects.get_or_create(username=user_username)
-            
-            # Sync metadata
-            user.first_name = employee.first_name
-            user.last_name = employee.last_name
-            user.set_password(password)
-            
-            # Assign is_staff if they are a Manager/Admin
-            role_name = employee.employee_role.role_name.lower() if employee.employee_role else ""
-            is_manager = "manager" in role_name or "admin" in role_name
-            
-            if user.is_staff != is_manager:
-                user.is_staff = is_manager
-                
-            user.save()
-            return user
+            return self._create_in_memory_user(employee, -employee.employee_id)
             
         return None
 
     def get_user(self, user_id):
         try:
-            return User.objects.get(pk=user_id)
+            uid = int(user_id)
+        except (ValueError, TypeError):
+            return None
+
+        if uid < 0:
+            employee_id = -uid
+            try:
+                employee = Employee.objects.select_related('employee_role', 'status', 'store').filter(employee_id=employee_id).first()
+            except Exception:
+                return None
+            if not employee or (employee.status and employee.status.status == 'Terminated'):
+                return None
+                
+            return self._create_in_memory_user(employee, uid)
+            
+        try:
+            return User.objects.get(pk=uid)
         except User.DoesNotExist:
             return None
 

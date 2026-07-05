@@ -20,6 +20,7 @@ urlpatterns = [
     path('reports/employee/', employee_report_view, name='employee_report'),
     path('reports/vehicle/', vehicle_report_view, name='vehicle_report'),
     path('reports/sales/', sales_report_view, name='sales_report'),
+    path('admin-panel/employee/create/', create_employee_view, name='create_employee'),
     path('admin-panel/', admin_panel_view, name='admin_panel'),
     path('admin-panel/crud/<str:model_name>/<str:action>/', admin_crud_view, name='admin_crud'),
     path('admin-panel/crud/<str:model_name>/<str:action>/<int:pk>/', admin_crud_view, name='admin_crud_pk'),
