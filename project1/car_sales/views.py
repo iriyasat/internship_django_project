@@ -743,6 +743,91 @@ def sales_report_view(request):
     return render(request, 'car_sales/sales_report.html', context)
 
 
+@login_required
+def customer_vehicle_report_view(request):
+    profile = get_employee_profile(request)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    
+    # Filter sales by date range and hierarchy
+    sales_qs = filter_by_hierarchy(SellingInfo.objects.all(), request, profile, 'store', 'employee')
+    if date_from:
+        sales_qs = sales_qs.filter(selling_date__gte=date_from)
+    if date_to:
+        sales_qs = sales_qs.filter(selling_date__lte=date_to)
+        
+    total_sales = sales_qs.count()
+    total_revenue = sales_qs.aggregate(total=Sum('selling_price'))['total'] or 0
+    avg_price = sales_qs.aggregate(avg=Avg('selling_price'))['avg'] or 0
+    
+    margin_stats = sales_qs.annotate(
+        margin=F('selling_price') - F('vehicle__mmr')
+    ).aggregate(
+        total_margin=Sum('margin'),
+        avg_margin=Avg('margin')
+    )
+    total_margin = margin_stats['total_margin'] or 0
+    avg_margin = margin_stats['avg_margin'] or 0
+    
+    # Detailed Sales Transactions
+    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'store', 'employee').annotate(
+        margin=F('selling_price') - F('vehicle__mmr')
+    ).order_by('-selling_date', '-sell_id')
+    
+    # JSON download support
+    if request.GET.get('download') == 'json':
+        data = {
+            'report_type': 'Customer & Vehicle Sales Report',
+            'date_range': {'from': date_from, 'to': date_to},
+            'summary': {
+                'total_sales': total_sales,
+                'total_revenue': float(total_revenue),
+                'average_price': float(avg_price),
+                'total_margin': float(total_margin),
+                'average_margin': float(avg_margin),
+            },
+            'transactions': [
+                {
+                    'sale_id': sale.sell_id,
+                    'customer_name': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
+                    'vehicle_info': f"{sale.vehicle.make.make_name} {sale.vehicle.vehicle_model}" if sale.vehicle else None,
+                    'store_name': sale.store.store_name if sale.store else None,
+                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
+                    'mmr': float(sale.vehicle.mmr or 0) if sale.vehicle else 0.0,
+                    'selling_price': float(sale.selling_price or 0),
+                    'mmr_vs_selling_price': float(sale.margin or 0),
+                }
+                for sale in detailed_sales_qs
+            ]
+        }
+        response = JsonResponse(data, json_dumps_params={'indent': 2})
+        response['Content-Disposition'] = f'attachment; filename="customer_vehicle_report_{date_from}_to_{date_to}.json"'
+        return response
+
+    paginator = Paginator(detailed_sales_qs, 1000)  # 1000 records per page
+    page_number = request.GET.get('page')
+    sales_page = paginator.get_page(page_number)
+    
+    for sale in sales_page:
+        sale.abs_margin = abs(sale.margin or 0)
+        
+    context = {
+        'active_parent': 'reports',
+        'active_tab': 'report_customer_vehicle',
+        'total_sales': total_sales,
+        'total_revenue': total_revenue,
+        'avg_price': avg_price,
+        'total_margin': total_margin,
+        'avg_margin': avg_margin,
+        'total_margin_abs': abs(total_margin),
+        'avg_margin_abs': abs(avg_margin),
+        'detailed_sales': sales_page,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+    }
+    return render(request, 'car_sales/customer_vehicle_report.html', context)
+
+
 # --- API Endpoint implementing Supervisor's Stored-Procedure/Raw SQL approach ---
 @api_view(['GET', 'POST'])
 def employee_sales_api(request):

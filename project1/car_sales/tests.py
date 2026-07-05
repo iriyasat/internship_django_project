@@ -655,6 +655,7 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
         cls.employee_report_url = reverse('employee_report')
         cls.vehicle_report_url = reverse('vehicle_report')
         cls.sales_report_url = reverse('sales_report')
+        cls.customer_vehicle_report_url = reverse('customer_vehicle_report')
 
     def setUp(self):
         super().setUp()
@@ -688,6 +689,18 @@ class ReportJsonExportTestCase(CarSalesBaseTestCase):
         data = response.json()
         self.assertEqual(data['report_type'], 'Sales Revenue Report')
         self.assertTrue(len(data['transactions']) > 0)
+        self.assertEqual(data['transactions'][0]['selling_price'], 30000.0)
+
+    def test_customer_vehicle_report_json_download(self):
+        """Verify customer vehicle report returns valid structured JSON with correct fields."""
+        response = self.client.get(self.customer_vehicle_report_url, {'download': 'json'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = response.json()
+        self.assertEqual(data['report_type'], 'Customer & Vehicle Sales Report')
+        self.assertTrue(len(data['transactions']) > 0)
+        self.assertEqual(data['transactions'][0]['customer_name'], "John Doe")
+        self.assertEqual(data['transactions'][0]['vehicle_info'], "Subaru Outback")
         self.assertEqual(data['transactions'][0]['selling_price'], 30000.0)
 
     def test_json_download_date_filter_boundary_no_records(self):
@@ -726,6 +739,7 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'employee_report',
             'vehicle_report',
             'sales_report',
+            'customer_vehicle_report',
         ]
         for url_name in urls:
             url = reverse(url_name)

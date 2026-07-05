@@ -220,6 +220,7 @@
         </a>
       </li>
 
+      {% if request.user.is_staff or request.user.is_superuser %}
       <li class="nav-item">
         <a class="nav-link {% if active_parent == 'reports' %}{% else %}collapsed{% endif %}"
           data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
@@ -242,8 +243,14 @@
               <i class="bi bi-circle"></i><span>Sales Report</span>
             </a>
           </li>
+          <li>
+            <a href="/reports/customer-vehicle/" class="{% if active_tab == 'report_customer_vehicle' %}active{% endif %}">
+              <i class="bi bi-circle"></i><span>Customer & Vehicle Report</span>
+            </a>
+          </li>
         </ul>
       </li>
+      {% endif %}
 
       {% if request.user.is_staff or request.user.is_superuser %}
       <li class="nav-item">
