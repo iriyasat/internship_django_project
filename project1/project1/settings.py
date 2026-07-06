@@ -140,4 +140,9 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# Custom date/time format module path
+FORMAT_MODULE_PATH = [
+    'project1.formats',
+]
+
 

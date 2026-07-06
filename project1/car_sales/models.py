@@ -1,10 +1,28 @@
 from django.db import models
+import datetime
+
+class TruncatedDateTimeField(models.DateTimeField):
+    """
+    A custom DateTimeField that truncates seconds and microseconds to zero,
+    and maps to standard 'datetime' without fractional precision in MySQL.
+    """
+    def db_type(self, connection):
+        if connection.settings_dict['ENGINE'] == 'django.db.backends.mysql':
+            return 'datetime'
+        return super().db_type(connection)
+
+    def pre_save(self, model_instance, add):
+        value = super().pre_save(model_instance, add)
+        if value and isinstance(value, datetime.datetime):
+            value = value.replace(second=0, microsecond=0)
+            setattr(model_instance, self.attname, value)
+        return value
 
 class Country(models.Model):
     country_id = models.AutoField(primary_key=True, verbose_name="Country ID")
     country_name = models.CharField(max_length=100, unique=True, verbose_name="Country Name")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return self.country_name
@@ -18,8 +36,8 @@ class City(models.Model):
     city_id = models.AutoField(primary_key=True, verbose_name="City ID")
     city_name = models.CharField(max_length=100, verbose_name="City Name")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='cities', verbose_name="Country")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"{self.city_name}, {self.country.country_name}"
@@ -36,8 +54,8 @@ class Store(models.Model):
     city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='city_id', related_name='stores', verbose_name="City")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='stores', verbose_name="Country")
     address = models.CharField(max_length=255, verbose_name="Address")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"{self.store_name} ({self.store_code})"
@@ -49,8 +67,8 @@ class Store(models.Model):
 class EmployeeRole(models.Model):
     role_id = models.AutoField(primary_key=True, verbose_name="Role ID")
     role_name = models.CharField(max_length=100, unique=True, verbose_name="Role Name")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return self.role_name
@@ -62,8 +80,8 @@ class EmployeeRole(models.Model):
 class EmployeeStatus(models.Model):
     status_id = models.AutoField(primary_key=True, verbose_name="Status ID")
     status = models.CharField(max_length=50, unique=True, verbose_name="Status Name")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return self.status
@@ -85,8 +103,8 @@ class Employee(models.Model):
     city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='city_id', related_name='employees', verbose_name="City")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='employees', verbose_name="Country")
     password = models.CharField(max_length=25, blank = False, null = False, verbose_name="Password", default='CAr$@lse2014')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -98,8 +116,8 @@ class Employee(models.Model):
 class IndustryInfo(models.Model):
     make_id = models.AutoField(primary_key=True, verbose_name="Make ID")
     make_name = models.CharField(max_length=100, unique=True, verbose_name="Make Name")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return self.make_name
@@ -123,8 +141,8 @@ class VehicleInfo(models.Model):
     odometer = models.IntegerField(null=True, blank=True, verbose_name="Odometer")
     color = models.CharField(max_length=50, null=True, blank=True, verbose_name="Color")
     interior = models.CharField(max_length=50, null=True, blank=True, verbose_name="Interior")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"{self.make.make_name} {self.vehicle_model} ({self.vin})"
@@ -145,8 +163,8 @@ class CustomerInfo(models.Model):
     customer_address = models.CharField(max_length=255, verbose_name="Customer Address")
     city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='city_id', related_name='customers', verbose_name="City")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='customers', verbose_name="Country")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"{self.firstname} {self.lastname}"
@@ -164,8 +182,8 @@ class SellingInfo(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, db_column='store_id', related_name='sales', verbose_name="Store")
     selling_price = models.IntegerField(verbose_name="Selling Price")
     selling_date = models.DateField(db_index=True, verbose_name="Selling Date")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"Sale {self.sell_id}: {self.vehicle} to {self.customer} ($ {self.selling_price})"
@@ -183,8 +201,8 @@ class EmployeeBudget(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, db_column='store_id', related_name='budgets', verbose_name="Store")
     budget_qty = models.IntegerField(verbose_name="Budget Quantity")
     budget_amount = models.IntegerField(verbose_name="Budget Amount")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
         return f"Budget for {self.employee} - {self.budget_year}/{self.budget_month}"
@@ -226,23 +244,22 @@ class Inventory(models.Model):
         related_name='inventory_item',
         verbose_name="Selling Info"
     )
-    class StatusChoices(models.TextChoices):
-        SOLD = 'sold', 'Sold'
-        PRE_ORDER = 'pre-order', 'Pre-order'
-        UNAVAILABLE = 'unavailable', 'Unavailable'
-        AVAILABLE = 'available', 'Available'
+    class StatusChoices(models.IntegerChoices):
+        SOLD = 1, 'Sold'
+        PRE_ORDER = 2, 'Pre-order'
+        UNAVAILABLE = 0, 'Unavailable'
+        AVAILABLE = 4, 'Available'
 
-    status = models.CharField(
-        max_length=20,
+    status = models.IntegerField(
         choices=StatusChoices.choices,
         default=StatusChoices.AVAILABLE,
         verbose_name="Status"
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
     def __str__(self):
-        return f"{self.vehicle} at {self.store} ({self.status})"
+        return f"{self.vehicle} at {self.store} ({self.get_status_display()})"
 
     class Meta:
         db_table = 'inventory'
