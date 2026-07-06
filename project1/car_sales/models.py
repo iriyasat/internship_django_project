@@ -192,3 +192,58 @@ class EmployeeBudget(models.Model):
     class Meta:
         db_table = 'employee_budget'
         unique_together = ('employee', 'budget_year', 'budget_month', 'store')
+
+
+class Inventory(models.Model):
+    inventory_id = models.AutoField(primary_key=True, verbose_name="Inventory ID")
+    vehicle = models.OneToOneField(
+        VehicleInfo,
+        on_delete=models.CASCADE,
+        db_column='vehicle_id',
+        related_name='inventory',
+        verbose_name="Vehicle"
+    )
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.CASCADE,
+        db_column='store_id',
+        related_name='inventory_items',
+        verbose_name="Store"
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        db_column='employee_id',
+        related_name='inventory_items',
+        verbose_name="Employee"
+    )
+    selling_info = models.OneToOneField(
+        SellingInfo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='sell_id',
+        related_name='inventory_item',
+        verbose_name="Selling Info"
+    )
+    class StatusChoices(models.TextChoices):
+        SOLD = 'sold', 'Sold'
+        PRE_ORDER = 'pre-order', 'Pre-order'
+        UNAVAILABLE = 'unavailable', 'Unavailable'
+        AVAILABLE = 'available', 'Available'
+
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.AVAILABLE,
+        verbose_name="Status"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def __str__(self):
+        return f"{self.vehicle} at {self.store} ({self.status})"
+
+    class Meta:
+        db_table = 'inventory'
+        verbose_name_plural = 'inventories'

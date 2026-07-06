@@ -80,3 +80,6 @@ django-redis==7.0.0
 
 # Redis database client library for Python
 redis==8.0.1
+
+# NHTSA API Wrapper for retrieving/matching vehicle information
+nhtsa==0.1.7

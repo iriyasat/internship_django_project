@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
-    SellingInfo, EmployeeBudget
+    SellingInfo, EmployeeBudget, Inventory
 )
 
 @admin.register(Country)
@@ -77,3 +77,11 @@ class EmployeeBudgetAdmin(admin.ModelAdmin):
     search_fields = ('employee__first_name', 'employee__last_name')
     autocomplete_fields = ('employee',)
     list_select_related = ('employee', 'store')
+
+@admin.register(Inventory)
+class InventoryAdmin(admin.ModelAdmin):
+    list_display = ('inventory_id', 'vehicle', 'store', 'employee', 'selling_info', 'status', 'created_at', 'updated_at')
+    list_filter = ('status', 'store', 'employee')
+    search_fields = ('vehicle__vin', 'vehicle__vehicle_model', 'employee__first_name', 'employee__last_name')
+    autocomplete_fields = ('vehicle', 'selling_info', 'employee')
+    list_select_related = ('vehicle__make', 'store', 'selling_info', 'employee')
