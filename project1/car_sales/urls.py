@@ -36,4 +36,7 @@ urlpatterns = [
     path('api-page/store-vehicle-sales/', store_vehicle_sales_page_view, name='store_vehicle_sales_page_view'),
     path('api-page/customer-vehicle-sales/', customer_vehicle_sales_page_view, name='customer_vehicle_sales_page_view'),
     path('api-page/customer-store-spending/', customer_store_spending_page_view, name='customer_store_spending_page_view'),
+    path('api/inventory/', inventory_api, name='inventory_api'),
+    path('api/inventory/<int:pk>/', inventory_api, name='inventory_api_detail'),
+    path('api-page/inventory/', inventory_api_page_view, name='inventory_api_page_view'),
 ]

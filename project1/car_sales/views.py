@@ -1243,6 +1243,132 @@ def customer_store_spending_page_view(request):
     return render(request, 'car_sales/api_customer_store_spending.html', context)
 
 
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def inventory_api(request, pk=None):
+    if not request.user.is_authenticated:
+        return Response(
+            {"status": False, "message": "Authentication required."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
+    is_staff = request.user.is_superuser or request.user.is_staff
+    
+    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
+        return Response(
+            {"status": False, "message": "Permission denied. Only staff members can modify inventory data."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if request.method == 'GET':
+        if pk is not None:
+            item = inventoryserializer.fetch_one(pk)
+            if item:
+                return Response({"status": True, "data": item}, status=status.HTTP_200_OK)
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 25))
+        except ValueError:
+            page = 1
+            page_size = 25
+            
+        offset = (page - 1) * page_size
+        search = request.GET.get('search', '').strip()
+        
+        store_id = None
+        employee_id = None
+        profile = get_employee_profile(request)
+        if not request.user.is_superuser and profile and profile.employee_role:
+            role = profile.employee_role.role_name
+            if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
+                store_id = profile.store.store_id
+            elif role not in ["Regional Sales Manager", "Customer Relations Officer"]:
+                employee_id = profile.employee_id
+
+        total, data = inventoryserializer.fetch(limit=page_size, offset=offset, search=search, store_id=store_id, employee_id=employee_id)
+        return Response({
+            "status": True,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "data": data
+        }, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        vehicle = request.data.get('vehicle')
+        store = request.data.get('store')
+        employee = request.data.get('employee')
+        status_val = request.data.get('status')
+        selling_info = request.data.get('selling_info') or None
+
+        if not vehicle or not store or not employee or status_val is None:
+            return Response({"status": False, "message": "Vehicle, store, employee, and status are required fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            new_id = inventoryserializer.create(vehicle, store, employee, status_val, selling_info)
+            new_item = inventoryserializer.fetch_one(new_id)
+            return Response({
+                "status": True,
+                "message": "Inventory record created successfully.",
+                "data": new_item
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'PUT':
+        item = inventoryserializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        vehicle = request.data.get('vehicle', item['vehicle'])
+        store = request.data.get('store', item['store'])
+        employee = request.data.get('employee', item['employee'])
+        status_val = request.data.get('status', item['status'])
+        selling_info = request.data.get('selling_info', item['selling_info'])
+
+        try:
+            inventoryserializer.update(pk, vehicle, store, employee, status_val, selling_info)
+            updated_item = inventoryserializer.fetch_one(pk)
+            return Response({
+                "status": True,
+                "message": "Inventory record updated successfully.",
+                "data": updated_item
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        item = inventoryserializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            inventoryserializer.delete(pk)
+            return Response({
+                "status": True,
+                "message": "Inventory record deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@login_required
+def inventory_api_page_view(request):
+    vehicles = VehicleInfo.objects.select_related('make').all()[:1000]
+    stores = Store.objects.all()
+    employees = Employee.objects.all()
+    selling_infos = SellingInfo.objects.select_related('vehicle__make', 'customer').all()[:1000]
+    
+    context = {
+        'active_parent': 'api_pages',
+        'active_tab': 'api_inventory',
+        'vehicles': vehicles,
+        'stores': stores,
+        'employees': employees,
+        'selling_infos': selling_infos,
+        'status_choices': Inventory.StatusChoices.choices,
+    }
+    return render(request, 'car_sales/api_inventory.html', context)
 
 
 def login_view(request):

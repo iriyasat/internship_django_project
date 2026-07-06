@@ -188,3 +188,119 @@ class customerstorespendingserializer:
         return [dict(zip(columns, row)) for row in rows]
 
 
+class inventoryserializer:
+    DB_NAME = 'default'
+
+    @staticmethod
+    def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None):
+        query = """
+        SELECT 
+            i.inventory_id,
+            CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
+            s.store_name,
+            CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+            CASE 
+                WHEN i.status = 1 THEN 'Sold'
+                WHEN i.status = 2 THEN 'Pre-order'
+                WHEN i.status = 0 THEN 'Unavailable'
+                WHEN i.status = 4 THEN 'Available'
+                ELSE 'Unknown'
+            END AS status_label,
+            i.sell_id AS selling_info,
+            i.status,
+            i.created_at,
+            i.updated_at
+        FROM inventory i
+        INNER JOIN vehicle_info vi ON i.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        INNER JOIN store s ON i.store_id = s.store_id
+        INNER JOIN employee e ON i.employee_id = e.employee_id
+        WHERE 1=1
+        """
+        params = []
+        if store_id is not None:
+            query += " AND i.store_id = %s"
+            params.append(store_id)
+        if employee_id is not None:
+            query += " AND i.employee_id = %s"
+            params.append(employee_id)
+
+        if search:
+            query += """ AND (
+                i.inventory_id LIKE %s OR 
+                vi.vehicle_model LIKE %s OR 
+                ii.make_name LIKE %s OR 
+                s.store_name LIKE %s OR 
+                e.first_name LIKE %s OR 
+                e.last_name LIKE %s
+            )"""
+            search_param = f"%{search}%"
+            params.extend([search_param] * 6)
+
+        count_query = f"SELECT COUNT(*) FROM ({query}) AS temp"
+        
+        query += " ORDER BY i.inventory_id ASC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+
+        with connections[inventoryserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(count_query, params[:-2])
+            total = cursor.fetchone()[0]
+
+            cursor.execute(query, params)
+            columns = [col[0] for col in cursor.description] if cursor.description else []
+            rows = cursor.fetchall()
+            
+        data = [dict(zip(columns, row)) for row in rows]
+        for item in data:
+            if item['created_at']:
+                item['created_at'] = item['created_at'].strftime('%Y-%m-%d %H:%M')
+            if item['updated_at']:
+                item['updated_at'] = item['updated_at'].strftime('%Y-%m-%d %H:%M')
+        return total, data
+
+    @staticmethod
+    def fetch_one(inventory_id):
+        query = """
+        SELECT 
+            inventory_id, vehicle_id AS vehicle, store_id AS store, employee_id AS employee, status, sell_id AS selling_info
+        FROM inventory 
+        WHERE inventory_id = %s
+        """
+        with connections[inventoryserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [inventory_id])
+            row = cursor.fetchone()
+            if row:
+                columns = [col[0] for col in cursor.description]
+                return dict(zip(columns, row))
+        return None
+
+    @staticmethod
+    def create(vehicle_id, store_id, employee_id, status, selling_info=None):
+        query = """
+        INSERT INTO inventory (vehicle_id, store_id, employee_id, status, sell_id, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+        """
+        with connections[inventoryserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [vehicle_id, store_id, employee_id, status, selling_info])
+            inventory_id = cursor.lastrowid
+        return inventory_id
+
+    @staticmethod
+    def update(inventory_id, vehicle_id, store_id, employee_id, status, selling_info=None):
+        query = """
+        UPDATE inventory 
+        SET vehicle_id = %s, store_id = %s, employee_id = %s, status = %s, sell_id = %s, updated_at = NOW()
+        WHERE inventory_id = %s
+        """
+        with connections[inventoryserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [vehicle_id, store_id, employee_id, status, selling_info, inventory_id])
+
+    @staticmethod
+    def delete(inventory_id):
+        query = "DELETE FROM inventory WHERE inventory_id = %s"
+        with connections[inventoryserializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [inventory_id])
+
+
+
+

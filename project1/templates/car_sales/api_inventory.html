@@ -1,0 +1,599 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Inventory CRUD API - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Inventory CRUD API</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item">API</li>
+      <li class="breadcrumb-item active">Inventory CRUD API</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <div class="row">
+    <!-- Action Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">
+            Inventory Management <span>| Live REST API CRUD Operations</span>
+            {% if request.user.is_staff %}
+            <button class="btn btn-primary btn-sm float-end" id="add-inventory-btn" data-bs-toggle="modal" data-bs-target="#inventoryModal">
+              <i class="bi bi-plus-circle me-1"></i> Add Inventory Item
+            </button>
+            {% endif %}
+          </h5>
+
+          <!-- Search and Table Controls -->
+          <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-6 d-flex align-items-center gap-2">
+              <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
+              <select class="form-select form-select-sm" id="page-size-select" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span class="small text-muted">records per page</span>
+            </div>
+            <div class="col-md-6 text-md-end">
+              <div class="input-group input-group-sm ms-auto" style="max-width: 300px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="search-input" placeholder="Search by ID, Vehicle, Store, Employee...">
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading Inventory Database...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper" style="display: none;">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Inventory ID</th>
+                  <th>Vehicle Name / Details</th>
+                  <th>Store Location</th>
+                  <th>Assigned Employee</th>
+                  <th>Status</th>
+                  <th>Selling ID</th>
+                  <th>Created At</th>
+                  <th>Updated At</th>
+                  {% if request.user.is_staff %}
+                  <th>Actions</th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody id="api-table-body">
+                <!-- Populated via Javascript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
+            <div class="small text-muted" id="pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                <!-- Populated via Javascript -->
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CRUD Modal (Add / Edit) -->
+<div class="modal fade" id="inventoryModal" tabindex="-1" aria-labelledby="inventoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="inventory-form" novalidate>
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="inventoryModalLabel">Add Inventory Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-inventory-id" name="inventory_id">
+          
+          <div class="row g-3">
+            <!-- Vehicle Selection -->
+            <div class="col-md-12">
+              <label for="id_vehicle" class="form-label fw-bold small text-muted">Vehicle</label>
+              <select class="form-select form-select-sm" id="id_vehicle" required>
+                <option value="" disabled selected>-- Select Vehicle --</option>
+                {% for v in vehicles %}
+                <option value="{{ v.id }}">{{ v.make.make_name }} {{ v.vehicle_model }} (VIN: {{ v.vin }}, MMR: ${{ v.mmr|intcomma }})</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please select a vehicle.</div>
+            </div>
+
+            <!-- Store Selection -->
+            <div class="col-md-6">
+              <label for="id_store" class="form-label fw-bold small text-muted">Store</label>
+              <select class="form-select form-select-sm" id="id_store" required>
+                <option value="" disabled selected>-- Select Store --</option>
+                {% for s in stores %}
+                <option value="{{ s.store_id }}">{{ s.store_name }} ({{ s.store_code }})</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please select a store.</div>
+            </div>
+
+            <!-- Employee Selection -->
+            <div class="col-md-6">
+              <label for="id_employee" class="form-label fw-bold small text-muted">Assigned Employee</label>
+              <select class="form-select form-select-sm" id="id_employee" required>
+                <option value="" disabled selected>-- Select Employee --</option>
+                {% for e in employees %}
+                <option value="{{ e.employee_id }}">{{ e.first_name }} {{ e.last_name }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please assign an employee.</div>
+            </div>
+
+            <!-- Status Choices -->
+            <div class="col-md-6">
+              <label for="id_status" class="form-label fw-bold small text-muted">Status</label>
+              <select class="form-select form-select-sm" id="id_status" required>
+                {% for val, label in status_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please select status.</div>
+            </div>
+
+            <!-- Selling Info Selection -->
+            <div class="col-md-6">
+              <label for="id_selling_info" class="form-label fw-bold small text-muted">Selling Transaction (Optional)</label>
+              <select class="form-select form-select-sm" id="id_selling_info">
+                <option value="">-- None (Unsold) --</option>
+                {% for si in selling_infos %}
+                <option value="{{ si.sell_id }}">Sale {{ si.sell_id }}: {{ si.vehicle.make.make_name }} to {{ si.customer.firstname }} {{ si.customer.lastname }} ($ {{ si.selling_price|intcomma }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Elements
+  const tableBody = document.getElementById('api-table-body');
+  const tableWrapper = document.getElementById('table-wrapper');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const alertContainer = document.getElementById('alert-container');
+  const searchInput = document.getElementById('search-input');
+  const pageSizeSelect = document.getElementById('page-size-select');
+  const paginationControls = document.getElementById('pagination-controls');
+  const paginationInfo = document.getElementById('pagination-info');
+  const paginationList = document.getElementById('pagination-list');
+  const inventoryModalEl = document.getElementById('inventoryModal');
+  const inventoryForm = document.getElementById('inventory-form');
+  const addInventoryBtn = document.getElementById('add-inventory-btn');
+  const modalTitle = document.getElementById('inventoryModalLabel');
+  
+  // Form Inputs
+  const editIdInput = document.getElementById('edit-inventory-id');
+  const vehicleSelect = document.getElementById('id_vehicle');
+  const storeSelect = document.getElementById('id_store');
+  const employeeSelect = document.getElementById('id_employee');
+  const statusSelect = document.getElementById('id_status');
+  const sellingInfoSelect = document.getElementById('id_selling_info');
+
+  let bootstrapModal = null;
+  if (inventoryModalEl) {
+    bootstrapModal = new bootstrap.Modal(inventoryModalEl);
+  }
+
+  // State Variables
+  let currentPage = 1;
+  let pageSize = parseInt(pageSizeSelect.value);
+  let searchQuery = '';
+  const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
+
+  // Initialize data fetch
+  fetchData();
+
+  // Search event with small debounce
+  let searchTimeout = null;
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      searchQuery = this.value;
+      currentPage = 1;
+      fetchData();
+    }, 300);
+  });
+
+  pageSizeSelect.addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    fetchData();
+  });
+
+  if (addInventoryBtn) {
+    addInventoryBtn.addEventListener('click', function() {
+      // Reset Form for Add Mode
+      inventoryForm.reset();
+      inventoryForm.classList.remove('was-validated');
+      editIdInput.value = '';
+      modalTitle.textContent = 'Add Inventory Item';
+      statusSelect.value = '4'; // Default to Available
+    });
+  }
+
+  // Form Submit (POST / PUT)
+  inventoryForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!inventoryForm.checkValidity()) {
+      e.stopPropagation();
+      inventoryForm.classList.add('was-validated');
+      return;
+    }
+
+    const inventoryId = editIdInput.value;
+    const isEditMode = !!inventoryId;
+
+    const postData = {
+      vehicle: parseInt(vehicleSelect.value),
+      store: parseInt(storeSelect.value),
+      employee: parseInt(employeeSelect.value),
+      status: parseInt(statusSelect.value),
+      selling_info: sellingInfoSelect.value ? parseInt(sellingInfoSelect.value) : null
+    };
+
+    const url = isEditMode ? `/api/inventory/${inventoryId}/` : '/api/inventory/';
+    const method = isEditMode ? 'PUT' : 'POST';
+
+    // Get CSRF Token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify(postData)
+    })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(errData => {
+          throw new Error(JSON.stringify(errData.errors || errData.message || 'Error occurred.'));
+        });
+      }
+      return response.json();
+    })
+    .then(res => {
+      if (res.status) {
+        showSuccess(res.message);
+        bootstrapModal.hide();
+        fetchData();
+      } else {
+        showError(res.message || 'Action failed.');
+      }
+    })
+    .catch(err => {
+      console.error('Submit error:', err);
+      showError(`Submission failed: ${err.message}`);
+    });
+  });
+
+  // Fetch Data function
+  function fetchData() {
+    loadingSpinner.style.display = 'block';
+    tableWrapper.style.display = 'none';
+    paginationControls.style.display = 'none';
+
+    const url = `/api/inventory/?page=${currentPage}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`;
+
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          renderTable(res.data, res.total);
+        } else {
+          showError(res.message || 'Failed to fetch inventory records.');
+          loadingSpinner.style.display = 'none';
+        }
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        showError(`Failed to fetch data from API: ${err.message}`);
+        loadingSpinner.style.display = 'none';
+      });
+  }
+
+  // Render HTML Table
+  function renderTable(data, totalCount) {
+    loadingSpinner.style.display = 'none';
+    tableBody.innerHTML = '';
+
+    if (data.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="${isStaff ? 9 : 8}" class="text-center text-muted py-4">No inventory items found.</td></tr>`;
+      tableWrapper.style.display = 'block';
+      return;
+    }
+
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      row.style.opacity = '0';
+      row.style.transition = 'opacity 0.25s ease-in-out';
+
+      // Status Badge Styling
+      let badgeClass = 'bg-secondary';
+      if (item.status === 4) badgeClass = 'bg-success'; // Available
+      else if (item.status === 1) badgeClass = 'bg-info text-dark'; // Sold
+      else if (item.status === 2) badgeClass = 'bg-warning text-dark'; // Pre-order
+      else if (item.status === 0) badgeClass = 'bg-danger'; // Unavailable
+
+      const statusBadge = `<span class="badge ${badgeClass}">${escapeHtml(item.status_label || 'N/A')}</span>`;
+
+      // Selling Info Link or N/A
+      const sellingLabel = item.selling_info ? 
+        `<span class="badge bg-light text-dark border"><i class="bi bi-receipt me-1"></i>${item.selling_info}</span>` : 
+        `<span class="text-muted small">Unsold</span>`;
+
+      let actionsColumn = '';
+      if (isStaff) {
+        actionsColumn = `
+          <td class="text-nowrap">
+            <button class="btn btn-warning btn-sm edit-btn me-1" data-id="${item.inventory_id}"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${item.inventory_id}"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+      }
+
+      row.innerHTML = `
+        <td><span class="badge bg-dark">${item.inventory_id}</span></td>
+        <td>
+          <div class="fw-bold">${escapeHtml(item.vehicle_name || 'N/A')}</div>
+        </td>
+        <td>${escapeHtml(item.store_name || 'N/A')}</td>
+        <td>${escapeHtml(item.employee_name || 'N/A')}</td>
+        <td>${statusBadge}</td>
+        <td>${sellingLabel}</td>
+        <td><small class="text-muted text-nowrap">${escapeHtml(item.created_at || 'N/A')}</small></td>
+        <td><small class="text-muted text-nowrap">${escapeHtml(item.updated_at || 'N/A')}</small></td>
+        ${actionsColumn}
+      `;
+
+      tableBody.appendChild(row);
+      setTimeout(() => row.style.opacity = '1', 50);
+    });
+
+    // Attach Event Listeners to Edit / Delete Buttons
+    if (isStaff) {
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          openEditModal(id);
+        });
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          if (confirm(`Are you sure you want to delete Inventory item #${id}?`)) {
+            deleteItem(id);
+          }
+        });
+      });
+    }
+
+    tableWrapper.style.display = 'block';
+    renderPagination(totalCount);
+  }
+
+  // Open Edit Modal & Load single item
+  function openEditModal(id) {
+    inventoryForm.classList.remove('was-validated');
+    modalTitle.textContent = `Edit Inventory Item #${id}`;
+    
+    // Fetch details of single item
+    fetch(`/api/inventory/${id}/`)
+      .then(response => response.json())
+      .then(res => {
+        if (res.status && res.data) {
+          const item = res.data;
+          editIdInput.value = item.inventory_id;
+          vehicleSelect.value = item.vehicle;
+          storeSelect.value = item.store;
+          employeeSelect.value = item.employee;
+          statusSelect.value = item.status;
+          sellingInfoSelect.value = item.selling_info || '';
+
+          bootstrapModal.show();
+        } else {
+          showError('Failed to load item details.');
+        }
+      })
+      .catch(err => {
+        console.error('Load details error:', err);
+        showError(`Error loading details: ${err.message}`);
+      });
+  }
+
+  // Delete Item function
+  function deleteItem(id) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch(`/api/inventory/${id}/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': csrfToken
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(res => {
+      if (res.status) {
+        showSuccess(res.message);
+        fetchData();
+      } else {
+        showError(res.message || 'Failed to delete item.');
+      }
+    })
+    .catch(err => {
+      console.error('Delete error:', err);
+      showError(`Delete failed: ${err.message}`);
+    });
+  }
+
+  // Render Pagination controls
+  function renderPagination(totalCount) {
+    paginationList.innerHTML = '';
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    if (totalPages <= 1) {
+      paginationControls.style.display = 'none';
+      return;
+    }
+
+    const startEntry = (currentPage - 1) * pageSize + 1;
+    const endEntry = Math.min(startEntry + pageSize - 1, totalCount);
+    paginationInfo.textContent = `Showing ${startEntry} to ${endEntry} of ${totalCount.toLocaleString()} entries`;
+
+    // Previous Button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
+    if (currentPage > 1) {
+      prevLi.addEventListener('click', () => {
+        currentPage--;
+        fetchData();
+      });
+    }
+    paginationList.appendChild(prevLi);
+
+    // Dynamic Pages Listing (showing max 5 page links around current)
+    const range = 2;
+    const startPage = Math.max(1, currentPage - range);
+    const endPage = Math.min(totalPages, currentPage + range);
+
+    if (startPage > 1) {
+      addPageButton(1);
+      if (startPage > 2) {
+        const dotLi = document.createElement('li');
+        dotLi.className = 'page-item disabled';
+        dotLi.innerHTML = `<span class="page-link">...</span>`;
+        paginationList.appendChild(dotLi);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      addPageButton(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const dotLi = document.createElement('li');
+        dotLi.className = 'page-item disabled';
+        dotLi.innerHTML = `<span class="page-link">...</span>`;
+        paginationList.appendChild(dotLi);
+      }
+      addPageButton(totalPages);
+    }
+
+    // Next Button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
+    if (currentPage < totalPages) {
+      nextLi.addEventListener('click', () => {
+        currentPage++;
+        fetchData();
+      });
+    }
+    paginationList.appendChild(nextLi);
+
+    paginationControls.style.display = 'flex';
+  }
+
+  function addPageButton(pageNumber) {
+    const li = document.createElement('li');
+    li.className = `page-item ${pageNumber === currentPage ? 'active' : ''}`;
+    li.innerHTML = `<button class="page-link" type="button">${pageNumber}</button>`;
+    li.addEventListener('click', () => {
+      currentPage = pageNumber;
+      fetchData();
+    });
+    paginationList.appendChild(li);
+  }
+
+  // Utilities
+  function showSuccess(msg) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    setTimeout(() => {
+      const alert = bootstrap.Alert.getOrCreateInstance(alertContainer.querySelector('.alert'));
+      if (alert) alert.close();
+    }, 4000);
+  }
+
+  function showError(msg) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});
+</script>
+{% endblock %}

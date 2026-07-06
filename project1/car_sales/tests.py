@@ -851,6 +851,66 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         self.assertTrue(data['status'])
         self.assertIsInstance(data['data'], list)
 
+    def test_inventory_crud_api_endpoints(self):
+        """Verify that the inventory CRUD API handles GET, POST, PUT, DELETE with auth restrictions."""
+        list_url = reverse('inventory_api')
+        response = self.client.get(list_url)
+        self.assertEqual(response.status_code, 401)
+
+        # Create base models for testing
+        from .models import Inventory, VehicleInfo
+        make = IndustryInfo.objects.create(make_name="TestMake")
+        vehicle = VehicleInfo.objects.create(vehicle_model="TestModel", make=make, mmr=15000, vin="TESTVIN1234567890")
+        vehicle2 = VehicleInfo.objects.create(vehicle_model="TestModel2", make=make, mmr=16000, vin="TESTVIN0987654321")
+        
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+        
+        item = Inventory.objects.create(
+            vehicle=vehicle,
+            store=self.store,
+            employee=self.test_employee,
+            status=4 # Available
+        )
+        
+        response = self.client.get(list_url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['status'])
+        self.assertGreaterEqual(data['total'], 1)
+        
+        detail_url = reverse('inventory_api_detail', kwargs={'pk': item.inventory_id})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data']['inventory_id'], item.inventory_id)
+
+        post_data = {
+            'vehicle': vehicle2.id,
+            'store': self.store.store_id,
+            'employee': self.test_employee.employee_id,
+            'status': 4
+        }
+        response = self.client.post(list_url, post_data, content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        new_item_id = response.json()['data']['inventory_id']
+        
+        put_data = {
+            'status': 1 # Sold
+        }
+        detail_url_new = reverse('inventory_api_detail', kwargs={'pk': new_item_id})
+        response = self.client.put(detail_url_new, put_data, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Inventory.objects.get(pk=new_item_id).status, 1)
+
+        response = self.client.delete(detail_url_new)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Inventory.objects.filter(pk=new_item_id).exists())
+
+        self.client.logout()
+        self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
+        
+        response = self.client.post(list_url, post_data, content_type='application/json')
+        self.assertEqual(response.status_code, 403)
+
 
 class CustomAuthTestCase(CarSalesBaseTestCase):
     """Test suite verifying custom authentication, login, registration, and logout flows."""
