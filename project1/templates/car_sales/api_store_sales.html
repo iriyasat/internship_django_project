@@ -1,16 +1,16 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
 
-{% block title %}Store Sales API Page - Car Sales{% endblock %}
+{% block title %}Store Sales Report - Car Sales{% endblock %}
 
 {% block content %}
 <div class="pagetitle">
-  <h1>Store Sales API Page</h1>
+  <h1>Store Sales Report</h1>
   <nav>
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
-      <li class="breadcrumb-item">API</li>
-      <li class="breadcrumb-item active">Store Sales API</li>
+      <li class="breadcrumb-item">Reports</li>
+      <li class="breadcrumb-item active">Store Sales Report</li>
     </ol>
   </nav>
 </div>
@@ -73,8 +73,11 @@
                 <option value="100">100</option>
               </select>
             </div>
-            <div>
+            <div class="d-flex align-items-center gap-2">
               <input type="text" class="form-control form-control-sm" id="search-input" placeholder="Search records...">
+              <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+              </button>
             </div>
           </div>
 
@@ -152,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   const pageSizeSelect = document.getElementById('page-size-select');
   const searchInput = document.getElementById('search-input');
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
   const paginationControls = document.getElementById('pagination-controls');
   const paginationInfo = document.getElementById('pagination-info');
   const paginationList = document.getElementById('pagination-list');
@@ -167,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Event Listeners
   fetchBtn.addEventListener('click', fetchData);
+  downloadPdfBtn.addEventListener('click', downloadPDF);
   resetBtn.addEventListener('click', function() {
     dtFromInput.value = '';
     dtToInput.value = '';
@@ -376,6 +381,71 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     paginationList.appendChild(nextLi);
+  }
+
+  function downloadPDF() {
+    if (filteredRecords.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    
+    // Header styling
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(33, 37, 41);
+    doc.text("Store Sales Report", 40, 45);
+    
+    // Sub-header Info
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(108, 117, 125);
+    const dateFrom = dtFromInput.value || '2014-01-01';
+    const dateTo = dtToInput.value || '2014-01-31';
+    doc.text(`Report Range: ${dateFrom} to ${dateTo}`, 40, 65);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 78);
+    
+    const searchVal = searchInput.value.trim();
+    if (searchVal) {
+      doc.text(`Search Query: "${searchVal}"`, 40, 91);
+    }
+    
+    // Data Table headers and rows
+    const headers = [["Store Name", "Customer Name", "Vehicle Details", "Selling Date", "MMR", "Price", "Margin"]];
+    const rows = filteredRecords.map(rec => {
+      const mmrVal = parseFloat(rec.mmr || 0);
+      const priceVal = parseFloat(rec.selling_price || 0);
+      const marginVal = priceVal - mmrVal;
+      const formattedMmr = '$' + mmrVal.toLocaleString();
+      const formattedPrice = '$' + priceVal.toLocaleString();
+      const formattedMargin = (marginVal >= 0 ? '+' : '-') + '$' + Math.abs(marginVal).toLocaleString();
+      return [
+        rec.store_name || 'N/A',
+        rec.customer_name || 'N/A',
+        `${rec.brand_name || ''} ${rec.vehicle_name || 'N/A'}`.trim(),
+        rec.selling_date || 'N/A',
+        formattedMmr,
+        formattedPrice,
+        formattedMargin
+      ];
+    });
+    
+    doc.autoTable({
+      startY: searchVal ? 105 : 95,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 110, 253], textColor: [255, 255, 255] },
+      styles: { fontSize: 8, font: 'helvetica' },
+      columnStyles: {
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+        6: { halign: 'center' }
+      }
+    });
+    
+    doc.save(`store_sales_report_${dateFrom}_to_${dateTo}.pdf`);
   }
 
   // Helpers

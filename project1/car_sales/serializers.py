@@ -302,5 +302,93 @@ class inventoryserializer:
             cursor.execute(query, [inventory_id])
 
 
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = '__all__'
+
+class CitySerializer(serializers.ModelSerializer):
+    country_name = serializers.CharField(source='country.country_name', read_only=True)
+    class Meta:
+        model = City
+        fields = '__all__'
+
+class StoreSerializer(serializers.ModelSerializer):
+    city_name = serializers.CharField(source='city.city_name', read_only=True)
+    country_name = serializers.CharField(source='country.country_name', read_only=True)
+    class Meta:
+        model = Store
+        fields = '__all__'
+
+class EmployeeRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeRole
+        fields = '__all__'
+
+class EmployeeStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeStatus
+        fields = '__all__'
+
+class IndustryInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IndustryInfo
+        fields = '__all__'
+
+class VehicleInfoSerializer(serializers.ModelSerializer):
+    make_name = serializers.CharField(source='make.make_name', read_only=True)
+    class Meta:
+        model = VehicleInfo
+        fields = '__all__'
+
+class CustomerInfoSerializer(serializers.ModelSerializer):
+    city_name = serializers.CharField(source='city.city_name', read_only=True)
+    country_name = serializers.CharField(source='country.country_name', read_only=True)
+    class Meta:
+        model = CustomerInfo
+        fields = '__all__'
+
+class SellingInfoSerializer(serializers.ModelSerializer):
+    customer_name = serializers.SerializerMethodField()
+    vehicle_name = serializers.SerializerMethodField()
+    employee_name = serializers.SerializerMethodField()
+    store_name = serializers.CharField(source='store.store_name', read_only=True)
+
+    class Meta:
+        model = SellingInfo
+        fields = '__all__'
+
+    def get_customer_name(self, obj):
+        return f"{obj.customer.firstname} {obj.customer.lastname}" if obj.customer else 'N/A'
+
+    def get_vehicle_name(self, obj):
+        return f"{obj.vehicle.make.make_name} {obj.vehicle.vehicle_model}" if obj.vehicle and obj.vehicle.make else 'N/A'
+
+    def get_employee_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}" if obj.employee else 'N/A'
+
+class EmployeeBudgetSerializer(serializers.ModelSerializer):
+    employee_name = serializers.SerializerMethodField()
+    store_name = serializers.CharField(source='store.store_name', read_only=True)
+
+    class Meta:
+        model = EmployeeBudget
+        fields = '__all__'
+
+    def get_employee_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}" if obj.employee else 'N/A'
 
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    role_name = serializers.CharField(source='employee_role.role_name', read_only=True)
+    status_name = serializers.CharField(source='status.status', read_only=True)
+    store_name = serializers.CharField(source='store.store_name', read_only=True)
+    city_name = serializers.CharField(source='city.city_name', read_only=True)
+    country_name = serializers.CharField(source='country.country_name', read_only=True)
+
+    class Meta:
+        model = Employee
+        fields = '__all__'
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }

@@ -214,80 +214,48 @@
       </li>
 
       <li class="nav-item">
-        <a class="nav-link {% if active_tab == 'budgets' %}{% else %}collapsed{% endif %}" href="/budgets/">
+        <a class="nav-link {% if active_tab == 'targets' %}{% else %}collapsed{% endif %}" href="/targets/">
           <i class="bi bi-wallet2"></i>
-          <span>Budgets</span>
+          <span>Employee Targets</span>
         </a>
       </li>
-
-      {% if request.user.is_staff or request.user.is_superuser %}
-      <li class="nav-item">
-        <a class="nav-link {% if active_parent == 'reports' %}{% else %}collapsed{% endif %}"
-          data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
-          <i class="bi bi-bar-chart-line"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto"></i>
-        </a>
-        <ul id="reports-nav" class="nav-content collapse {% if active_parent == 'reports' %}show{% endif %}"
-          data-bs-parent="#sidebar-nav">
-          <li>
-            <a href="/reports/employee/" class="{% if active_tab == 'report_employee' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Employee Report</span>
-            </a>
-          </li>
-          <li>
-            <a href="/reports/vehicle/" class="{% if active_tab == 'report_vehicle' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Vehicle Report</span>
-            </a>
-          </li>
-          <li>
-            <a href="/reports/sales/" class="{% if active_tab == 'report_sales' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Sales Report</span>
-            </a>
-          </li>
-          <li>
-            <a href="/reports/customer-vehicle/" class="{% if active_tab == 'report_customer_vehicle' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Customer & Vehicle Report</span>
-            </a>
-          </li>
-        </ul>
-      </li>
-      {% endif %}
 
       {% if request.user.is_staff or request.user.is_superuser %}
       <li class="nav-item">
         <a class="nav-link {% if active_parent == 'api_pages' %}{% else %}collapsed{% endif %}"
           data-bs-target="#api-nav" data-bs-toggle="collapse" href="#">
-          <i class="bi bi-cpu"></i><span>API</span><i class="bi bi-chevron-down ms-auto"></i>
+          <i class="bi bi-bar-chart-line"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto"></i>
         </a>
         <ul id="api-nav" class="nav-content collapse {% if active_parent == 'api_pages' %}show{% endif %}"
           data-bs-parent="#sidebar-nav">
           <li>
             <a href="/api-page/employee-sales/" class="{% if active_tab == 'api_employee_sales' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Employee Sales API</span>
+              <i class="bi bi-circle"></i><span>Employee Sales Report</span>
             </a>
           </li>
           <li>
             <a href="/api-page/store-sales/" class="{% if active_tab == 'api_store_sales' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Store Sales API</span>
+              <i class="bi bi-circle"></i><span>Store Sales Report</span>
             </a>
           </li>
           <li>
             <a href="/api-page/store-vehicle-sales/" class="{% if active_tab == 'api_store_vehicle_sales' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Store Vehicle Sales API</span>
+              <i class="bi bi-circle"></i><span>Store Vehicle Sales Report</span>
             </a>
           </li>
           <li>
             <a href="/api-page/customer-vehicle-sales/" class="{% if active_tab == 'api_customer_vehicle_sales' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Customer & Vehicle Sales API</span>
+              <i class="bi bi-circle"></i><span>Customer & Vehicle Sales Report</span>
             </a>
           </li>
           <li>
             <a href="/api-page/customer-store-spending/" class="{% if active_tab == 'api_customer_store_spending' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Customer Store Spending API</span>
+              <i class="bi bi-circle"></i><span>Customer Store Spending Report</span>
             </a>
           </li>
           <li>
             <a href="/api-page/inventory/" class="{% if active_tab == 'api_inventory' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Inventory CRUD API</span>
+              <i class="bi bi-circle"></i><span>Inventory CRUD Report</span>
             </a>
           </li>
         </ul>
@@ -334,6 +302,10 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+  <!-- jsPDF & AutoTable for PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
   {% block extra_js %}{% endblock %}
 

@@ -128,177 +128,119 @@ dashboard_view = home_view
 @login_required
 def employee_view(request):
     profile = get_employee_profile(request)
-    employees_list = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
-    employees_list = employees_list.select_related('employee_role', 'status', 'store', 'city', 'country').order_by('employee_id')
+    roles = EmployeeRole.objects.all()
+    statuses = EmployeeStatus.objects.all()
+    stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
+    cities = City.objects.all()
+    countries = Country.objects.all()
     context = {
         'active_tab': 'employees',
-        'employees': employees_list
+        'roles': roles,
+        'statuses': statuses,
+        'stores': stores,
+        'cities': cities,
+        'countries': countries,
     }
     return render(request, 'car_sales/employee_view.html', context)
 
 @login_required
 def country_view(request):
-    countries_list = Country.objects.all()
     context = {
         'active_tab': 'countries',
-        'countries': countries_list
     }
     return render(request, 'car_sales/country_view.html', context)
 
 @login_required
 def city_view(request):
-    cities_list = City.objects.select_related('country').all()
+    countries = Country.objects.all()
     context = {
         'active_tab': 'cities',
-        'cities': cities_list
+        'countries': countries,
     }
     return render(request, 'car_sales/city_view.html', context)
 
 @login_required
 def store_view(request):
-    profile = get_employee_profile(request)
-    stores_list = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
-    stores_list = stores_list.select_related('city', 'country')
+    cities = City.objects.all()
+    countries = Country.objects.all()
     context = {
         'active_tab': 'stores',
-        'stores': stores_list
+        'cities': cities,
+        'countries': countries,
     }
     return render(request, 'car_sales/store_view.html', context)
 
 @login_required
 def role_view(request):
-    roles_list = EmployeeRole.objects.all()
     context = {
         'active_tab': 'roles',
-        'roles': roles_list
     }
     return render(request, 'car_sales/role_view.html', context)
 
 @login_required
 def status_view(request):
-    statuses_list = EmployeeStatus.objects.all()
     context = {
         'active_tab': 'statuses',
-        'statuses': statuses_list
     }
     return render(request, 'car_sales/status_view.html', context)
 
 @login_required
 def industry_view(request):
-    industries_list = IndustryInfo.objects.all()
     context = {
         'active_tab': 'industry',
-        'industries': industries_list
     }
     return render(request, 'car_sales/industry_view.html', context)
 
 @login_required
 def vehicle_view(request):
-    vehicles_list = VehicleInfo.objects.select_related('make').order_by('id').all()
-    # We display all vehicles using DataTables which handles pagination client-side,
-    # but since the database is huge (100,000+ rows), server-side pagination with Paginator is kept.
-    paginator = Paginator(vehicles_list, 1000)  # Show 1000 vehicles per page for good performance
-    page_number = request.GET.get('page')
-    vehicles_page = paginator.get_page(page_number)
+    makes = IndustryInfo.objects.all()
     context = {
         'active_tab': 'vehicles',
-        'vehicles': vehicles_page
+        'makes': makes,
     }
     return render(request, 'car_sales/vehicle_view.html', context)
 
 @login_required
 def customer_view(request):
-    profile = get_employee_profile(request)
-    customers_list = filter_by_hierarchy(CustomerInfo.objects.all(), request, profile, 'sales__store', 'sales__employee').distinct()
-    customers_list = customers_list.select_related('city', 'country').order_by('customer_id')
-    paginator = Paginator(customers_list, 1000)  # Show 1000 customers per page
-    page_number = request.GET.get('page')
-    customers_page = paginator.get_page(page_number)
+    cities = City.objects.all()
+    countries = Country.objects.all()
     context = {
         'active_tab': 'customers',
-        'customers': customers_page
+        'cities': cities,
+        'countries': countries,
     }
     return render(request, 'car_sales/customer_view.html', context)
 
 @login_required
 def selling_view(request):
     profile = get_employee_profile(request)
-    sales_list = filter_by_hierarchy(SellingInfo.objects.all(), request, profile, 'store', 'employee')
-    sales_list = sales_list.select_related('customer', 'vehicle__make', 'employee', 'store').order_by('sell_id')
-    paginator = Paginator(sales_list, 1000)  # Show 1000 sales per page
-    page_number = request.GET.get('page')
-    sales_page = paginator.get_page(page_number)
+    vehicles = VehicleInfo.objects.select_related('make').all()[:1000]
+    customers = filter_by_hierarchy(CustomerInfo.objects.all(), request, profile, 'sales__store', 'sales__employee').distinct()[:1000]
+    employees = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
+    stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
     context = {
         'active_tab': 'sales',
-        'sales': sales_page
+        'vehicles': vehicles,
+        'customers': customers,
+        'employees': employees,
+        'stores': stores,
     }
     return render(request, 'car_sales/selling_view.html', context)
 
 @login_required
 def budget_view(request):
     profile = get_employee_profile(request)
-    budgets_list = filter_by_hierarchy(EmployeeBudget.objects.all(), request, profile, 'store', 'employee')
-    budgets_list = budgets_list.select_related('employee', 'store').order_by('id')
-    paginator = Paginator(budgets_list, 1000)  # Show 1000 budgets per page
-    page_number = request.GET.get('page')
-    budgets_page = paginator.get_page(page_number)
+    employees = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
+    stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
     context = {
-        'active_tab': 'budgets',
-        'budgets': budgets_page
+        'active_tab': 'targets',
+        'employees': employees,
+        'stores': stores,
     }
-    return render(request, 'car_sales/budget_view.html', context)
+    return render(request, 'car_sales/target_view.html', context)
 
 
-class SellingInfoForm(ModelForm):
-    customer = IntegerField(label="Customer ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Customer ID (e.g. 5)'}))
-    vehicle = IntegerField(label="Vehicle ID", widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Vehicle ID (e.g. 12)'}))
 
-    class Meta:
-        model = SellingInfo
-        exclude = ['created_at', 'updated_at']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            if self.instance.customer:
-                self.initial['customer'] = self.instance.customer.customer_id
-            if self.instance.vehicle:
-                self.initial['vehicle'] = self.instance.vehicle.id
-
-    def clean_customer(self):
-        customer_id = self.cleaned_data['customer']
-        try:
-            return CustomerInfo.objects.get(pk=customer_id)
-        except CustomerInfo.DoesNotExist:
-            raise forms.ValidationError("Customer with this ID does not exist.")
-
-    def clean_vehicle(self):
-        vehicle_id = self.cleaned_data['vehicle']
-        try:
-            return VehicleInfo.objects.get(pk=vehicle_id)
-        except VehicleInfo.DoesNotExist:
-            raise forms.ValidationError("Vehicle with this ID does not exist.")
-
-class EmployeeForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = [
-            'first_name', 'last_name', 'date_of_joining', 
-            'employee_addr', 'employee_role', 'status', 
-            'store', 'city', 'country', 'password'
-        ]
-        widgets = {
-            'date_of_joining': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'password': forms.PasswordInput(render_value=True, attrs={'class': 'form-control'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'employee_addr': forms.TextInput(attrs={'class': 'form-control'}),
-            'employee_role': forms.Select(attrs={'class': 'form-select'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
-            'store': forms.Select(attrs={'class': 'form-select'}),
-            'city': forms.Select(attrs={'class': 'form-select'}),
-            'country': forms.Select(attrs={'class': 'form-select'}),
-        }
 
 @staff_member_required(login_url='login')
 def admin_panel_view(request):
@@ -313,7 +255,7 @@ def admin_panel_view(request):
         'vehicles': {'name': 'Vehicles', 'count': VehicleInfo.objects.count(), 'url': '/vehicles/', 'slug': 'vehicleinfo'},
         'customers': {'name': 'Customers', 'count': CustomerInfo.objects.count(), 'url': '/customers/', 'slug': 'customerinfo'},
         'sales': {'name': 'Sales Transactions', 'count': SellingInfo.objects.count(), 'url': '/sales/', 'slug': 'sellinginfo'},
-        'budgets': {'name': 'Employee Budgets', 'count': EmployeeBudget.objects.count(), 'url': '/budgets/', 'slug': 'employeebudget'},
+        'budgets': {'name': 'Employee Targets', 'count': EmployeeBudget.objects.count(), 'url': '/targets/', 'slug': 'employeebudget'},
     }
     context = {
         'active_tab': 'admin_panel',
@@ -321,514 +263,16 @@ def admin_panel_view(request):
     }
     return render(request, 'car_sales/admin_panel.html', context)
 
-@staff_member_required(login_url='login')
-def admin_crud_view(request, model_name, action, pk=None):
-    if not request.user.is_authenticated or not request.user.is_staff:
-        messages.error(request, "Access denied. Only administrators are allowed to perform CRUD operations.")
-        return HttpResponseRedirect(reverse('home'))
-
-    model_mapping = {
-        'country': 'Country',
-        'city': 'City',
-        'store': 'Store',
-        'employeerole': 'EmployeeRole',
-        'employeestatus': 'EmployeeStatus',
-        'employee': 'Employee',
-        'industryinfo': 'IndustryInfo',
-        'vehicleinfo': 'VehicleInfo',
-        'customerinfo': 'CustomerInfo',
-        'sellinginfo': 'SellingInfo',
-        'employeebudget': 'EmployeeBudget'
-    }
-    actual_model_name = model_mapping.get(model_name.lower())
-    if not actual_model_name:
-        raise Http404("Model not found")
-
-    try:
-        model = apps.get_model('car_sales', actual_model_name)
-    except LookupError:
-        raise Http404("Model not found")
-
-    instance = None
-    if pk:
-        try:
-            instance = model.objects.get(pk=pk)
-        except model.DoesNotExist:
-            raise Http404("Record not found")
-
-    exclude_fields = ['created_at', 'updated_at']
-
-    if action == 'delete':
-        next_url = request.GET.get('next') or request.POST.get('next') or reverse('admin_panel')
-        if request.method == 'POST':
-            instance.delete()
-            messages.success(request, f"Successfully deleted {model._meta.verbose_name} record.")
-            return HttpResponseRedirect(next_url)
-        context = {
-            'action': action,
-            'model_name': model._meta.verbose_name,
-            'instance': instance,
-            'next': next_url
-        }
-        return render(request, 'car_sales/admin_crud.html', context)
-
-    if actual_model_name == 'SellingInfo':
-        form_class = SellingInfoForm
-    elif actual_model_name == 'Employee':
-        form_class = EmployeeForm
-    else:
-        form_class = modelform_factory(model, exclude=exclude_fields)
-
-    next_url = request.GET.get('next') or request.POST.get('next') or reverse('admin_panel')
-    
-    if request.method == 'POST':
-        form = form_class(request.POST, instance=instance)
-    else:
-        form = form_class(instance=instance)
-
-    for name, field in form.fields.items():
-        if isinstance(field.widget, forms.Select):
-            field.widget.attrs.update({'class': 'form-select'})
-        elif isinstance(field.widget, forms.CheckboxInput):
-            field.widget.attrs.update({'class': 'form-check-input'})
-        else:
-            field.widget.attrs.update({'class': 'form-control'})
-
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, f"Successfully {'updated' if instance else 'created'} {model._meta.verbose_name} record.")
-        return HttpResponseRedirect(next_url)
-
-    context = {
-        'form': form,
-        'action': action,
-        'model_name': model._meta.verbose_name,
-        'instance': instance,
-        'next': next_url
-    }
-    return render(request, 'car_sales/admin_crud.html', context)
 
 
-@staff_member_required(login_url='login')
-def create_employee_view(request):
-    if not request.user.is_authenticated or not request.user.is_staff:
-        messages.error(request, "Access denied. Only administrators are allowed to create employees.")
-        return HttpResponseRedirect(reverse('home'))
-        
-    next_url = request.GET.get('next') or request.POST.get('next') or reverse('employee')
-    
-    if request.method == 'POST':
-        form = EmployeeForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Successfully created a new employee record.")
-            return HttpResponseRedirect(next_url)
-    else:
-        form = EmployeeForm()
-        
-    context = {
-        'form': form,
-        'next': next_url,
-        'active_tab': 'employees'
-    }
-    return render(request, 'car_sales/create_employee.html', context)
 
 
-@login_required
-def employee_report_view(request):
-    profile = get_employee_profile(request)
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    
-    employees_qs = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
-    total_employees = employees_qs.count()
-    active_employees = employees_qs.filter(Q(status__status='Active') | Q(status__status='In Service')).count()
-    
-    # Setup date filters for annotations
-    sales_filter = Q()
-    if date_from:
-        sales_filter &= Q(sales__selling_date__gte=date_from)
-    if date_to:
-        sales_filter &= Q(sales__selling_date__lte=date_to)
-        
-    # 1. Role distribution
-    role_dist = employees_qs.values('employee_role__role_name').annotate(
-        count=Count('employee_id')
-    ).order_by('-count')
-    
-    # 2. Store distribution
-    store_dist = employees_qs.values('store__store_name').annotate(
-        count=Count('employee_id')
-    ).order_by('-count')
-    
-    # 3. Leaderboard: Rank all employees by sales revenue in the filtered date range
-    employee_leaderboard_qs = employees_qs.select_related('employee_role', 'store').annotate(
-        sales_count=Count('sales', filter=sales_filter),
-        sales_revenue=Sum('sales__selling_price', filter=sales_filter)
-    ).order_by(F('sales_revenue').desc(nulls_last=True), '-sales_count', 'employee_id')
-    
-    # JSON download support
-    if request.GET.get('download') == 'json':
-        data = {
-            'report_type': 'Employee Performance Report',
-            'date_range': {'from': date_from, 'to': date_to},
-            'summary': {
-                'total_employees': total_employees,
-                'active_employees': active_employees,
-                'inactive_employees': total_employees - active_employees,
-            },
-            'employees': [
-                {
-                    'id': emp.employee_id,
-                    'name': f"{emp.first_name} {emp.last_name}",
-                    'role': emp.employee_role.role_name if emp.employee_role else None,
-                    'store': emp.store.store_name if emp.store else None,
-                    'sales_count': emp.sales_count,
-                    'sales_revenue': float(emp.sales_revenue or 0),
-                }
-                for emp in employee_leaderboard_qs
-            ]
-        }
-        response = JsonResponse(data, json_dumps_params={'indent': 2})
-        response['Content-Disposition'] = f'attachment; filename="employee_report_{date_from}_to_{date_to}.json"'
-        return response
-    
-    # For the chart: Top 10 performers
-    top_performers = employee_leaderboard_qs[:10]
-    chart_names = []
-    chart_revenue = []
-    chart_sales = []
-    for emp in top_performers:
-        chart_names.append(f"{emp.first_name} {emp.last_name}")
-        chart_revenue.append(int(emp.sales_revenue or 0))
-        chart_sales.append(emp.sales_count or 0)
-        
-    # Pagination for leaderboard table
-    paginator = Paginator(employee_leaderboard_qs, 1000)  # 1000 employees per page
-    page_number = request.GET.get('page')
-    leaderboard_page = paginator.get_page(page_number)
-    
-    context = {
-        'active_parent': 'reports',
-        'active_tab': 'report_employee',
-        'total_employees': total_employees,
-        'active_employees': active_employees,
-        'inactive_employees': total_employees - active_employees,
-        'role_distribution': role_dist,
-        'store_distribution': store_dist,
-        'employee_leaderboard': leaderboard_page,
-        'chart_names': chart_names,
-        'chart_revenue': chart_revenue,
-        'chart_sales': chart_sales,
-        'date_from': date_from or '',
-        'date_to': date_to or '',
-    }
-    return render(request, 'car_sales/employee_report.html', context)
 
 
-@login_required
-def vehicle_report_view(request):
-    profile = get_employee_profile(request)
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    
-    total_vehicles = VehicleInfo.objects.count()
-    avg_mmr = VehicleInfo.objects.aggregate(avg_mmr=Avg('mmr'))['avg_mmr'] or 0
-    
-    # Filter sales by date range and hierarchy
-    sales_qs = filter_by_hierarchy(SellingInfo.objects.all(), request, profile, 'store', 'employee')
-    if date_from:
-        sales_qs = sales_qs.filter(selling_date__gte=date_from)
-    if date_to:
-        sales_qs = sales_qs.filter(selling_date__lte=date_to)
-        
-    # 1. Top Selling makes
-    brand_sales = sales_qs.values('vehicle__make__make_name').annotate(
-        sold_count=Count('sell_id'),
-        revenue=Sum('selling_price'),
-        avg_price=Avg('selling_price')
-    ).order_by('-revenue')[:10]
-    
-    # 2. Vehicle Condition stats
-    condition_stats = VehicleInfo.objects.aggregate(
-        avg_condition=Avg('condition'),
-        avg_odometer=Avg('odometer')
-    )
-    if condition_stats['avg_condition'] is not None:
-        condition_stats['avg_condition'] /= 10.0
-
-    
-    # 3. Premium transactions (expensive sold vehicles, paginated)
-    expensive_sold_qs = sales_qs.select_related('vehicle__make', 'customer', 'store').annotate(
-        margin=F('selling_price') - F('vehicle__mmr')
-    ).order_by('-selling_price')
-    
-    # JSON download support
-    if request.GET.get('download') == 'json':
-        data = {
-            'report_type': 'Vehicle Report',
-            'date_range': {'from': date_from, 'to': date_to},
-            'summary': {
-                'total_vehicles': total_vehicles,
-                'average_mmr': float(avg_mmr),
-                'average_condition': float(condition_stats['avg_condition'] or 0),
-                'average_odometer': float(condition_stats['avg_odometer'] or 0),
-            },
-            'transactions': [
-                {
-                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
-                    'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
-                    'model': sale.vehicle.vehicle_model if sale.vehicle else None,
-                    'vin': sale.vehicle.vin if sale.vehicle else None,
-                    'customer': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
-                    'store': sale.store.store_name if sale.store else None,
-                    'mmr': float(sale.vehicle.mmr or 0) if sale.vehicle else 0.0,
-                    'selling_price': float(sale.selling_price or 0),
-                    'margin': float(sale.margin or 0),
-                }
-                for sale in expensive_sold_qs
-            ]
-        }
-        response = JsonResponse(data, json_dumps_params={'indent': 2})
-        response['Content-Disposition'] = f'attachment; filename="vehicle_report_{date_from}_to_{date_to}.json"'
-        return response
-    
-    # Pagination for premium sales table
-    paginator = Paginator(expensive_sold_qs, 1000)  # 1000 records per page
-    page_number = request.GET.get('page')
-    expensive_sold_page = paginator.get_page(page_number)
-    
-    for sale in expensive_sold_page:
-        sale.abs_margin = abs(sale.margin or 0)
-        
-    # 4. Make distribution in inventory
-    make_inventory = VehicleInfo.objects.values('make__make_name').annotate(
-        count=Count('id'),
-        avg_mmr=Avg('mmr')
-    ).order_by('-count')[:10]
-    
-    # Pre-format chart data
-    chart_makes = [item['vehicle__make__make_name'] for item in brand_sales]
-    chart_sold_count = [item['sold_count'] for item in brand_sales]
-    chart_revenue = [int(item['revenue'] or 0) for item in brand_sales]
-    
-    context = {
-        'active_parent': 'reports',
-        'active_tab': 'report_vehicle',
-        'total_vehicles': total_vehicles,
-        'avg_mmr': avg_mmr,
-        'brand_sales': brand_sales,
-        'condition_stats': condition_stats,
-        'expensive_sold': expensive_sold_page,
-        'make_inventory': make_inventory,
-        'chart_makes': chart_makes,
-        'chart_sold_count': chart_sold_count,
-        'chart_revenue': chart_revenue,
-        'date_from': date_from or '',
-        'date_to': date_to or '',
-    }
-    return render(request, 'car_sales/vehicle_report.html', context)
 
 
-@login_required
-def sales_report_view(request):
-    profile = get_employee_profile(request)
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    
-    # Filter sales by date range and hierarchy
-    sales_qs = filter_by_hierarchy(SellingInfo.objects.all(), request, profile, 'store', 'employee')
-    if date_from:
-        sales_qs = sales_qs.filter(selling_date__gte=date_from)
-    if date_to:
-        sales_qs = sales_qs.filter(selling_date__lte=date_to)
-        
-    total_sales = sales_qs.count()
-    total_revenue = sales_qs.aggregate(total=Sum('selling_price'))['total'] or 0
-    avg_price = sales_qs.aggregate(avg=Avg('selling_price'))['avg'] or 0
-    
-    # Margin analysis (selling_price - mmr)
-    margin_stats = sales_qs.annotate(
-        margin=F('selling_price') - F('vehicle__mmr')
-    ).aggregate(
-        total_margin=Sum('margin'),
-        avg_margin=Avg('margin')
-    )
-    total_margin = margin_stats['total_margin'] or 0
-    avg_margin = margin_stats['avg_margin'] or 0
-    
-    # 1. Sales by Store
-    store_sales = sales_qs.values('store__store_name').annotate(
-        sales_count=Count('sell_id'),
-        revenue=Sum('selling_price'),
-        avg_price=Avg('selling_price')
-    ).order_by('-revenue')
-    
-    # 2. Top Customers by purchases
-    top_customers = sales_qs.values(
-        'customer__customer_id', 'customer__firstname', 'customer__lastname', 'customer__city__city_name'
-    ).annotate(
-        purchase_count=Count('sell_id'),
-        total_spent=Sum('selling_price')
-    ).order_by('-total_spent')[:10]
-    
-    # 3. Monthly Trend
-    monthly_sales = sales_qs.annotate(
-        month=TruncMonth('selling_date')
-    ).values('month').annotate(
-        count=Count('sell_id'),
-        revenue=Sum('selling_price')
-    ).order_by('month')
-    
-    chart_dates = [item['month'].strftime('%b %Y') for item in monthly_sales]
-    chart_sales = [item['count'] for item in monthly_sales]
-    chart_revenue = [int(item['revenue'] or 0) for item in monthly_sales]
-    
-    # 4. Detailed Sales Transactions (paginated)
-    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'employee').annotate(
-        margin=F('selling_price') - F('vehicle__mmr')
-    ).order_by('-selling_date', '-sell_id')
-    
-    # JSON download support
-    if request.GET.get('download') == 'json':
-        data = {
-            'report_type': 'Sales Revenue Report',
-            'date_range': {'from': date_from, 'to': date_to},
-            'summary': {
-                'total_sales': total_sales,
-                'total_revenue': float(total_revenue),
-                'average_price': float(avg_price),
-                'total_margin': float(total_margin),
-                'average_margin': float(avg_margin),
-            },
-            'transactions': [
-                {
-                    'sale_id': sale.sell_id,
-                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
-                    'customer': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
-                    'make': sale.vehicle.make.make_name if sale.vehicle and sale.vehicle.make else None,
-                    'model': sale.vehicle.vehicle_model if sale.vehicle else None,
-                    'employee': f"{sale.employee.first_name} {sale.employee.last_name}" if sale.employee else None,
-                    'selling_price': float(sale.selling_price or 0),
-                }
-                for sale in detailed_sales_qs
-            ]
-        }
-        response = JsonResponse(data, json_dumps_params={'indent': 2})
-        response['Content-Disposition'] = f'attachment; filename="sales_report_{date_from}_to_{date_to}.json"'
-        return response
-    paginator = Paginator(detailed_sales_qs, 1000)  # 1000 records per page
-    page_number = request.GET.get('page')
-    sales_page = paginator.get_page(page_number)
-    
-    for sale in sales_page:
-        sale.abs_margin = abs(sale.margin or 0)
-        
-    context = {
-        'active_parent': 'reports',
-        'active_tab': 'report_sales',
-        'total_sales': total_sales,
-        'total_revenue': total_revenue,
-        'avg_price': avg_price,
-        'total_margin': total_margin,
-        'avg_margin': avg_margin,
-        'total_margin_abs': abs(total_margin),
-        'avg_margin_abs': abs(avg_margin),
-        'store_sales': store_sales,
-        'top_customers': top_customers,
-        'chart_dates': chart_dates,
-        'chart_sales': chart_sales,
-        'chart_revenue': chart_revenue,
-        'detailed_sales': sales_page,
-        'date_from': date_from or '',
-        'date_to': date_to or '',
-    }
-    return render(request, 'car_sales/sales_report.html', context)
 
 
-@login_required
-def customer_vehicle_report_view(request):
-    profile = get_employee_profile(request)
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    
-    # Filter sales by date range and hierarchy
-    sales_qs = filter_by_hierarchy(SellingInfo.objects.all(), request, profile, 'store', 'employee')
-    if date_from:
-        sales_qs = sales_qs.filter(selling_date__gte=date_from)
-    if date_to:
-        sales_qs = sales_qs.filter(selling_date__lte=date_to)
-        
-    total_sales = sales_qs.count()
-    total_revenue = sales_qs.aggregate(total=Sum('selling_price'))['total'] or 0
-    avg_price = sales_qs.aggregate(avg=Avg('selling_price'))['avg'] or 0
-    
-    margin_stats = sales_qs.annotate(
-        margin=F('selling_price') - F('vehicle__mmr')
-    ).aggregate(
-        total_margin=Sum('margin'),
-        avg_margin=Avg('margin')
-    )
-    total_margin = margin_stats['total_margin'] or 0
-    avg_margin = margin_stats['avg_margin'] or 0
-    
-    # Detailed Sales Transactions
-    detailed_sales_qs = sales_qs.select_related('customer', 'vehicle__make', 'store', 'employee').annotate(
-        margin=F('selling_price') - F('vehicle__mmr')
-    ).order_by('-selling_date', '-sell_id')
-    
-    # JSON download support
-    if request.GET.get('download') == 'json':
-        data = {
-            'report_type': 'Customer & Vehicle Sales Report',
-            'date_range': {'from': date_from, 'to': date_to},
-            'summary': {
-                'total_sales': total_sales,
-                'total_revenue': float(total_revenue),
-                'average_price': float(avg_price),
-                'total_margin': float(total_margin),
-                'average_margin': float(avg_margin),
-            },
-            'transactions': [
-                {
-                    'sale_id': sale.sell_id,
-                    'customer_name': f"{sale.customer.firstname} {sale.customer.lastname}" if sale.customer else None,
-                    'vehicle_info': f"{sale.vehicle.make.make_name} {sale.vehicle.vehicle_model}" if sale.vehicle else None,
-                    'store_name': sale.store.store_name if sale.store else None,
-                    'selling_date': sale.selling_date.strftime('%Y-%m-%d') if sale.selling_date else None,
-                    'mmr': float(sale.vehicle.mmr or 0) if sale.vehicle else 0.0,
-                    'selling_price': float(sale.selling_price or 0),
-                    'mmr_vs_selling_price': float(sale.margin or 0),
-                }
-                for sale in detailed_sales_qs
-            ]
-        }
-        response = JsonResponse(data, json_dumps_params={'indent': 2})
-        response['Content-Disposition'] = f'attachment; filename="customer_vehicle_report_{date_from}_to_{date_to}.json"'
-        return response
-
-    paginator = Paginator(detailed_sales_qs, 1000)  # 1000 records per page
-    page_number = request.GET.get('page')
-    sales_page = paginator.get_page(page_number)
-    
-    for sale in sales_page:
-        sale.abs_margin = abs(sale.margin or 0)
-        
-    context = {
-        'active_parent': 'reports',
-        'active_tab': 'report_customer_vehicle',
-        'total_sales': total_sales,
-        'total_revenue': total_revenue,
-        'avg_price': avg_price,
-        'total_margin': total_margin,
-        'avg_margin': avg_margin,
-        'total_margin_abs': abs(total_margin),
-        'avg_margin_abs': abs(avg_margin),
-        'detailed_sales': sales_page,
-        'date_from': date_from or '',
-        'date_to': date_to or '',
-    }
-    return render(request, 'car_sales/customer_vehicle_report.html', context)
 
 
 # --- API Endpoint implementing Supervisor's Stored-Procedure/Raw SQL approach ---
@@ -1369,6 +813,176 @@ def inventory_api_page_view(request):
         'status_choices': Inventory.StatusChoices.choices,
     }
     return render(request, 'car_sales/api_inventory.html', context)
+
+
+
+
+
+def generic_model_api(request, model_class, serializer_class, search_fields, pk=None, store_field=None, employee_field=None):
+    if not request.user.is_authenticated:
+        return Response(
+            {"status": False, "message": "Authentication required."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
+    is_staff = request.user.is_superuser or request.user.is_staff
+    
+    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
+        return Response(
+            {"status": False, "message": f"Permission denied. Only staff members can modify {model_class._meta.verbose_name} data."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if request.method == 'GET':
+        if pk is not None:
+            try:
+                obj = model_class.objects.get(pk=pk)
+                serializer = serializer_class(obj)
+                return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
+            except model_class.DoesNotExist:
+                return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 25))
+        except ValueError:
+            page = 1
+            page_size = 25
+            
+        offset = (page - 1) * page_size
+        search = request.GET.get('search', '').strip()
+        
+        # Apply role-based hierarchy filters if applicable
+        queryset = model_class.objects.all()
+        if store_field or employee_field:
+            profile = get_employee_profile(request)
+            queryset = filter_by_hierarchy(queryset, request, profile, store_field, employee_field)
+            if hasattr(queryset, 'distinct'):
+                queryset = queryset.distinct()
+
+        # Apply searching
+        if search:
+            q_filter = Q()
+            for field in search_fields:
+                q_filter |= Q(**{f"{field}__icontains": search})
+            queryset = queryset.filter(q_filter)
+            
+        total = queryset.count()
+        
+        # Ordering (default by primary key/id)
+        pk_name = model_class._meta.pk.name
+        queryset = queryset.order_by(pk_name)
+        
+        # Fetch page slice
+        paginated_qs = queryset[offset:offset+page_size]
+        serializer = serializer_class(paginated_qs, many=True)
+        
+        return Response({
+            "status": True,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        serializer = serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": f"{model_class._meta.verbose_name.title()} record created successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({"status": False, "message": "Validation failed.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'PUT':
+        try:
+            obj = model_class.objects.get(pk=pk)
+        except model_class.DoesNotExist:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        serializer = serializer_class(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": f"{model_class._meta.verbose_name.title()} record updated successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({"status": False, "message": "Validation failed.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        try:
+            obj = model_class.objects.get(pk=pk)
+        except model_class.DoesNotExist:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            obj.delete()
+            return Response({
+                "status": True,
+                "message": f"{model_class._meta.verbose_name.title()} record deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def country_api(request, pk=None):
+    return generic_model_api(request, Country, CountrySerializer, ['country_name'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def city_api(request, pk=None):
+    return generic_model_api(request, City, CitySerializer, ['city_name', 'country__country_name'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def store_api(request, pk=None):
+    return generic_model_api(request, Store, StoreSerializer, ['store_name', 'store_code', 'city__city_name', 'address'], pk, 'self', None)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def role_api(request, pk=None):
+    return generic_model_api(request, EmployeeRole, EmployeeRoleSerializer, ['role_name'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def status_api(request, pk=None):
+    return generic_model_api(request, EmployeeStatus, EmployeeStatusSerializer, ['status'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def industry_api(request, pk=None):
+    return generic_model_api(request, IndustryInfo, IndustryInfoSerializer, ['make_name'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def vehicle_api(request, pk=None):
+    return generic_model_api(request, VehicleInfo, VehicleInfoSerializer, ['vehicle_model', 'make__make_name', 'vin', 'color'], pk)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def customer_api(request, pk=None):
+    return generic_model_api(request, CustomerInfo, CustomerInfoSerializer, ['firstname', 'lastname', 'customer_status', 'customer_address'], pk, 'sales__store', 'sales__employee')
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def sales_api(request, pk=None):
+    return generic_model_api(request, SellingInfo, SellingInfoSerializer, ['customer__firstname', 'customer__lastname', 'vehicle__vehicle_model', 'vehicle__make__make_name'], pk, 'store', 'employee')
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def budget_api(request, pk=None):
+    return generic_model_api(request, EmployeeBudget, EmployeeBudgetSerializer, ['employee__first_name', 'employee__last_name', 'store__store_name', 'budget_year'], pk, 'store', 'employee')
+
+
+# --- API Endpoint implementing Supervisor's Stored-Procedure/Raw SQL approach ---
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def employee_api(request, pk=None):
+    return generic_model_api(request, Employee, EmployeeSerializer, ['first_name', 'last_name', 'employee_addr', 'employee_role__role_name', 'store__store_name'], pk, 'store', 'self')
+
 
 
 def login_view(request):

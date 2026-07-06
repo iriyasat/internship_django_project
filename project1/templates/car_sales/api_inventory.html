@@ -2,16 +2,16 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}Inventory CRUD API - Car Sales{% endblock %}
+{% block title %}Inventory CRUD Report - Car Sales{% endblock %}
 
 {% block content %}
 <div class="pagetitle">
-  <h1>Inventory CRUD API</h1>
+  <h1>Inventory CRUD Report</h1>
   <nav>
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
-      <li class="breadcrumb-item">API</li>
-      <li class="breadcrumb-item active">Inventory CRUD API</li>
+      <li class="breadcrumb-item">Reports</li>
+      <li class="breadcrumb-item active">Inventory CRUD Report</li>
     </ol>
   </nav>
 </div>
@@ -46,9 +46,14 @@
               <span class="small text-muted">records per page</span>
             </div>
             <div class="col-md-6 text-md-end">
-              <div class="input-group input-group-sm ms-auto" style="max-width: 300px;">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="search-input" placeholder="Search by ID, Vehicle, Store, Employee...">
+              <div class="d-flex justify-content-md-end align-items-center gap-2">
+                <div class="input-group input-group-sm ms-md-auto" style="max-width: 300px;">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="search-input" placeholder="Search by ID, Vehicle, Store, Employee...">
+                </div>
+                <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </button>
               </div>
             </div>
           </div>
@@ -195,6 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const loadingSpinner = document.getElementById('loading-spinner');
   const alertContainer = document.getElementById('alert-container');
   const searchInput = document.getElementById('search-input');
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
   const pageSizeSelect = document.getElementById('page-size-select');
   const paginationControls = document.getElementById('pagination-controls');
   const paginationInfo = document.getElementById('pagination-info');
@@ -221,10 +227,14 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPage = 1;
   let pageSize = parseInt(pageSizeSelect.value);
   let searchQuery = '';
+  let currentRecords = [];
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
 
   // Initialize data fetch
   fetchData();
+
+  // Event Listeners
+  downloadPdfBtn.addEventListener('click', downloadPDF);
 
   // Search event with small debounce
   let searchTimeout = null;
@@ -343,6 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Render HTML Table
   function renderTable(data, totalCount) {
+    currentRecords = data || [];
     loadingSpinner.style.display = 'none';
     tableBody.innerHTML = '';
 
@@ -560,6 +571,55 @@ document.addEventListener('DOMContentLoaded', function() {
       fetchData();
     });
     paginationList.appendChild(li);
+  }
+
+  function downloadPDF() {
+    if (currentRecords.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    
+    // Header styling
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(33, 37, 41);
+    doc.text("Inventory CRUD Report", 40, 45);
+    
+    // Sub-header Info
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 65);
+    
+    if (searchQuery) {
+      doc.text(`Search Query: "${searchQuery}"`, 40, 78);
+    }
+    
+    // Data Table headers and rows
+    const headers = [["ID", "Vehicle Name / Details", "Store Location", "Assigned Employee", "Status", "Selling ID", "Created At", "Updated At"]];
+    const rows = currentRecords.map(rec => [
+      rec.inventory_id || 'N/A',
+      rec.vehicle_name || 'N/A',
+      rec.store_name || 'N/A',
+      rec.employee_name || 'N/A',
+      rec.status_label || 'N/A',
+      rec.selling_info ? `Sold (ID: ${rec.selling_info})` : 'Unsold',
+      rec.created_at || 'N/A',
+      rec.updated_at || 'N/A'
+    ]);
+    
+    doc.autoTable({
+      startY: searchQuery ? 95 : 85,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 110, 253], textColor: [255, 255, 255] },
+      styles: { fontSize: 8, font: 'helvetica' }
+    });
+    
+    doc.save(`inventory_crud_report.pdf`);
   }
 
   // Utilities

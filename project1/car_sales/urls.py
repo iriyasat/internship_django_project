@@ -17,15 +17,8 @@ urlpatterns = [
     path('vehicles/', vehicle_view, name='vehicle'),
     path('customers/', customer_view, name='customer'),
     path('sales/', selling_view, name='selling'),
-    path('budgets/', budget_view, name='budget'),
-    path('reports/employee/', employee_report_view, name='employee_report'),
-    path('reports/vehicle/', vehicle_report_view, name='vehicle_report'),
-    path('reports/sales/', sales_report_view, name='sales_report'),
-    path('reports/customer-vehicle/', customer_vehicle_report_view, name='customer_vehicle_report'),
-    path('admin-panel/employee/create/', create_employee_view, name='create_employee'),
+    path('targets/', budget_view, name='budget'),
     path('admin-panel/', admin_panel_view, name='admin_panel'),
-    path('admin-panel/crud/<str:model_name>/<str:action>/', admin_crud_view, name='admin_crud'),
-    path('admin-panel/crud/<str:model_name>/<str:action>/<int:pk>/', admin_crud_view, name='admin_crud_pk'),
     path('api/employee_sales/', employee_sales_api, name='employee_sales_api'),
     path('api/store_sales/', store_sales_api, name='store_sales_api'),
     path('api/store_vehicle_sales/', store_vehicle_sales_api, name='store_vehicle_sales_api'),
@@ -40,3 +33,24 @@ urlpatterns = [
     path('api/inventory/<int:pk>/', inventory_api, name='inventory_api_detail'),
     path('api-page/inventory/', inventory_api_page_view, name='inventory_api_page_view'),
 ]
+
+# Dynamically register the 10 CRUD API endpoints to avoid boilerplate code
+api_routes = [
+    ('countries', country_api, 'country_api'),
+    ('cities', city_api, 'city_api'),
+    ('stores', store_api, 'store_api'),
+    ('emproles', role_api, 'role_api'),
+    ('statuses', status_api, 'status_api'),
+    ('industry', industry_api, 'industry_api'),
+    ('vehicles', vehicle_api, 'vehicle_api'),
+    ('customers', customer_api, 'customer_api'),
+    ('sales', sales_api, 'sales_api'),
+    ('targets', budget_api, 'budget_api'),
+    ('employees', employee_api, 'employee_api'),
+]
+
+for route, view_func, name in api_routes:
+    urlpatterns.extend([
+        path(f'api/{route}/', view_func, name=name),
+        path(f'api/{route}/<int:pk>/', view_func, name=f'{name}_detail'),
+    ])

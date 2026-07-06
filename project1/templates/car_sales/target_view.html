@@ -1,15 +1,15 @@
 {% extends 'car_sales/base.html' %}
 {% load static %}
 
-{% block title %}Vehicle Report - Car Sales{% endblock %}
+{% block title %}Employee Target Report - Car Sales{% endblock %}
 
 {% block content %}
 <div class="pagetitle">
-  <h1>Vehicles</h1>
+  <h1>Employee Targets</h1>
   <nav>
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">Home</a></li>
-      <li class="breadcrumb-item active">Vehicles</li>
+      <li class="breadcrumb-item active">Employee Targets</li>
     </ol>
   </nav>
 </div>
@@ -21,61 +21,51 @@
 
       <!-- Summary Cards and Charts -->
   <div class="row mb-4">
-    <!-- Total Vehicles Card -->
+    <!-- Total Budgets Card -->
     <div class="col-xxl-6 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
-          <h5 class="card-title">Total <span>| Vehicles</span></h5>
+          <h5 class="card-title">Total <span>| Budgets</span></h5>
           <div class="d-flex align-items-center">
             <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-car-front"></i>
+              <i class="bi bi-wallet2"></i>
             </div>
             <div class="ps-3">
               <h6 id="card-total-count">0</h6>
-              <span class="text-muted small pt-2 ps-1">registered vehicles</span>
+              <span class="text-muted small pt-2 ps-1">recorded targets</span>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Avg MMR Card -->
+    <!-- Target Amount Card -->
     <div class="col-xxl-6 col-md-6 mb-3">
       <div class="card info-card revenue-card">
         <div class="card-body">
-          <h5 class="card-title">Avg MMR <span>| Page</span></h5>
+          <h5 class="card-title">Target Sum <span>| Page</span></h5>
           <div class="d-flex align-items-center">
             <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
               <i class="bi bi-currency-dollar"></i>
             </div>
             <div class="ps-3">
-              <h6 id="card-page-mmr">$0</h6>
-              <span class="text-muted small pt-2 ps-1">estimated value</span>
+              <h6 id="card-page-target">$0</h6>
+              <span class="text-muted small pt-2 ps-1">total target allocation</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Chart container -->
-    <div class="col-lg-12">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body pt-3">
-          <h5 class="card-title py-0 my-0 mb-3">Vehicle Distribution by Brand</h5>
-          <div id="brandChart" style="min-height: 450px;"></div>
-        </div>
-      </div>
-    </div>
   </div>
 
-      <div class="col-12">
+  <div class="col-12">
       <div class="card">
         <div class="card-body pt-3">
           <h5 class="card-title">
-            Vehicle Directory <span>| Live Query & CRUD Interface</span>
+            Employee Target Directory <span>| Live Query & CRUD Interface</span>
             {% if request.user.is_staff %}
             <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
-              <i class="bi bi-plus-circle me-1"></i> Add Vehicle
+              <i class="bi bi-plus-circle me-1"></i> Add Target Record
             </button>
             {% endif %}
           </h5>
@@ -96,7 +86,7 @@
               <div class="d-flex justify-content-md-end align-items-center gap-2">
                 <div class="input-group input-group-sm ms-md-auto" style="max-width: 300px;">
                   <span class="input-group-text"><i class="bi bi-search"></i></span>
-                  <input type="text" class="form-control" id="search-input" placeholder="Search model, make, vin, color...">
+                  <input type="text" class="form-control" id="search-input" placeholder="Search employee, store, year...">
                 </div>
                 <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
                   <i class="bi bi-file-earmark-pdf me-1"></i> PDF
@@ -110,7 +100,7 @@
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="text-muted mt-2">Loading vehicles...</p>
+            <p class="text-muted mt-2">Loading target records...</p>
           </div>
 
           <!-- Table Wrapper -->
@@ -118,14 +108,13 @@
             <table class="table table-hover align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>Vehicle ID</th>
-                  <th>Make</th>
-                  <th>Model</th>
-                  <th>VIN</th>
-                  <th>MMR</th>
-                  <th>Transmission</th>
-                  <th>Color</th>
-                  <th>Odometer</th>
+                  <th>Target ID</th>
+                  <th>Employee</th>
+                  <th>Year</th>
+                  <th>Month</th>
+                  <th>Store</th>
+                  <th>Qty Limit</th>
+                  <th>Amount Limit</th>
                   <th>Created At</th>
                   {% if request.user.is_staff %}
                   <th>Actions</th>
@@ -159,57 +148,58 @@
 <!-- CRUD Modal -->
 {% if request.user.is_staff %}
 <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="crudModalLabel">Add Vehicle</h5>
+        <h5 class="modal-title" id="crudModalLabel">Add Target Record</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="crud-form" novalidate>
         {% csrf_token %}
         <input type="hidden" id="edit-id" value="">
         <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="id_make" class="form-label fw-bold">Make</label>
-              <select class="form-select" id="id_make" required>
-                <option value="" selected disabled>Select Make...</option>
-                {% for make in makes %}
-                <option value="{{ make.make_id }}">{{ make.make_name }}</option>
-                {% endfor %}
-              </select>
-              <div class="invalid-feedback">Please select a make.</div>
+          <div class="mb-3">
+            <label for="id_employee" class="form-label fw-bold">Employee</label>
+            <select class="form-select" id="id_employee" required>
+              <option value="" selected disabled>Select Employee...</option>
+              {% for employee in employees %}
+              <option value="{{ employee.employee_id }}">{{ employee.first_name }} {{ employee.last_name }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select an employee.</div>
+          </div>
+          <div class="mb-3">
+            <label for="id_store" class="form-label fw-bold">Store</label>
+            <select class="form-select" id="id_store" required>
+              <option value="" selected disabled>Select Store...</option>
+              {% for store in stores %}
+              <option value="{{ store.store_id }}">{{ store.store_name }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select a store.</div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_year" class="form-label fw-bold">Budget Year</label>
+              <input type="number" class="form-control" id="id_budget_year" required placeholder="e.g. 2026">
+              <div class="invalid-feedback">Please enter the year.</div>
             </div>
-            <div class="col-md-6">
-              <label for="id_vehicle_model" class="form-label fw-bold">Vehicle Model</label>
-              <input type="text" class="form-control" id="id_vehicle_model" required placeholder="e.g. Civic">
-              <div class="invalid-feedback">Please enter a model.</div>
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_month" class="form-label fw-bold">Budget Month</label>
+              <input type="number" class="form-control" id="id_budget_month" required placeholder="1-12" min="1" max="12">
+              <div class="invalid-feedback">Please enter a valid month (1-12).</div>
             </div>
-            <div class="col-md-6">
-              <label for="id_vin" class="form-label fw-bold">VIN</label>
-              <input type="text" class="form-control" id="id_vin" required placeholder="17-char VIN" maxlength="20">
-              <div class="invalid-feedback">Please enter a unique VIN.</div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_qty" class="form-label fw-bold">Budget Quantity</label>
+              <input type="number" class="form-control" id="id_budget_qty" required placeholder="e.g. 50">
+              <div class="invalid-feedback">Please enter budget quantity.</div>
             </div>
-            <div class="col-md-6">
-              <label for="id_mmr" class="form-label fw-bold">MMR ($)</label>
-              <input type="number" class="form-control" id="id_mmr" required placeholder="e.g. 15000">
-              <div class="invalid-feedback">Please enter a valid MMR value.</div>
-            </div>
-            <div class="col-md-6">
-              <label for="id_transmission" class="form-label fw-bold">Transmission</label>
-              <input type="text" class="form-control" id="id_transmission" placeholder="e.g. Automatic">
-            </div>
-            <div class="col-md-6">
-              <label for="id_color" class="form-label fw-bold">Color</label>
-              <input type="text" class="form-control" id="id_color" placeholder="e.g. Black">
-            </div>
-            <div class="col-md-6">
-              <label for="id_odometer" class="form-label fw-bold">Odometer (mi)</label>
-              <input type="number" class="form-control" id="id_odometer" placeholder="e.g. 45000">
-            </div>
-            <div class="col-md-6">
-              <label for="id_body" class="form-label fw-bold">Body Style</label>
-              <input type="text" class="form-control" id="id_body" placeholder="e.g. Sedan">
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_amount" class="form-label fw-bold">Target Amount ($)</label>
+              <input type="number" class="form-control" id="id_budget_amount" required placeholder="e.g. 150000">
+              <div class="invalid-feedback">Please enter budget amount.</div>
             </div>
           </div>
         </div>
@@ -243,56 +233,26 @@ document.addEventListener('DOMContentLoaded', function() {
   const addBtn = document.getElementById('add-btn');
   const modalTitle = document.getElementById('crudModalLabel');
   const editIdInput = document.getElementById('edit-id');
-  const makeSelect = document.getElementById('id_make');
-  const modelInput = document.getElementById('id_vehicle_model');
-  const vinInput = document.getElementById('id_vin');
-  const mmrInput = document.getElementById('id_mmr');
-  const transmissionInput = document.getElementById('id_transmission');
-  const colorInput = document.getElementById('id_color');
-  const odometerInput = document.getElementById('id_odometer');
-  const bodyInput = document.getElementById('id_body');
+  const employeeSelect = document.getElementById('id_employee');
+  const storeSelect = document.getElementById('id_store');
+  const yearInput = document.getElementById('id_budget_year');
+  const monthInput = document.getElementById('id_budget_month');
+  const qtyInput = document.getElementById('id_budget_qty');
+  const amountInput = document.getElementById('id_budget_amount');
 
   let bootstrapModal = null;
   if (crudModalEl) {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
-  let brandChart = null;
-
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
 
-    let mmrSum = 0;
+    let budgetSum = 0;
     records.forEach(rec => {
-      mmrSum += parseFloat(rec.mmr) || 0;
+      budgetSum += parseFloat(rec.budget_amount) || 0;
     });
-    const avgMmr = records.length > 0 ? (mmrSum / records.length) : 0;
-    document.getElementById('card-page-mmr').textContent = '$' + Math.round(avgMmr).toLocaleString();
-
-    const brandMap = {};
-    records.forEach(rec => {
-      const brand = rec.make_name || 'N/A';
-      brandMap[brand] = (brandMap[brand] || 0) + 1;
-    });
-
-    const brands = Object.keys(brandMap);
-    const counts = brands.map(b => brandMap[b]);
-
-    if (brandChart) {
-      brandChart.updateOptions({
-        labels: brands,
-        series: counts
-      });
-    } else {
-      brandChart = new ApexCharts(document.querySelector("#brandChart"), {
-        series: counts,
-        chart: { height: 450, type: 'donut' },
-        labels: brands,
-        legend: { position: 'bottom', horizontalAlign: 'center' },
-        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
-      });
-      brandChart.render();
-    }
+    document.getElementById('card-page-target').textContent = '$' + Math.round(budgetSum).toLocaleString();
   }
 
   // State Variables
@@ -337,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
       crudForm.reset();
       crudForm.classList.remove('was-validated');
       editIdInput.value = '';
-      modalTitle.textContent = 'Add Vehicle';
+      modalTitle.textContent = 'Add Target Record';
     });
   }
 
@@ -354,17 +314,15 @@ document.addEventListener('DOMContentLoaded', function() {
       const isEditMode = !!recordId;
 
       const postData = {
-        make: parseInt(makeSelect.value),
-        vehicle_model: modelInput.value.trim(),
-        vin: vinInput.value.trim(),
-        mmr: parseInt(mmrInput.value),
-        transmission: transmissionInput.value.trim() || null,
-        color: colorInput.value.trim() || null,
-        odometer: odometerInput.value ? parseInt(odometerInput.value) : null,
-        body: bodyInput.value.trim() || null
+        employee: parseInt(employeeSelect.value),
+        store: parseInt(storeSelect.value),
+        budget_year: parseInt(yearInput.value),
+        budget_month: parseInt(monthInput.value),
+        budget_qty: parseInt(qtyInput.value),
+        budget_amount: parseInt(amountInput.value)
       };
 
-      const url = isEditMode ? `/api/vehicles/${recordId}/` : '/api/vehicles/';
+      const url = isEditMode ? `/api/targets/${recordId}/` : '/api/targets/';
       const method = isEditMode ? 'PUT' : 'POST';
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
@@ -405,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableWrapper.style.display = 'none';
     paginationControls.style.display = 'none';
 
-    const url = `/api/vehicles/?page=${currentPage}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`;
+    const url = `/api/targets/?page=${currentPage}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`;
 
     fetch(url)
       .then(response => {
@@ -418,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (res.status && Array.isArray(res.data)) {
           renderTable(res.data, res.total);
         } else {
-          showError(res.message || 'Failed to fetch vehicle records.');
+          showError(res.message || 'Failed to fetch budget records.');
           loadingSpinner.style.display = 'none';
         }
       })
@@ -436,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePageStats(currentRecords, totalCount);
 
     if (data.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="${isStaff ? 10 : 9}" class="text-center text-muted py-4">No vehicles found.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="${isStaff ? 9 : 8}" class="text-center text-muted py-4">No budget records found.</td></tr>`;
       tableWrapper.style.display = 'block';
       return;
     }
@@ -458,13 +416,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
       row.innerHTML = `
         <td><span class="badge bg-dark">${item.id}</span></td>
-        <td><strong>${escapeHtml(item.make_name || 'N/A')}</strong></td>
-        <td>${escapeHtml(item.vehicle_model || 'N/A')}</td>
-        <td><code>${escapeHtml(item.vin || 'N/A')}</code></td>
-        <td><span class="fw-semibold text-success">$${(item.mmr || 0).toLocaleString()}</span></td>
-        <td><small>${escapeHtml(item.transmission || 'N/A')}</small></td>
-        <td><span class="badge bg-light text-dark border">${escapeHtml(item.color || 'N/A')}</span></td>
-        <td><small class="text-muted">${item.odometer ? item.odometer.toLocaleString() + ' mi' : 'N/A'}</small></td>
+        <td><strong>${escapeHtml(item.employee_name || 'N/A')}</strong></td>
+        <td><code>${item.budget_year}</code></td>
+        <td><code>${item.budget_month}</code></td>
+        <td>${escapeHtml(item.store_name || 'N/A')}</td>
+        <td>${(item.budget_qty || 0).toLocaleString()} units</td>
+        <td><span class="fw-semibold text-success">$${(item.budget_amount || 0).toLocaleString()}</span></td>
         <td><small class="text-muted text-nowrap">${escapeHtml(item.created_at || 'N/A')}</small></td>
         ${actionsColumn}
       `;
@@ -484,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const id = this.getAttribute('data-id');
-          if (confirm("Are you sure you want to delete this vehicle?")) {
+          if (confirm("Are you sure you want to delete this budget record?")) {
             deleteRecord(id);
           }
         });
@@ -496,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function openEditModal(id) {
-    const url = `/api/vehicles/${id}/`;
+    const url = `/api/targets/${id}/`;
     fetch(url)
       .then(res => res.json())
       .then(res => {
@@ -504,18 +461,16 @@ document.addEventListener('DOMContentLoaded', function() {
           crudForm.reset();
           crudForm.classList.remove('was-validated');
           editIdInput.value = res.data.id;
-          makeSelect.value = res.data.make;
-          modelInput.value = res.data.vehicle_model;
-          vinInput.value = res.data.vin;
-          mmrInput.value = res.data.mmr;
-          transmissionInput.value = res.data.transmission || '';
-          colorInput.value = res.data.color || '';
-          odometerInput.value = res.data.odometer || '';
-          bodyInput.value = res.data.body || '';
-          modalTitle.textContent = 'Edit Vehicle';
+          employeeSelect.value = res.data.employee;
+          storeSelect.value = res.data.store;
+          yearInput.value = res.data.budget_year;
+          monthInput.value = res.data.budget_month;
+          qtyInput.value = res.data.budget_qty;
+          amountInput.value = res.data.budget_amount;
+          modalTitle.textContent = 'Edit Budget Record';
           bootstrapModal.show();
         } else {
-          showError("Could not retrieve vehicle details.");
+          showError("Could not retrieve budget details.");
         }
       })
       .catch(err => {
@@ -524,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function deleteRecord(id) {
-    const url = `/api/vehicles/${id}/`;
+    const url = `/api/targets/${id}/`;
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     fetch(url, {
@@ -616,21 +571,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const doc = new jsPDF('p', 'pt', 'a4');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text("Vehicle Report", 40, 45);
+    doc.text("Employee Target Report", 40, 45);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(108, 117, 125);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 65);
 
-    const headers = [["Vehicle ID", "Make", "Model", "VIN", "MMR", "Color", "Odometer"]];
+    const headers = [["Target ID", "Employee", "Year", "Month", "Store", "Qty Limit", "Amount Limit"]];
     const rows = currentRecords.map(rec => [
       rec.id || 'N/A',
-      rec.make_name || 'N/A',
-      rec.vehicle_model || 'N/A',
-      rec.vin || 'N/A',
-      rec.mmr ? '$' + rec.mmr.toLocaleString() : '$0',
-      rec.color || 'N/A',
-      rec.odometer ? rec.odometer.toLocaleString() + ' mi' : 'N/A'
+      rec.employee_name || 'N/A',
+      rec.budget_year || 'N/A',
+      rec.budget_month || 'N/A',
+      rec.store_name || 'N/A',
+      rec.budget_qty ? rec.budget_qty + ' units' : '0 units',
+      rec.budget_amount ? '$' + rec.budget_amount.toLocaleString() : '$0'
     ]);
 
     doc.autoTable({
@@ -642,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
       styles: { fontSize: 8 }
     });
 
-    doc.save(`vehicle_report.pdf`);
+    doc.save(`budget_report.pdf`);
   }
 
   function showSuccess(msg) {
