@@ -80,7 +80,7 @@
       <div class="card shadow-sm border-0 mb-4">
         <div class="card-body pt-3">
           <h5 class="card-title py-0 my-0 mb-3">Total Sales Revenue by Store</h5>
-          <div id="salesChart" style="min-height: 400px;"></div>
+          <div id="salesChart" style="min-height: 450px;"></div>
         </div>
       </div>
     </div>
@@ -306,15 +306,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (salesChart) {
       salesChart.updateOptions({
-        labels: storeNames,
-        series: storeRevenues
+        xaxis: {
+          categories: storeNames
+        },
+        series: [{
+          name: 'Revenue',
+          data: storeRevenues
+        }]
       });
     } else {
       salesChart = new ApexCharts(document.querySelector("#salesChart"), {
-        series: storeRevenues,
-        chart: { height: 400, type: 'donut' },
-        labels: storeNames,
-        legend: { position: 'right', horizontalAlign: 'center' },
+        series: [{
+          name: 'Revenue',
+          data: storeRevenues
+        }],
+        chart: { 
+          height: 450, 
+          type: 'bar',
+          toolbar: { show: false }
+        },
+        plotOptions: {
+          bar: {
+            borderRadius: 4,
+            horizontal: true,
+            distributed: true
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+        xaxis: {
+          categories: storeNames,
+          labels: {
+            formatter: function (val) {
+              return '$' + val.toLocaleString();
+            }
+          }
+        },
+        yaxis: {
+          labels: {
+            maxWidth: 180
+          }
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return '$' + val.toLocaleString();
+            }
+          }
+        },
+        legend: {
+          show: false
+        },
         colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
       });
       salesChart.render();
