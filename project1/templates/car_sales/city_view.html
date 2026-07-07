@@ -14,10 +14,77 @@
   </nav>
 </div>
 
-<section class="section">
+<section class="section dashboard">
   <div class="row">
     <!-- Action Alerts -->
     <div class="col-12" id="alert-container"></div>
+
+    <!-- Summary Cards and Charts -->
+    <div class="row mb-4">
+      <!-- Total Cities Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card sales-card">
+          <div class="card-body">
+            <h5 class="card-title">Total <span>| Cities</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-building"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-total-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">all registered cities</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page Cities Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card revenue-card">
+          <div class="card-body">
+            <h5 class="card-title">Page Count <span>| Cities</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-pin-map"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-page-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">on current page</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unique Countries Card -->
+      <div class="col-xxl-4 col-md-12 mb-3">
+        <div class="card info-card customers-card">
+          <div class="card-body">
+            <h5 class="card-title">Countries <span>| Page</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+                <i class="bi bi-globe" style="color: #ff771d;"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-page-countries">0</h6>
+                <span class="text-muted small pt-2 ps-1">unique countries represented</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart container -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body pt-3">
+          <h5 class="card-title py-0 my-0 mb-3">Cities by Country</h5>
+          <div id="cityChart" style="min-height: 250px;"></div>
+        </div>
+      </div>
+    </div>
 
     <div class="col-12">
       <div class="card">
@@ -168,6 +235,40 @@ document.addEventListener('DOMContentLoaded', function() {
   let bootstrapModal = null;
   if (crudModalEl) {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
+  }
+
+  let cityChart = null;
+  function updatePageStats(records, totalCount) {
+    document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
+    document.getElementById('card-page-count').textContent = records.length.toLocaleString();
+    
+    const countryMap = {};
+    records.forEach(rec => {
+      const countryName = rec.country_name || 'N/A';
+      countryMap[countryName] = (countryMap[countryName] || 0) + 1;
+    });
+    const countries = Object.keys(countryMap);
+    document.getElementById('card-page-countries').textContent = countries.length.toLocaleString();
+    
+    const countryCounts = countries.map(c => countryMap[c]);
+    
+    if (cityChart) {
+      cityChart.updateOptions({
+        xaxis: { categories: countries },
+        series: [{ name: 'Cities', data: countryCounts }]
+      });
+    } else {
+      cityChart = new ApexCharts(document.querySelector("#cityChart"), {
+        series: [{ name: 'Cities', data: countryCounts }],
+        chart: { height: 280, type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: countries },
+        legend: { show: false },
+        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+      });
+      cityChart.render();
+    }
   }
 
   // State Variables
@@ -357,6 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     tableWrapper.style.display = 'block';
     updatePagination(totalCount);
+    updatePageStats(currentRecords, totalCount);
   }
 
   function openEditModal(id) {

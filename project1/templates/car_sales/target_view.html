@@ -21,11 +21,11 @@
 
       <!-- Summary Cards and Charts -->
   <div class="row mb-4">
-    <!-- Total Budgets Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <!-- Total Targets Card -->
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
-          <h5 class="card-title">Total <span>| Budgets</span></h5>
+          <h5 class="card-title">Total <span>| Targets</span></h5>
           <div class="d-flex align-items-center">
             <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
               <i class="bi bi-wallet2"></i>
@@ -40,7 +40,7 @@
     </div>
 
     <!-- Target Amount Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card revenue-card">
         <div class="card-body">
           <h5 class="card-title">Target Sum <span>| Page</span></h5>
@@ -53,6 +53,34 @@
               <span class="text-muted small pt-2 ps-1">total target allocation</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avg Target Card -->
+    <div class="col-xxl-4 col-md-12 mb-3">
+      <div class="card info-card customers-card">
+        <div class="card-body">
+          <h5 class="card-title">Avg Target <span>| Page</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+              <i class="bi bi-calculator" style="color: #ff771d;"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="card-page-avg">$0</h6>
+              <span class="text-muted small pt-2 ps-1">average per employee</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart container -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body pt-3">
+          <h5 class="card-title py-0 my-0 mb-3">Targets by Employee</h5>
+          <div id="targetChart" style="min-height: 250px;"></div>
         </div>
       </div>
     </div>
@@ -245,6 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
+  let targetChart = null;
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
 
@@ -253,6 +282,40 @@ document.addEventListener('DOMContentLoaded', function() {
       budgetSum += parseFloat(rec.budget_amount) || 0;
     });
     document.getElementById('card-page-target').textContent = '$' + Math.round(budgetSum).toLocaleString();
+
+    const avgTarget = records.length > 0 ? (budgetSum / records.length) : 0;
+    document.getElementById('card-page-avg').textContent = '$' + Math.round(avgTarget).toLocaleString();
+
+    const empMap = {};
+    records.forEach(rec => {
+      const empName = rec.employee_name || `Employee #${rec.employee}`;
+      empMap[empName] = (empMap[empName] || 0) + (parseFloat(rec.budget_amount) || 0);
+    });
+    const employees = Object.keys(empMap);
+    const employeeBudgets = employees.map(e => Math.round(empMap[e]));
+
+    if (targetChart) {
+      targetChart.updateOptions({
+        xaxis: { categories: employees },
+        series: [{ name: 'Target Amount', data: employeeBudgets }]
+      });
+    } else {
+      targetChart = new ApexCharts(document.querySelector("#targetChart"), {
+        series: [{ name: 'Target Amount', data: employeeBudgets }],
+        chart: { height: 280, type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: employees },
+        yaxis: {
+          labels: {
+            formatter: function (val) { return '$' + val.toLocaleString(); }
+          }
+        },
+        legend: { show: false },
+        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+      });
+      targetChart.render();
+    }
   }
 
   // State Variables

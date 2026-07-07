@@ -22,7 +22,7 @@
       <!-- Summary Cards and Charts -->
   <div class="row mb-4">
     <!-- Total Customers Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
           <h5 class="card-title">Total <span>| Customers</span></h5>
@@ -40,7 +40,7 @@
     </div>
 
     <!-- Active Customers Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card revenue-card">
         <div class="card-body">
           <h5 class="card-title">Active <span>| Page</span></h5>
@@ -56,6 +56,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Page Customers Card -->
+    <div class="col-xxl-4 col-md-12 mb-3">
+      <div class="card info-card customers-card">
+        <div class="card-body">
+          <h5 class="card-title">Page Count <span>| Customers</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+              <i class="bi bi-pin-map" style="color: #ff771d;"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="card-page-count">0</h6>
+              <span class="text-muted small pt-2 ps-1">on current page</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
     <!-- Chart container -->
     <div class="col-lg-12">
@@ -254,6 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
+    document.getElementById('card-page-count').textContent = records.length.toLocaleString();
 
     let totalActive = 0;
     records.forEach(rec => {

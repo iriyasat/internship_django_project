@@ -22,7 +22,7 @@
       <!-- Summary Cards and Charts -->
   <div class="row mb-4">
     <!-- Total Employees Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
           <h5 class="card-title">Total <span>| Employees</span></h5>
@@ -40,7 +40,7 @@
     </div>
 
     <!-- Active Employees Card -->
-    <div class="col-xxl-6 col-md-6 mb-3">
+    <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card revenue-card">
         <div class="card-body">
           <h5 class="card-title">Active Staff <span>| Page</span></h5>
@@ -53,6 +53,34 @@
               <span class="text-muted small pt-2 ps-1">active status</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unique Stores Card -->
+    <div class="col-xxl-4 col-md-12 mb-3">
+      <div class="card info-card customers-card">
+        <div class="card-body">
+          <h5 class="card-title">Stores <span>| Page</span></h5>
+          <div class="d-flex align-items-center">
+            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+              <i class="bi bi-shop" style="color: #ff771d;"></i>
+            </div>
+            <div class="ps-3">
+              <h6 id="card-page-stores">0</h6>
+              <span class="text-muted small pt-2 ps-1">unique stores represented</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart container -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body pt-3">
+          <h5 class="card-title py-0 my-0 mb-3">Employees by Store</h5>
+          <div id="employeeChart" style="min-height: 250px;"></div>
         </div>
       </div>
     </div>
@@ -280,14 +308,41 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
+  let employeeChart = null;
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
 
     let activeCount = 0;
+    const storeMap = {};
     records.forEach(rec => {
       if (rec.status_name === 'Active') activeCount++;
+      const storeName = rec.store_name || 'N/A';
+      storeMap[storeName] = (storeMap[storeName] || 0) + 1;
     });
     document.getElementById('card-page-active').textContent = activeCount.toLocaleString();
+
+    const stores = Object.keys(storeMap);
+    document.getElementById('card-page-stores').textContent = stores.length.toLocaleString();
+
+    const storeCounts = stores.map(s => storeMap[s]);
+
+    if (employeeChart) {
+      employeeChart.updateOptions({
+        xaxis: { categories: stores },
+        series: [{ name: 'Employees', data: storeCounts }]
+      });
+    } else {
+      employeeChart = new ApexCharts(document.querySelector("#employeeChart"), {
+        series: [{ name: 'Employees', data: storeCounts }],
+        chart: { height: 280, type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: stores },
+        legend: { show: false },
+        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+      });
+      employeeChart.render();
+    }
   }
 
   // State Variables

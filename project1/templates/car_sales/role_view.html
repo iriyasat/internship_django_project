@@ -14,10 +14,77 @@
   </nav>
 </div>
 
-<section class="section">
+<section class="section dashboard">
   <div class="row">
     <!-- Action Alerts -->
     <div class="col-12" id="alert-container"></div>
+
+    <!-- Summary Cards and Charts -->
+    <div class="row mb-4">
+      <!-- Total Roles Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card sales-card">
+          <div class="card-body">
+            <h5 class="card-title">Total <span>| Roles</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-person-badge"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-total-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">all registered roles</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page Roles Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card revenue-card">
+          <div class="card-body">
+            <h5 class="card-title">Page Count <span>| Roles</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-pin-map"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-page-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">on current page</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latest Role Card -->
+      <div class="col-xxl-4 col-md-12 mb-3">
+        <div class="card info-card customers-card">
+          <div class="card-body">
+            <h5 class="card-title">Latest <span>| Role</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+                <i class="bi bi-person-plus" style="color: #ff771d;"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-latest-role">N/A</h6>
+                <span class="text-muted small pt-2 ps-1">recently added</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart container -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body pt-3">
+          <h5 class="card-title py-0 my-0 mb-3">Role Distribution</h5>
+          <div id="roleChart" style="min-height: 250px;"></div>
+        </div>
+      </div>
+    </div>
 
     <div class="col-12">
       <div class="card">
@@ -156,6 +223,50 @@ document.addEventListener('DOMContentLoaded', function() {
   let bootstrapModal = null;
   if (crudModalEl) {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
+  }
+
+  let roleChart = null;
+  function updatePageStats(records, totalCount) {
+    document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
+    document.getElementById('card-page-count').textContent = records.length.toLocaleString();
+    
+    let latestName = 'N/A';
+    if (records.length > 0) {
+      let maxId = -1;
+      records.forEach(r => {
+        if (r.role_id > maxId) {
+          maxId = r.role_id;
+          latestName = r.role_name;
+        }
+      });
+    }
+    document.getElementById('card-latest-role').textContent = latestName;
+    
+    const lenMap = {};
+    records.forEach(rec => {
+      const name = rec.role_name || 'N/A';
+      lenMap[name] = name.length;
+    });
+    const names = Object.keys(lenMap);
+    const nameLens = names.map(n => lenMap[n]);
+    
+    if (roleChart) {
+      roleChart.updateOptions({
+        xaxis: { categories: names },
+        series: [{ name: 'Name Length', data: nameLens }]
+      });
+    } else {
+      roleChart = new ApexCharts(document.querySelector("#roleChart"), {
+        series: [{ name: 'Name Length', data: nameLens }],
+        chart: { height: 280, type: 'bar', toolbar: { show: false } },
+        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: names },
+        legend: { show: false },
+        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+      });
+      roleChart.render();
+    }
   }
 
   // State Variables
@@ -343,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     tableWrapper.style.display = 'block';
     updatePagination(totalCount);
+    updatePageStats(currentRecords, totalCount);
   }
 
   function openEditModal(id) {
