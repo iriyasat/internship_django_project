@@ -1,0 +1,854 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Employee Budget Report - Car Sales{% endblock %}
+
+{% block extra_css %}
+<style>
+  .budget-cell {
+    position: relative;
+    transition: background-color 0.15s ease-in-out;
+  }
+  .empty-cell-dash {
+    color: #ccc;
+    font-weight: 300;
+  }
+  {% if request.user.is_staff %}
+  .budget-cell:hover {
+    background-color: rgba(13, 110, 253, 0.08) !important;
+  }
+  .budget-cell:hover .empty-cell-dash::after {
+    content: '+';
+    color: #0d6efd;
+    font-weight: bold;
+  }
+  .budget-cell:hover .empty-cell-dash {
+    font-size: 0;
+  }
+  {% endif %}
+  .table-responsive {
+    max-height: 600px;
+  }
+  .table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Employee Budget</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">Employee Budget</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <div class="row">
+    <!-- Action Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <!-- Summary Cards and Charts -->
+    <div class="row mb-4">
+      <!-- Total Budgets Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card sales-card">
+          <div class="card-body">
+            <h5 class="card-title">Total <span>| Records</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-wallet2"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-total-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">budget allocations</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget Amount Card -->
+      <div class="col-xxl-4 col-md-6 mb-3">
+        <div class="card info-card revenue-card">
+          <div class="card-body">
+            <h5 class="card-title">Budget Sum <span>| Total</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-currency-dollar"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-page-target">$0</h6>
+                <span class="text-muted small pt-2 ps-1">total budget allocation</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avg Budget Card -->
+      <div class="col-xxl-4 col-md-12 mb-3">
+        <div class="card info-card customers-card">
+          <div class="card-body">
+            <h5 class="card-title">Avg Budget <span>| Total</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
+                <i class="bi bi-calculator" style="color: #ff771d;"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-page-avg">$0</h6>
+                <span class="text-muted small pt-2 ps-1">average per budget record</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body pt-3">
+          <h5 class="card-title">
+            Employee Budget Directory <span>| Year Pivot & CRUD Interface</span>
+            {% if request.user.is_staff %}
+            <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
+              <i class="bi bi-plus-circle me-1"></i> Add Budget Record
+            </button>
+            {% endif %}
+          </h5>
+
+          <!-- Search and Table Controls -->
+          <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-3">
+              <label for="year-select" class="small fw-bold text-muted mb-1 d-block">Select Year:</label>
+              <select class="form-select form-select-sm" id="year-select" style="max-width: 150px;">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-center gap-2 pt-4">
+              <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
+              <select class="form-select form-select-sm" id="page-size-select" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span class="small text-muted">rows per page</span>
+            </div>
+            <div class="col-md-5 text-md-end pt-4">
+              <div class="d-flex justify-content-md-end align-items-center gap-2">
+                <div class="input-group input-group-sm ms-md-auto" style="max-width: 250px;">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="search-input" placeholder="Search employee or store...">
+                </div>
+                <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading budget records...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper" style="display: none;">
+            <table class="table table-hover align-middle table-bordered">
+              <thead class="table-light">
+                <tr class="text-center">
+                  <th class="text-start">Employee</th>
+                  <th class="text-start">Store</th>
+                  <th>Jan</th>
+                  <th>Feb</th>
+                  <th>Mar</th>
+                  <th>Apr</th>
+                  <th>May</th>
+                  <th>Jun</th>
+                  <th>Jul</th>
+                  <th>Aug</th>
+                  <th>Sep</th>
+                  <th>Oct</th>
+                  <th>Nov</th>
+                  <th>Dec</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="api-table-body">
+                <!-- Populated via Javascript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
+            <div class="small text-muted" id="pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                <!-- Populated via Javascript -->
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CRUD Modal -->
+{% if request.user.is_staff %}
+<div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="crudModalLabel">Add Budget Record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="crud-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" id="edit-id" value="">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_employee" class="form-label fw-bold">Employee</label>
+            <select class="form-select" id="id_employee" required>
+              <option value="" selected disabled>Select Employee...</option>
+              {% for employee in employees %}
+              <option value="{{ employee.employee_id }}">{{ employee.first_name }} {{ employee.last_name }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select an employee.</div>
+          </div>
+          <div class="mb-3">
+            <label for="id_store" class="form-label fw-bold">Store</label>
+            <select class="form-select" id="id_store" required>
+              <option value="" selected disabled>Select Store...</option>
+              {% for store in stores %}
+              <option value="{{ store.store_id }}">{{ store.store_name }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select a store.</div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_year" class="form-label fw-bold">Budget Year</label>
+              <input type="number" class="form-control" id="id_budget_year" required placeholder="e.g. 2026">
+              <div class="invalid-feedback">Please enter the year.</div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_month" class="form-label fw-bold">Budget Month</label>
+              <input type="number" class="form-control" id="id_budget_month" required placeholder="1-12" min="1" max="12">
+              <div class="invalid-feedback">Please enter a valid month (1-12).</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_qty" class="form-label fw-bold">Budget Quantity</label>
+              <input type="number" class="form-control" id="id_budget_qty" required placeholder="e.g. 50">
+              <div class="invalid-feedback">Please enter budget quantity.</div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_budget_amount" class="form-label fw-bold">Budget Amount ($)</label>
+              <input type="number" class="form-control" id="id_budget_amount" required placeholder="e.g. 150000">
+              <div class="invalid-feedback">Please enter budget amount.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <div>
+            <button type="button" class="btn btn-danger" id="delete-modal-btn" style="display: none;">Delete</button>
+          </div>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="save-btn">Save Changes</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tableBody = document.getElementById('api-table-body');
+  const tableWrapper = document.getElementById('table-wrapper');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const alertContainer = document.getElementById('alert-container');
+  const searchInput = document.getElementById('search-input');
+  const yearSelect = document.getElementById('year-select');
+  const pageSizeSelect = document.getElementById('page-size-select');
+  const paginationControls = document.getElementById('pagination-controls');
+  const paginationInfo = document.getElementById('pagination-info');
+  const paginationList = document.getElementById('pagination-list');
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+  const crudModalEl = document.getElementById('crudModal');
+  const crudForm = document.getElementById('crud-form');
+  const addBtn = document.getElementById('add-btn');
+  const modalTitle = document.getElementById('crudModalLabel');
+  const editIdInput = document.getElementById('edit-id');
+  const employeeSelect = document.getElementById('id_employee');
+  const storeSelect = document.getElementById('id_store');
+  const yearInput = document.getElementById('id_budget_year');
+  const monthInput = document.getElementById('id_budget_month');
+  const qtyInput = document.getElementById('id_budget_qty');
+  const amountInput = document.getElementById('id_budget_amount');
+  const deleteModalBtn = document.getElementById('delete-modal-btn');
+
+  let bootstrapModal = null;
+  if (crudModalEl) {
+    bootstrapModal = new bootstrap.Modal(crudModalEl);
+  }
+
+  let targetChart = null;
+  let rawData = [];
+  let pivotData = {};
+
+  // State Variables
+  let currentPage = 1;
+  let pageSize = parseInt(pageSizeSelect.value);
+  let searchQuery = '';
+  const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
+
+  // Initialize data fetch
+  fetchData();
+
+  // Auto-open Add modal if action=add is passed
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'add' && addBtn) {
+    addBtn.click();
+  }
+
+  // Event Listeners
+  downloadPdfBtn.addEventListener('click', downloadPDF);
+
+  yearSelect.addEventListener('change', function() {
+    currentPage = 1;
+    fetchData();
+  });
+
+  // Search event with small debounce
+  let searchTimeout = null;
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      searchQuery = this.value.toLowerCase().trim();
+      currentPage = 1;
+      renderTable();
+    }, 300);
+  });
+
+  pageSizeSelect.addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    renderTable();
+  });
+
+  if (addBtn) {
+    addBtn.addEventListener('click', function() {
+      crudForm.reset();
+      crudForm.classList.remove('was-validated');
+      editIdInput.value = '';
+      if (deleteModalBtn) deleteModalBtn.style.display = 'none';
+      yearInput.value = yearSelect.value;
+      modalTitle.textContent = 'Add Budget Record';
+    });
+  }
+
+  if (deleteModalBtn) {
+    deleteModalBtn.addEventListener('click', function() {
+      const id = editIdInput.value;
+      if (id && confirm("Are you sure you want to delete this budget record?")) {
+        deleteRecord(id);
+        bootstrapModal.hide();
+      }
+    });
+  }
+
+  if (crudForm) {
+    crudForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!crudForm.checkValidity()) {
+        e.stopPropagation();
+        crudForm.classList.add('was-validated');
+        return;
+      }
+
+      const recordId = editIdInput.value;
+      const isEditMode = !!recordId;
+
+      const postData = {
+        employee: parseInt(employeeSelect.value),
+        store: parseInt(storeSelect.value),
+        budget_year: parseInt(yearInput.value),
+        budget_month: parseInt(monthInput.value),
+        budget_qty: parseInt(qtyInput.value),
+        budget_amount: parseInt(amountInput.value)
+      };
+
+      const url = isEditMode ? `/api/budgets/${recordId}/` : '/api/budgets/';
+      const method = isEditMode ? 'PUT' : 'POST';
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(postData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errData => {
+            throw new Error(errData.message || JSON.stringify(errData.errors) || 'Action failed.');
+          });
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status) {
+          showSuccess(res.message);
+          bootstrapModal.hide();
+          fetchData();
+        } else {
+          showError(res.message || 'Action failed.');
+        }
+      })
+      .catch(err => {
+        console.error('Submit error:', err);
+        showError(`Submission failed: ${err.message}`);
+      });
+    });
+  }
+
+  // Cell clicking behavior to add/edit budgets directly
+  tableBody.addEventListener('click', function(e) {
+    const cell = e.target.closest('.budget-cell');
+    if (!cell) return;
+
+    if (!isStaff) return;
+
+    const empId = cell.getAttribute('data-employee-id');
+    const storeId = cell.getAttribute('data-store-id');
+    const month = cell.getAttribute('data-month');
+    const budgetId = cell.getAttribute('data-budget-id');
+
+    if (budgetId) {
+      openEditModal(budgetId);
+    } else {
+      crudForm.reset();
+      crudForm.classList.remove('was-validated');
+      editIdInput.value = '';
+      if (deleteModalBtn) deleteModalBtn.style.display = 'none';
+      employeeSelect.value = empId;
+      storeSelect.value = storeId;
+      yearInput.value = yearSelect.value;
+      monthInput.value = month;
+      modalTitle.textContent = 'Add Budget Record';
+      bootstrapModal.show();
+    }
+  });
+
+  function fetchData() {
+    loadingSpinner.style.display = 'block';
+    tableWrapper.style.display = 'none';
+    paginationControls.style.display = 'none';
+
+    const selectedYear = yearSelect.value;
+    // Querying with large page_size=10000 to fetch all records for the selected year
+    const url = `/api/budgets/?page=1&page_size=10000&budget_year=${selectedYear}`;
+
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          rawData = res.data;
+          processPivotData();
+          renderTable();
+        } else {
+          showError(res.message || 'Failed to fetch budget records.');
+          loadingSpinner.style.display = 'none';
+        }
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        showError(`Failed to fetch data from API: ${err.message}`);
+        loadingSpinner.style.display = 'none';
+      });
+  }
+
+  function processPivotData() {
+    pivotData = {};
+    rawData.forEach(item => {
+      const key = `${item.employee}_${item.store}`;
+      if (!pivotData[key]) {
+        pivotData[key] = {
+          employee_id: item.employee,
+          employee_name: item.employee_name,
+          store_id: item.store,
+          store_name: item.store_name,
+          months: {},
+          total_amount: 0,
+          total_qty: 0
+        };
+      }
+      pivotData[key].months[item.budget_month] = item;
+      pivotData[key].total_amount += parseFloat(item.budget_amount) || 0;
+      pivotData[key].total_qty += parseInt(item.budget_qty) || 0;
+    });
+  }
+
+  function updateStats(filteredKeys) {
+    // We calculate stats based on the filtered keys/rows currently matched by search query
+    let totalRecordsCount = 0;
+    let totalBudgetSum = 0;
+    const employeeBudgetsMap = {};
+
+    filteredKeys.forEach(key => {
+      const row = pivotData[key];
+      // Sum the active monthly records
+      for (let m = 1; m <= 12; m++) {
+        const item = row.months[m];
+        if (item) {
+          totalRecordsCount++;
+          totalBudgetSum += parseFloat(item.budget_amount) || 0;
+        }
+      }
+      employeeBudgetsMap[row.employee_name] = (employeeBudgetsMap[row.employee_name] || 0) + row.total_amount;
+    });
+
+    document.getElementById('card-total-count').textContent = totalRecordsCount.toLocaleString();
+    document.getElementById('card-page-target').textContent = '$' + Math.round(totalBudgetSum).toLocaleString();
+    
+    const avgBudget = totalRecordsCount > 0 ? (totalBudgetSum / totalRecordsCount) : 0;
+    document.getElementById('card-page-avg').textContent = '$' + Math.round(avgBudget).toLocaleString();
+
+    const employees = Object.keys(employeeBudgetsMap);
+    const employeeAmounts = employees.map(e => Math.round(employeeBudgetsMap[e]));
+
+    const chartEl = document.querySelector("#targetChart");
+    if (chartEl) {
+      if (targetChart) {
+        targetChart.updateOptions({
+          xaxis: { categories: employees },
+          series: [{ name: 'Budget Amount', data: employeeAmounts }]
+        });
+      } else {
+        targetChart = new ApexCharts(chartEl, {
+          series: [{ name: 'Budget Amount', data: employeeAmounts }],
+          chart: { height: 280, type: 'bar', toolbar: { show: false } },
+          plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
+          dataLabels: { enabled: false },
+          xaxis: { categories: employees },
+          yaxis: {
+            labels: {
+              formatter: function (val) { return '$' + val.toLocaleString(); }
+            }
+          },
+          legend: { show: false },
+          colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
+        });
+        targetChart.render();
+      }
+    }
+  }
+
+  function renderTable() {
+    loadingSpinner.style.display = 'none';
+    tableBody.innerHTML = '';
+
+    // Apply search filter on pivot data
+    const filteredKeys = Object.keys(pivotData).filter(key => {
+      const row = pivotData[key];
+      const matchSearch = !searchQuery || 
+        row.employee_name.toLowerCase().includes(searchQuery) ||
+        row.store_name.toLowerCase().includes(searchQuery);
+      return matchSearch;
+    });
+
+    // Sort rows alphabetically by employee name
+    filteredKeys.sort((a, b) => {
+      return pivotData[a].employee_name.localeCompare(pivotData[b].employee_name);
+    });
+
+    updateStats(filteredKeys);
+
+    const totalCount = filteredKeys.length;
+    if (totalCount === 0) {
+      tableBody.innerHTML = `<tr><td colspan="15" class="text-center text-muted py-4">No budget records found.</td></tr>`;
+      tableWrapper.style.display = 'block';
+      return;
+    }
+
+    // Client-side pagination
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const paginatedKeys = filteredKeys.slice(startIndex, endIndex);
+
+    paginatedKeys.forEach(key => {
+      const row = pivotData[key];
+      const tr = document.createElement('tr');
+      tr.style.opacity = '0';
+      tr.style.transition = 'opacity 0.2s ease-in-out';
+
+      let monthsHtml = '';
+      for (let m = 1; m <= 12; m++) {
+        const item = row.months[m];
+        if (item) {
+          monthsHtml += `
+            <td class="text-center budget-cell" data-employee-id="${row.employee_id}" data-store-id="${row.store_id}" data-month="${m}" data-budget-id="${item.id}" style="cursor: pointer; min-width: 90px;">
+              <span class="text-success fw-semibold">$${Math.round(item.budget_amount).toLocaleString()}</span>
+              <br><small class="text-muted">${item.budget_qty} units</small>
+            </td>
+          `;
+        } else {
+          monthsHtml += `
+            <td class="text-center budget-cell text-muted" data-employee-id="${row.employee_id}" data-store-id="${row.store_id}" data-month="${m}" style="cursor: pointer; min-width: 90px;">
+              <span class="empty-cell-dash">-</span>
+            </td>
+          `;
+        }
+      }
+
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(row.employee_name)}</strong></td>
+        <td><span class="text-muted small">${escapeHtml(row.store_name)}</span></td>
+        ${monthsHtml}
+        <td class="text-center fw-bold bg-light"><span class="text-primary">$${Math.round(row.total_amount).toLocaleString()}</span><br><small class="text-muted">${row.total_qty} units</small></td>
+      `;
+
+      tableBody.appendChild(tr);
+      setTimeout(() => tr.style.opacity = '1', 50);
+    });
+
+    tableWrapper.style.display = 'block';
+    updatePagination(totalCount);
+  }
+
+  function openEditModal(id) {
+    const url = `/api/budgets/${id}/`;
+    fetch(url)
+      .then(res => res.json())
+      .then(res => {
+        if (res.status && res.data) {
+          crudForm.reset();
+          crudForm.classList.remove('was-validated');
+          editIdInput.value = res.data.id;
+          employeeSelect.value = res.data.employee;
+          storeSelect.value = res.data.store;
+          yearInput.value = res.data.budget_year;
+          monthInput.value = res.data.budget_month;
+          qtyInput.value = res.data.budget_qty;
+          amountInput.value = res.data.budget_amount;
+          if (deleteModalBtn) deleteModalBtn.style.display = 'inline-block';
+          modalTitle.textContent = 'Edit Budget Record';
+          bootstrapModal.show();
+        } else {
+          showError("Could not retrieve budget details.");
+        }
+      })
+      .catch(err => {
+        showError("Failed to fetch record details: " + err.message);
+      });
+  }
+
+  function deleteRecord(id) {
+    const url = `/api/budgets/${id}/`;
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': csrfToken
+      }
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status) {
+        showSuccess(res.message);
+        fetchData();
+      } else {
+        showError(res.message || 'Deletion failed.');
+      }
+    })
+    .catch(err => {
+      showError("Delete action failed: " + err.message);
+    });
+  }
+
+  function updatePagination(totalCount) {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    paginationInfo.textContent = `Showing ${totalCount > 0 ? startIndex + 1 : 0} to ${endIndex} of ${totalCount} entries`;
+
+    const totalPages = Math.ceil(totalCount / pageSize);
+    paginationList.innerHTML = '';
+
+    if (totalPages <= 1) {
+      paginationControls.style.display = 'none';
+      return;
+    }
+
+    paginationControls.style.display = 'flex';
+
+    // Previous Button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
+    if (currentPage > 1) {
+      prevLi.addEventListener('click', () => {
+        currentPage--;
+        renderTable();
+      });
+    }
+    paginationList.appendChild(prevLi);
+
+    // Page numbers
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+      li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
+      li.addEventListener('click', () => {
+        currentPage = i;
+        renderTable();
+      });
+      paginationList.appendChild(li);
+    }
+
+    // Next Button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
+    if (currentPage < totalPages) {
+      nextLi.addEventListener('click', () => {
+        currentPage++;
+        renderTable();
+      });
+    }
+    paginationList.appendChild(nextLi);
+  }
+
+  // PDF Export
+  function downloadPDF() {
+    const activeYear = yearSelect.value;
+    if (Object.keys(pivotData).length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'pt', 'a4');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(`Employee Budget Report (${activeYear})`, 40, 45);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 60);
+
+    const headers = [["Employee", "Store", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Total"]];
+    
+    // Filter and sort the pivot rows just like in the display
+    const filteredKeys = Object.keys(pivotData).filter(key => {
+      const row = pivotData[key];
+      const matchSearch = !searchQuery || 
+        row.employee_name.toLowerCase().includes(searchQuery) ||
+        row.store_name.toLowerCase().includes(searchQuery);
+      return matchSearch;
+    });
+
+    filteredKeys.sort((a, b) => {
+      return pivotData[a].employee_name.localeCompare(pivotData[b].employee_name);
+    });
+
+    const rows = filteredKeys.map(key => {
+      const row = pivotData[key];
+      const rowData = [
+        row.employee_name,
+        row.store_name
+      ];
+      for (let m = 1; m <= 12; m++) {
+        const item = row.months[m];
+        rowData.push(item ? `$${Math.round(item.budget_amount).toLocaleString()}` : '-');
+      }
+      rowData.push(`$${Math.round(row.total_amount).toLocaleString()}`);
+      return rowData;
+    });
+
+    doc.autoTable({
+      startY: 75,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 110, 253] },
+      styles: { fontSize: 7, cellPadding: 3 }
+    });
+
+    doc.save(`budget_report_${activeYear}.pdf`);
+  }
+
+  function showSuccess(msg) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    setTimeout(() => {
+      const alert = bootstrap.Alert.getOrCreateInstance(alertContainer.querySelector('.alert'));
+      if (alert) alert.close();
+    }, 5000);
+  }
+
+  function showError(msg) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-octagon me-1"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});
+</script>
+{% endblock %}
