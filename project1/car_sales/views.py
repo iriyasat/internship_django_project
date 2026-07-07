@@ -232,12 +232,22 @@ def budget_view(request):
     profile = get_employee_profile(request)
     employees = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
     stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
+    
+    # Get distinct budget years from database
+    years = list(EmployeeBudget.objects.values_list('budget_year', flat=True).distinct().order_by('-budget_year'))
+    import datetime
+    current_year = datetime.date.today().year
+    if current_year not in years:
+        years.insert(0, current_year)
+        
     context = {
-        'active_tab': 'targets',
+        'active_tab': 'budgets',
         'employees': employees,
         'stores': stores,
+        'years': years,
+        'current_year': current_year,
     }
-    return render(request, 'car_sales/target_view.html', context)
+    return render(request, 'car_sales/budget_view.html', context)
 
 
 
@@ -255,7 +265,7 @@ def admin_panel_view(request):
         'vehicles': {'name': 'Vehicles', 'count': VehicleInfo.objects.count(), 'url': '/vehicles/', 'slug': 'vehicleinfo'},
         'customers': {'name': 'Customers', 'count': CustomerInfo.objects.count(), 'url': '/customers/', 'slug': 'customerinfo'},
         'sales': {'name': 'Sales Transactions', 'count': SellingInfo.objects.count(), 'url': '/sales/', 'slug': 'sellinginfo'},
-        'budgets': {'name': 'Employee Targets', 'count': EmployeeBudget.objects.count(), 'url': '/targets/', 'slug': 'employeebudget'},
+        'budgets': {'name': 'Employee Budget', 'count': EmployeeBudget.objects.count(), 'url': '/budgets/', 'slug': 'employeebudget'},
     }
     context = {
         'active_tab': 'admin_panel',
@@ -859,6 +869,17 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
             queryset = filter_by_hierarchy(queryset, request, profile, store_field, employee_field)
             if hasattr(queryset, 'distinct'):
                 queryset = queryset.distinct()
+
+        # Filter by direct fields if present in GET parameters
+        for key, value in request.GET.items():
+            if key in ['page', 'page_size', 'search']:
+                continue
+            try:
+                model_class._meta.get_field(key)
+                if value:
+                    queryset = queryset.filter(**{key: value})
+            except Exception:
+                pass
 
         # Apply searching
         if search:

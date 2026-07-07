@@ -17,7 +17,7 @@ urlpatterns = [
     path('vehicles/', vehicle_view, name='vehicle'),
     path('customers/', customer_view, name='customer'),
     path('sales/', selling_view, name='selling'),
-    path('targets/', budget_view, name='budget'),
+    path('budgets/', budget_view, name='budget'),
     path('admin-panel/', admin_panel_view, name='admin_panel'),
     path('api/employee_sales/', employee_sales_api, name='employee_sales_api'),
     path('api/store_sales/', store_sales_api, name='store_sales_api'),
@@ -45,7 +45,7 @@ api_routes = [
     ('vehicles', vehicle_api, 'vehicle_api'),
     ('customers', customer_api, 'customer_api'),
     ('sales', sales_api, 'sales_api'),
-    ('targets', budget_api, 'budget_api'),
+    ('budgets', budget_api, 'budget_api'),
     ('employees', employee_api, 'employee_api'),
 ]
 
