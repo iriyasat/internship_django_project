@@ -1,0 +1,448 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Budget vs Sales Report - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Budget vs Sales Report</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item">Reports</li>
+      <li class="breadcrumb-item active">Budget vs Sales</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <!-- Date Filter Form (Client-side) -->
+  <div class="card mb-4">
+    <div class="card-body pt-3">
+      <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Budget vs Sales</h5>
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-4 col-md-6 col-sm-12">
+          <label for="dt_from" class="form-label fw-bold text-muted small mb-2">From Date</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control" id="dt_from" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-sm-12">
+          <label for="dt_to" class="form-label fw-bold text-muted small mb-2">To Date</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white text-muted">
+              <i class="bi bi-calendar3"></i>
+            </span>
+            <input type="text" class="form-control" id="dt_to" value="" autocomplete="off" placeholder="YYYY-MM-DD"/>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-12">
+          <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-lg-end">
+            <button id="fetch-api-btn" class="btn btn-primary">
+              <i class="bi bi-cpu me-1"></i> Fetch API Data
+            </button>
+            <button id="reset-btn" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-clockwise me-1"></i> Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Status Info / Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <!-- API Data Table -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Performance Performance Breakdown <span>| Client-side API Rendered</span></h5>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
+              <select class="form-select form-select-sm" id="page-size-select" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <input type="text" class="form-control form-control-sm" id="search-input" placeholder="Search employee...">
+              <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5" style="display: none;">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Calling Budget vs Sales API...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Employee Name</th>
+                  <th class="text-end">Budget Target</th>
+                  <th class="text-end">Actual Sales</th>
+                  <th class="text-end">Difference</th>
+                  <th class="text-center" style="width: 25%;">Achievement</th>
+                </tr>
+              </thead>
+              <tbody id="api-table-body">
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none !important;">
+            <div class="small text-muted" id="pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                <!-- Populated via Javascript -->
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Datepickers if bootstrap-datepicker is loaded
+  if (typeof $.fn.datepicker !== 'undefined') {
+    $('#dt_from, #dt_to').datepicker({
+      format: 'yyyy-mm-dd',
+      autoclose: true,
+      todayHighlight: true
+    });
+  }
+
+  // Elements
+  const fetchBtn = document.getElementById('fetch-api-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const dtFromInput = document.getElementById('dt_from');
+  const dtToInput = document.getElementById('dt_to');
+  
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const tableWrapper = document.getElementById('table-wrapper');
+  const tableBody = document.getElementById('api-table-body');
+  const alertContainer = document.getElementById('alert-container');
+  
+  const pageSizeSelect = document.getElementById('page-size-select');
+  const searchInput = document.getElementById('search-input');
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
+  const paginationControls = document.getElementById('pagination-controls');
+  const paginationInfo = document.getElementById('pagination-info');
+  const paginationList = document.getElementById('pagination-list');
+
+  // State Variables
+  let allRecords = [];
+  let filteredRecords = [];
+  let currentPage = 1;
+  let pageSize = parseInt(pageSizeSelect.value);
+
+  // Initialize Default Dates (same logic as other report pages)
+  setDefaultDates();
+
+  // Event Listeners
+  fetchBtn.addEventListener('click', fetchData);
+  downloadPdfBtn.addEventListener('click', downloadPDF);
+  resetBtn.addEventListener('click', function() {
+    dtFromInput.value = '';
+    dtToInput.value = '';
+    searchInput.value = '';
+    pageSizeSelect.value = '25';
+    pageSize = 25;
+    allRecords = [];
+    filteredRecords = [];
+    alertContainer.innerHTML = '';
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Please select a From Date and To Date above, then click "Fetch API Data".</td></tr>`;
+    paginationControls.style.setProperty('display', 'none', 'important');
+    setDefaultDates();
+  });
+
+  pageSizeSelect.addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    if (allRecords.length > 0) {
+      renderTable();
+    }
+  });
+
+  searchInput.addEventListener('input', function() {
+    if (allRecords.length > 0) {
+      filterRecords();
+    }
+  });
+
+  function setDefaultDates() {
+    // Default to full December 2014 to align with budget data
+    dtFromInput.value = '2014-01-01';
+    dtToInput.value = '2014-01-31';
+  }
+
+  // Fetch Data Function
+  function fetchData() {
+    const dt_from = dtFromInput.value.trim();
+    const dt_to = dtToInput.value.trim();
+    
+    if (!dt_from || !dt_to) {
+      showError('Please specify both From Date and To Date.');
+      return;
+    }
+    
+    // Reset Table UI
+    loadingSpinner.style.display = 'block';
+    tableWrapper.style.display = 'none';
+    paginationControls.style.setProperty('display', 'none', 'important');
+    alertContainer.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    const apiUrl = `/api/budget-vs-sales/?dt_from=${encodeURIComponent(dt_from)}&dt_to=${encodeURIComponent(dt_to)}`;
+
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          allRecords = res.data;
+          filteredRecords = [...allRecords];
+          currentPage = 1;
+          renderTable();
+        } else {
+          showError(res.message || 'API request succeeded but returned no valid data.');
+          loadingSpinner.style.display = 'none';
+        }
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        showError(`Failed to fetch data from API: ${err.message}`);
+        loadingSpinner.style.display = 'none';
+      });
+  }
+
+  // Search/Filter records
+  function filterRecords() {
+    const query = searchInput.value.toLowerCase().trim();
+    if (!query) {
+      filteredRecords = [...allRecords];
+    } else {
+      filteredRecords = allRecords.filter(rec => {
+        const fullName = `${rec.first_name || ''} ${rec.last_name || ''}`.toLowerCase();
+        const storeName = (rec.store_name || '').toLowerCase();
+        const empId = String(rec.employee_id || '').toLowerCase();
+        return fullName.includes(query) || storeName.includes(query) || empId.includes(query);
+      });
+    }
+    currentPage = 1;
+    renderTable();
+  }
+
+  // Render Table Page
+  function renderTable() {
+    loadingSpinner.style.display = 'none';
+    tableBody.innerHTML = '';
+    
+    if (filteredRecords.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No matching records found.</td></tr>`;
+      tableWrapper.style.display = 'block';
+      paginationControls.style.setProperty('display', 'none', 'important');
+      return;
+    }
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filteredRecords.length);
+    const paginatedItems = filteredRecords.slice(startIndex, endIndex);
+
+    paginatedItems.forEach(rec => {
+      const row = document.createElement('tr');
+      row.style.opacity = '0';
+      row.style.transition = 'opacity 0.25s ease-in-out';
+      
+      const formattedBudget = rec.budget ? ('$' + parseFloat(rec.budget).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
+      const formattedSales = rec.sell_value ? ('$' + parseFloat(rec.sell_value).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0';
+      
+      const diffVal = parseFloat(rec.difference || 0);
+      const diffClass = diffVal >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold';
+      const formattedDiff = (diffVal >= 0 ? '+' : '') + '$' + diffVal.toLocaleString(undefined, {minimumFractionDigits: 0});
+      
+      const achPercent = parseFloat(rec.achievement || 0);
+      let progressColor = 'bg-danger';
+      if (achPercent >= 100) {
+        progressColor = 'bg-success';
+      } else if (achPercent >= 75) {
+        progressColor = 'bg-primary';
+      } else if (achPercent >= 40) {
+        progressColor = 'bg-warning';
+      }
+
+      row.innerHTML = `
+        <td><span class="badge bg-light text-dark fw-semibold">#${escapeHtml(String(rec.employee_id || 'N/A'))}</span></td>
+        <td>
+          <strong>${escapeHtml(rec.first_name || 'N/A')} ${escapeHtml(rec.last_name || '')}</strong>
+          ${rec.store_name ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${escapeHtml(rec.store_name)}</small>` : ''}
+        </td>
+        <td class="text-end text-muted">${formattedBudget}</td>
+        <td class="text-end text-dark fw-bold">${formattedSales}</td>
+        <td class="text-end ${diffClass}">${formattedDiff}</td>
+        <td>
+          <div class="d-flex align-items-center justify-content-between gap-3">
+            <div class="progress w-100" style="height: 8px;">
+              <div class="progress-bar ${progressColor}" role="progressbar" style="width: ${Math.min(achPercent, 100)}%" aria-valuenow="${achPercent}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <span class="small fw-bold text-nowrap">${achPercent}%</span>
+          </div>
+        </td>
+      `;
+
+      tableBody.appendChild(row);
+      setTimeout(() => row.style.opacity = '1', 50);
+    });
+
+    tableWrapper.style.display = 'block';
+    
+    // Update pagination controls
+    paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredRecords.length} entries`;
+    updatePagination(filteredRecords.length);
+  }
+
+  function updatePagination(totalCount) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    paginationList.innerHTML = '';
+
+    if (totalPages <= 1) {
+      paginationControls.style.setProperty('display', 'none', 'important');
+      return;
+    }
+
+    paginationControls.style.setProperty('display', 'flex', 'important');
+
+    // Previous Button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
+    if (currentPage > 1) {
+      prevLi.addEventListener('click', () => {
+        currentPage--;
+        renderTable();
+      });
+    }
+    paginationList.appendChild(prevLi);
+
+    // Pages
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+      li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
+      li.addEventListener('click', () => {
+        currentPage = i;
+        renderTable();
+      });
+      paginationList.appendChild(li);
+    }
+
+    // Next Button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
+    if (currentPage < totalPages) {
+      nextLi.addEventListener('click', () => {
+        currentPage++;
+        renderTable();
+      });
+    }
+    paginationList.appendChild(nextLi);
+  }
+
+  // PDF Export
+  function downloadPDF() {
+    if (filteredRecords.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    
+    // Set Document Details
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Budget vs Sales Report", 40, 45);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`Query Period: ${dtFromInput.value} to ${dtToInput.value}`, 40, 60);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 72);
+
+    const headers = [["Employee ID", "Employee Name", "Store", "Budget Target", "Actual Sales", "Difference", "Achievement %"]];
+    const rows = filteredRecords.map(rec => [
+      `#${rec.employee_id || 'N/A'}`,
+      `${rec.first_name || 'N/A'} ${rec.last_name || ''}`,
+      rec.store_name || 'N/A',
+      rec.budget ? ('$' + parseFloat(rec.budget).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0',
+      rec.sell_value ? ('$' + parseFloat(rec.sell_value).toLocaleString(undefined, {minimumFractionDigits: 0})) : '$0',
+      (parseFloat(rec.difference || 0) >= 0 ? '+' : '') + '$' + parseFloat(rec.difference || 0).toLocaleString(undefined, {minimumFractionDigits: 0}),
+      `${rec.achievement}%`
+    ]);
+
+    doc.autoTable({
+      startY: 85,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 110, 253] }, // Bootstrap primary color
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(`budget_vs_sales_${dtFromInput.value}_to_${dtToInput.value}.pdf`);
+  }
+
+  function showError(msg) {
+    alertContainer.innerHTML = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-octagon me-1"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});
+</script>
+{% endblock %}

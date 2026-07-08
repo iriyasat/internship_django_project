@@ -31,6 +31,8 @@ from django.forms import modelform_factory
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 
+from django.contrib.auth.backends import BaseBackend
+import types
 
 # Helper functions for Role-Based Hierarchy System
 def get_employee_profile(request):
@@ -697,6 +699,74 @@ def customer_store_spending_page_view(request):
     return render(request, 'car_sales/api_customer_store_spending.html', context)
 
 
+@api_view(['GET', 'POST'])
+def budget_vs_sales_api(request):
+    if not request.user.is_authenticated:
+        return Response(
+            {"status": False, "message": "Authentication required."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
+    is_allowed = request.user.is_superuser or request.user.is_staff
+    if not is_allowed:
+        profile = get_employee_profile(request)
+        if profile and profile.employee_role:
+            role = profile.employee_role.role_name.lower()
+            if "manager" in role or "admin" in role:
+                is_allowed = True
+                
+    if not is_allowed:
+        return Response(
+            {"status": False, "message": "Access Denied. Only administrators and store managers can fetch this API data."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    dt_from = None
+    dt_to = None
+
+    if hasattr(request, 'data') and request.data:
+        if isinstance(request.data, dict) or hasattr(request.data, 'get'):
+            dt_from = request.data.get('dt_from')
+            dt_to = request.data.get('dt_to')
+
+    if not dt_from:
+        dt_from = request.GET.get('dt_from')
+    if not dt_to:
+        dt_to = request.GET.get('dt_to')
+
+    if not dt_from or not dt_to:
+        return Response(
+            {"status": False, "message": "dt_from and dt_to parameters are required (YYYY-MM-DD)."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        data = budgetvssalesserializer.fetch(dt_from, dt_to)
+        return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@login_required
+def budget_vs_sales_page_view(request):
+    profile = get_employee_profile(request)
+    is_allowed = request.user.is_superuser or request.user.is_staff
+    if not is_allowed and profile and profile.employee_role:
+        role = profile.employee_role.role_name.lower()
+        if "manager" in role or "admin" in role:
+            is_allowed = True
+            
+    if not is_allowed:
+        messages.error(request, "Permission denied. Only administrators and store managers can access this page.")
+        return redirect('home')
+        
+    context = {
+        'active_parent': 'api_pages',
+        'active_tab': 'api_budget_vs_sales',
+    }
+    return render(request, 'car_sales/api_budget_vs_sales.html', context)
+
+
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 def inventory_api(request, pk=None):
     if not request.user.is_authenticated:
@@ -845,12 +915,10 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
 
     if request.method == 'GET':
         if pk is not None:
-            try:
-                obj = model_class.objects.get(pk=pk)
-                serializer = serializer_class(obj)
-                return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
-            except model_class.DoesNotExist:
-                return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+            data = serializer_class.fetch_one(pk)
+            if data:
+                return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
             
         try:
             page = int(request.GET.get('page', 1))
@@ -863,83 +931,113 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         search = request.GET.get('search', '').strip()
         
         # Apply role-based hierarchy filters if applicable
-        queryset = model_class.objects.all()
+        store_id = None
+        employee_id = None
         if store_field or employee_field:
             profile = get_employee_profile(request)
-            queryset = filter_by_hierarchy(queryset, request, profile, store_field, employee_field)
-            if hasattr(queryset, 'distinct'):
-                queryset = queryset.distinct()
+            if profile and not request.user.is_superuser:
+                role = profile.employee_role.role_name if profile.employee_role else ""
+                if role not in ["Regional Sales Manager"]:
+                    # Store-Level Roles: filter by store
+                    if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
+                        if store_field:
+                            store_id = profile.store.store_id
+                    # Employee-Level Roles: filter by themselves
+                    else:
+                        if employee_field:
+                            employee_id = profile.employee_id
+                        elif store_field:
+                            store_id = profile.store.store_id
 
         # Filter by direct fields if present in GET parameters
+        filters = {}
         for key, value in request.GET.items():
             if key in ['page', 'page_size', 'search']:
                 continue
             try:
                 model_class._meta.get_field(key)
                 if value:
-                    queryset = queryset.filter(**{key: value})
+                    filters[key] = value
             except Exception:
                 pass
 
-        # Apply searching
-        if search:
-            q_filter = Q()
-            for field in search_fields:
-                q_filter |= Q(**{f"{field}__icontains": search})
-            queryset = queryset.filter(q_filter)
-            
-        total = queryset.count()
-        
-        # Ordering (default by primary key/id)
-        pk_name = model_class._meta.pk.name
-        queryset = queryset.order_by(pk_name)
-        
-        # Fetch page slice
-        paginated_qs = queryset[offset:offset+page_size]
-        serializer = serializer_class(paginated_qs, many=True)
+        total, data = serializer_class.fetch(
+            limit=page_size,
+            offset=offset,
+            search=search,
+            store_id=store_id,
+            employee_id=employee_id,
+            **filters
+        )
         
         return Response({
             "status": True,
             "total": total,
             "page": page,
             "page_size": page_size,
-            "data": serializer.data
+            "data": data
         }, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        serializer = serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        import inspect
+        sig = inspect.signature(serializer_class.create)
+        create_params = {}
+        for param_name, param in sig.parameters.items():
+            if param_name in request.data:
+                create_params[param_name] = request.data[param_name]
+            elif param.default is not inspect.Parameter.empty:
+                create_params[param_name] = param.default
+            else:
+                create_params[param_name] = None
+                
+        try:
+            new_id = serializer_class.create(**create_params)
+            new_item = serializer_class.fetch_one(new_id)
             return Response({
                 "status": True,
                 "message": f"{model_class._meta.verbose_name.title()} record created successfully.",
-                "data": serializer.data
+                "data": new_item
             }, status=status.HTTP_201_CREATED)
-        return Response({"status": False, "message": "Validation failed.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
-        try:
-            obj = model_class.objects.get(pk=pk)
-        except model_class.DoesNotExist:
+        item = serializer_class.fetch_one(pk)
+        if not item:
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
             
-        serializer = serializer_class(obj, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+        import inspect
+        sig = inspect.signature(serializer_class.update)
+        update_params = {}
+        for param_name, param in sig.parameters.items():
+            if param_name == 'pk' or param_name == f"{model_class._meta.pk.name}":
+                continue
+            if param_name in request.data:
+                update_params[param_name] = request.data[param_name]
+            else:
+                update_params[param_name] = item.get(param_name)
+                
+        try:
+            pk_param_name = list(sig.parameters.keys())[0]
+            update_kwargs = {pk_param_name: pk}
+            update_kwargs.update(update_params)
+            
+            serializer_class.update(**update_kwargs)
+            updated_item = serializer_class.fetch_one(pk)
             return Response({
                 "status": True,
                 "message": f"{model_class._meta.verbose_name.title()} record updated successfully.",
-                "data": serializer.data
+                "data": updated_item
             }, status=status.HTTP_200_OK)
-        return Response({"status": False, "message": "Validation failed.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        try:
-            obj = model_class.objects.get(pk=pk)
-        except model_class.DoesNotExist:
+        item = serializer_class.fetch_one(pk)
+        if not item:
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
-            obj.delete()
+            serializer_class.delete(pk)
             return Response({
                 "status": True,
                 "message": f"{model_class._meta.verbose_name.title()} record deleted successfully."
@@ -1083,8 +1181,6 @@ def logout_view(request):
     return redirect('login')
 
 
-from django.contrib.auth.backends import BaseBackend
-import types
 
 class EmployeeBackend(BaseBackend):
     """
