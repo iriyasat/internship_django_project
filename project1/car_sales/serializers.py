@@ -601,7 +601,12 @@ class EmployeeRoleSerializer:
 
     @staticmethod
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
-        select_base = "SELECT er.role_id, er.role_name, er.created_at, er.updated_at FROM employee_role er WHERE 1=1"
+        select_base = """
+        SELECT er.role_id, er.role_name, er.created_at, er.updated_at,
+               (SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count
+        FROM employee_role er
+        WHERE 1=1
+        """
         count_base = "SELECT COUNT(*) FROM employee_role er WHERE 1=1"
         return execute_raw_sql_query(
             db_name=EmployeeRoleSerializer.DB_NAME,
@@ -622,7 +627,12 @@ class EmployeeRoleSerializer:
 
     @staticmethod
     def fetch_one(role_id):
-        query = "SELECT er.role_id, er.role_name, er.created_at, er.updated_at FROM employee_role er WHERE er.role_id = %s"
+        query = """
+        SELECT er.role_id, er.role_name, er.created_at, er.updated_at,
+               (SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count
+        FROM employee_role er
+        WHERE er.role_id = %s
+        """
         with connections[EmployeeRoleSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(query, [role_id])
             row = cursor.fetchone()
@@ -661,7 +671,12 @@ class EmployeeStatusSerializer:
 
     @staticmethod
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
-        select_base = "SELECT es.status_id, es.status, es.created_at, es.updated_at FROM employee_status es WHERE 1=1"
+        select_base = """
+        SELECT es.status_id, es.status, es.created_at, es.updated_at,
+               (SELECT COUNT(*) FROM employee e WHERE e.status = es.status_id) AS employee_count
+        FROM employee_status es
+        WHERE 1=1
+        """
         count_base = "SELECT COUNT(*) FROM employee_status es WHERE 1=1"
         return execute_raw_sql_query(
             db_name=EmployeeStatusSerializer.DB_NAME,
@@ -682,7 +697,12 @@ class EmployeeStatusSerializer:
 
     @staticmethod
     def fetch_one(status_id):
-        query = "SELECT es.status_id, es.status, es.created_at, es.updated_at FROM employee_status es WHERE es.status_id = %s"
+        query = """
+        SELECT es.status_id, es.status, es.created_at, es.updated_at,
+               (SELECT COUNT(*) FROM employee e WHERE e.status = es.status_id) AS employee_count
+        FROM employee_status es
+        WHERE es.status_id = %s
+        """
         with connections[EmployeeStatusSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(query, [status_id])
             row = cursor.fetchone()
@@ -721,7 +741,12 @@ class IndustryInfoSerializer:
 
     @staticmethod
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
-        select_base = "SELECT ii.make_id, ii.make_name, ii.created_at, ii.updated_at FROM industry_info ii WHERE 1=1"
+        select_base = """
+        SELECT ii.make_id, ii.make_name, ii.created_at, ii.updated_at,
+               (SELECT COUNT(*) FROM vehicle_info vi WHERE vi.make_id = ii.make_id) AS vehicle_count
+        FROM industry_info ii
+        WHERE 1=1
+        """
         count_base = "SELECT COUNT(*) FROM industry_info ii WHERE 1=1"
         return execute_raw_sql_query(
             db_name=IndustryInfoSerializer.DB_NAME,
@@ -742,7 +767,12 @@ class IndustryInfoSerializer:
 
     @staticmethod
     def fetch_one(make_id):
-        query = "SELECT ii.make_id, ii.make_name, ii.created_at, ii.updated_at FROM industry_info ii WHERE ii.make_id = %s"
+        query = """
+        SELECT ii.make_id, ii.make_name, ii.created_at, ii.updated_at,
+               (SELECT COUNT(*) FROM vehicle_info vi WHERE vi.make_id = ii.make_id) AS vehicle_count
+        FROM industry_info ii
+        WHERE ii.make_id = %s
+        """
         with connections[IndustryInfoSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(query, [make_id])
             row = cursor.fetchone()

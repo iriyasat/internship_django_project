@@ -76,15 +76,7 @@
       </div>
     </div>
 
-    <!-- Chart container -->
-    <div class="col-12 mb-4">
-      <div class="card shadow-sm border-0">
-        <div class="card-body pt-3">
-          <h5 class="card-title py-0 my-0 mb-3">Country Name Distribution</h5>
-          <div id="countryChart" style="min-height: 250px;"></div>
-        </div>
-      </div>
-    </div>
+
 
     <div class="col-12">
       <div class="card">
@@ -225,7 +217,6 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
-  let countryChart = null;
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
     document.getElementById('card-page-count').textContent = records.length.toLocaleString();
@@ -241,32 +232,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
     document.getElementById('card-latest-country').textContent = latestName;
-    
-    const letterMap = {};
-    records.forEach(rec => {
-      const char = (rec.country_name || 'N/A').charAt(0).toUpperCase();
-      letterMap[char] = (letterMap[char] || 0) + 1;
-    });
-    const letters = Object.keys(letterMap).sort();
-    const letterCounts = letters.map(l => letterMap[l]);
-    
-    if (countryChart) {
-      countryChart.updateOptions({
-        xaxis: { categories: letters },
-        series: [{ name: 'Countries starting with', data: letterCounts }]
-      });
-    } else {
-      countryChart = new ApexCharts(document.querySelector("#countryChart"), {
-        series: [{ name: 'Countries starting with', data: letterCounts }],
-        chart: { height: 280, type: 'bar', toolbar: { show: false } },
-        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
-        dataLabels: { enabled: false },
-        xaxis: { categories: letters },
-        legend: { show: false },
-        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
-      });
-      countryChart.render();
-    }
   }
 
   // State Variables

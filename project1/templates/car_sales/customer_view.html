@@ -80,8 +80,8 @@
     <div class="col-lg-12">
       <div class="card shadow-sm border-0 mb-4">
         <div class="card-body pt-3">
-          <h5 class="card-title py-0 my-0 mb-3">Customer Distribution by City</h5>
-          <div id="cityChart" style="min-height: 450px;"></div>
+          <h5 class="card-title py-0 my-0 mb-3">Customer Distribution by Country</h5>
+          <div id="cityChart" style="min-height: 310px;"></div>
         </div>
       </div>
     </div>
@@ -239,6 +239,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const tableBody = document.getElementById('api-table-body');
@@ -269,7 +270,79 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
-  let cityChart = null;
+  let googleChartsLoaded = false;
+  google.charts.load('current', {
+    'packages':['geochart']
+  });
+  google.charts.setOnLoadCallback(function() {
+    googleChartsLoaded = true;
+    drawGeoChart();
+  });
+
+  let chartData = null;
+  let resizeHandler = function() {};
+
+  function fetchChartData() {
+    const url = `/api/customers/?page=1&page_size=1000`;
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          chartData = res.data;
+          drawGeoChart();
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching chart data:', err);
+      });
+  }
+
+  function drawGeoChart() {
+    if (!googleChartsLoaded || !chartData) return;
+
+    const countryMap = {};
+    chartData.forEach(rec => {
+      const countryName = rec.country_name || 'N/A';
+      countryMap[countryName] = (countryMap[countryName] || 0) + 1;
+    });
+
+    const dataArray = [['Country', 'Customers']];
+    Object.keys(countryMap).forEach(country => {
+      dataArray.push([country, countryMap[country]]);
+    });
+
+    const data = google.visualization.arrayToDataTable(dataArray);
+
+    const container = document.getElementById('cityChart');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const options = {
+      colorAxis: { colors: ['#e3f2fd', '#4154f1', '#0d6efd'] }, // Premium blue shades
+      backgroundColor: '#ffffff',
+      datalessRegionColor: '#f5f5f5',
+      defaultColor: '#f5f5f5',
+      keepAspectRatio: true,
+      width: container.offsetWidth || '100%',
+      height: 310
+    };
+
+    const chart = new google.visualization.GeoChart(container);
+    chart.draw(data, options);
+
+    // Make responsive on window resize
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = function() {
+      options.width = container.offsetWidth || '100%';
+      chart.draw(data, options);
+    };
+    window.addEventListener('resize', resizeHandler);
+  }
 
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
@@ -282,31 +355,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     document.getElementById('card-page-active').textContent = totalActive.toLocaleString();
-
-    const cityMap = {};
-    records.forEach(rec => {
-      const city = rec.city_name || 'N/A';
-      cityMap[city] = (cityMap[city] || 0) + 1;
-    });
-
-    const cities = Object.keys(cityMap);
-    const counts = cities.map(c => cityMap[c]);
-
-    if (cityChart) {
-      cityChart.updateOptions({
-        labels: cities,
-        series: counts
-      });
-    } else {
-      cityChart = new ApexCharts(document.querySelector("#cityChart"), {
-        series: counts,
-        chart: { height: 450, type: 'donut' },
-        labels: cities,
-        legend: { position: 'bottom', horizontalAlign: 'center' },
-        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
-      });
-      cityChart.render();
-    }
   }
 
   // State Variables
@@ -429,6 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(res => {
         if (res.status && Array.isArray(res.data)) {
           renderTable(res.data, res.total);
+          fetchChartData();
         } else {
           showError(res.message || 'Failed to fetch customer records.');
           loadingSpinner.style.display = 'none';

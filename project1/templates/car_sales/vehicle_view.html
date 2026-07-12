@@ -75,16 +75,7 @@
       </div>
     </div>
 
-    <!-- Chart container -->
-    <div class="col-lg-12">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body pt-3">
-          <h5 class="card-title py-0 my-0 mb-3">Vehicle Distribution by Brand</h5>
-          <div id="brandChart" style="min-height: 450px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
       <div class="col-12">
       <div class="card">
@@ -275,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
-  let brandChart = null;
+
 
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
@@ -286,31 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     const avgMmr = records.length > 0 ? (mmrSum / records.length) : 0;
     document.getElementById('card-page-mmr').textContent = '$' + Math.round(avgMmr).toLocaleString();
-
-    const brandMap = {};
-    records.forEach(rec => {
-      const brand = rec.make_name || 'N/A';
-      brandMap[brand] = (brandMap[brand] || 0) + 1;
-    });
-
-    const brands = Object.keys(brandMap);
-    const counts = brands.map(b => brandMap[b]);
-
-    if (brandChart) {
-      brandChart.updateOptions({
-        labels: brands,
-        series: counts
-      });
-    } else {
-      brandChart = new ApexCharts(document.querySelector("#brandChart"), {
-        series: counts,
-        chart: { height: 450, type: 'donut' },
-        labels: brands,
-        legend: { position: 'bottom', horizontalAlign: 'center' },
-        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
-      });
-      brandChart.render();
-    }
   }
 
   // State Variables

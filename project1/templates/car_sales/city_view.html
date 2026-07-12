@@ -76,12 +76,26 @@
       </div>
     </div>
 
-    <!-- Chart container -->
+    <!-- Charts container -->
     <div class="col-12 mb-4">
-      <div class="card shadow-sm border-0">
-        <div class="card-body pt-3">
-          <h5 class="card-title py-0 my-0 mb-3">Cities by Country</h5>
-          <div id="cityChart" style="min-height: 250px;"></div>
+      <div class="row">
+        <!-- Google Geo Chart -->
+        <div class="col-lg-6 mb-4 mb-lg-0">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-body pt-3">
+              <h5 class="card-title py-0 my-0 mb-3">Cities by Country Map</h5>
+              <div id="cityGeoChart" style="min-height: 310px;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Google Donut Chart -->
+        <div class="col-lg-6">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-body pt-3">
+              <h5 class="card-title py-0 my-0 mb-3">Cities by Country Distribution</h5>
+              <div id="cityDonutChart" style="min-height: 310px;"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -211,6 +225,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const tableBody = document.getElementById('api-table-body');
@@ -237,7 +252,108 @@ document.addEventListener('DOMContentLoaded', function() {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
 
-  let cityChart = null;
+  let googleChartsLoaded = false;
+  google.charts.load('current', {
+    'packages':['geochart', 'corechart']
+  });
+  google.charts.setOnLoadCallback(function() {
+    googleChartsLoaded = true;
+    drawCharts();
+  });
+
+  let chartData = null;
+
+  function fetchChartData() {
+    const url = `/api/cities/?page=1&page_size=1000`;
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status && Array.isArray(res.data)) {
+          chartData = res.data;
+          drawCharts();
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching chart data:', err);
+      });
+  }
+
+  let resizeHandler = function() {};
+
+  function drawCharts() {
+    if (!googleChartsLoaded || !chartData) return;
+
+    // Group cities by Country
+    const countryMap = {};
+    chartData.forEach(rec => {
+      const countryName = rec.country_name || 'N/A';
+      countryMap[countryName] = (countryMap[countryName] || 0) + 1;
+    });
+
+    const dataArray = [['Country', 'Cities']];
+    Object.keys(countryMap).forEach(country => {
+      dataArray.push([country, countryMap[country]]);
+    });
+
+    const data = google.visualization.arrayToDataTable(dataArray);
+
+    const geoContainer = document.getElementById('cityGeoChart');
+    if (!geoContainer) return;
+    geoContainer.innerHTML = '';
+
+    const donutContainer = document.getElementById('cityDonutChart');
+    if (!donutContainer) return;
+    donutContainer.innerHTML = '';
+
+    // 1. Draw Geo Chart
+    const geoOptions = {
+      colorAxis: { colors: ['#e3f2fd', '#4154f1', '#0d6efd'] }, // Premium blue shades matching app theme
+      backgroundColor: '#ffffff',
+      datalessRegionColor: '#f5f5f5',
+      defaultColor: '#f5f5f5',
+      keepAspectRatio: true,
+      width: geoContainer.offsetWidth || '100%',
+      height: 310
+    };
+
+    const geoChartInstance = new google.visualization.GeoChart(geoContainer);
+    geoChartInstance.draw(data, geoOptions);
+
+    // 2. Draw Donut Chart
+    const donutOptions = {
+      pieHole: 0.4,
+      colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14'],
+      backgroundColor: '#ffffff',
+      chartArea: { left: '10%', top: '10%', width: '80%', height: '80%' },
+      legend: {
+        position: 'bottom',
+        alignment: 'center',
+        textStyle: { fontSize: 11, fontFamily: 'Helvetica, Arial, sans-serif' }
+      },
+      width: donutContainer.offsetWidth || '100%',
+      height: 310,
+      tooltip: { text: 'value' }
+    };
+
+    const donutChartInstance = new google.visualization.PieChart(donutContainer);
+    donutChartInstance.draw(data, donutOptions);
+
+    // Make both responsive on window resize
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = function() {
+      geoOptions.width = geoContainer.offsetWidth || '100%';
+      donutOptions.width = donutContainer.offsetWidth || '100%';
+      geoChartInstance.draw(data, geoOptions);
+      donutChartInstance.draw(data, donutOptions);
+    };
+    window.addEventListener('resize', resizeHandler);
+  }
+
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
     document.getElementById('card-page-count').textContent = records.length.toLocaleString();
@@ -249,26 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     const countries = Object.keys(countryMap);
     document.getElementById('card-page-countries').textContent = countries.length.toLocaleString();
-    
-    const countryCounts = countries.map(c => countryMap[c]);
-    
-    if (cityChart) {
-      cityChart.updateOptions({
-        xaxis: { categories: countries },
-        series: [{ name: 'Cities', data: countryCounts }]
-      });
-    } else {
-      cityChart = new ApexCharts(document.querySelector("#cityChart"), {
-        series: [{ name: 'Cities', data: countryCounts }],
-        chart: { height: 280, type: 'bar', toolbar: { show: false } },
-        plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '35%', distributed: true } },
-        dataLabels: { enabled: false },
-        xaxis: { categories: countries },
-        legend: { show: false },
-        colors: ['#4154f1', '#2eca6a', '#ff771d', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14']
-      });
-      cityChart.render();
-    }
   }
 
   // State Variables
@@ -387,6 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(res => {
         if (res.status && Array.isArray(res.data)) {
           renderTable(res.data, res.total);
+          fetchChartData();
         } else {
           showError(res.message || 'Failed to fetch city records.');
           loadingSpinner.style.display = 'none';
