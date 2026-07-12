@@ -216,14 +216,10 @@ def customer_view(request):
 @login_required
 def selling_view(request):
     profile = get_employee_profile(request)
-    vehicles = VehicleInfo.objects.select_related('make').all()[:1000]
-    customers = filter_by_hierarchy(CustomerInfo.objects.all(), request, profile, 'sales__store', 'sales__employee').distinct()[:1000]
     employees = filter_by_hierarchy(Employee.objects.all(), request, profile, 'store', 'self')
     stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
     context = {
         'active_tab': 'sales',
-        'vehicles': vehicles,
-        'customers': customers,
         'employees': employees,
         'stores': stores,
     }
@@ -1094,6 +1090,32 @@ def sales_api(request, pk=None):
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 def budget_api(request, pk=None):
     return generic_model_api(request, EmployeeBudget, EmployeeBudgetSerializer, ['employee__first_name', 'employee__last_name', 'store__store_name', 'budget_year'], pk, 'store', 'employee')
+
+
+@api_view(['GET'])
+def budget_stats_api(request):
+    """Lightweight endpoint: returns count, total_sum, and avg for a given budget_year."""
+    if not request.user.is_authenticated:
+        return Response({"status": False, "message": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    from django.db.models import Count, Sum, Avg
+    year = request.GET.get('budget_year')
+    qs = EmployeeBudget.objects.all()
+    if year:
+        qs = qs.filter(budget_year=year)
+
+    agg = qs.aggregate(
+        total_count=Count('id'),
+        total_sum=Sum('budget_amount'),
+        avg_amount=Avg('budget_amount')
+    )
+
+    return Response({
+        "status": True,
+        "total_count": agg['total_count'] or 0,
+        "total_sum": float(agg['total_sum'] or 0),
+        "avg_amount": float(agg['avg_amount'] or 0),
+    }, status=status.HTTP_200_OK)
 
 
 # --- API Endpoint implementing Supervisor's Stored-Procedure/Raw SQL approach ---

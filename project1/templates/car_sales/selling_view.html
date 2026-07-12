@@ -183,9 +183,6 @@
               <label for="id_customer" class="form-label fw-bold">Customer</label>
               <select class="form-select" id="id_customer" required>
                 <option value="" selected disabled>Select Customer...</option>
-                {% for customer in customers %}
-                <option value="{{ customer.customer_id }}">{{ customer.firstname }} {{ customer.lastname }}</option>
-                {% endfor %}
               </select>
               <div class="invalid-feedback">Please select a customer.</div>
             </div>
@@ -193,9 +190,6 @@
               <label for="id_vehicle" class="form-label fw-bold">Vehicle</label>
               <select class="form-select" id="id_vehicle" required>
                 <option value="" selected disabled>Select Vehicle...</option>
-                {% for vehicle in vehicles %}
-                <option value="{{ vehicle.id }}">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} ({{ vehicle.vin }})</option>
-                {% endfor %}
               </select>
               <div class="invalid-feedback">Please select a vehicle.</div>
             </div>
@@ -325,12 +319,57 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchData();
   });
 
+  let modalDropdownsLoaded = false;
+
+  // Lazily populate customer and vehicle dropdowns on first modal open
+  function loadModalDropdowns(callback) {
+    if (modalDropdownsLoaded) {
+      if (callback) callback();
+      return;
+    }
+    customerSelect.innerHTML = '<option value="" disabled>Loading customers...</option>';
+    vehicleSelect.innerHTML = '<option value="" disabled>Loading vehicles...</option>';
+
+    const fetchCustomers = fetch('/api/customers/?page=1&page_size=1000')
+      .then(r => r.json())
+      .then(res => {
+        customerSelect.innerHTML = '<option value="" selected disabled>Select Customer...</option>';
+        (res.data || []).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.customer_id;
+          opt.textContent = `${c.firstname} ${c.lastname}`;
+          customerSelect.appendChild(opt);
+        });
+      });
+
+    const fetchVehicles = fetch('/api/vehicles/?page=1&page_size=1000')
+      .then(r => r.json())
+      .then(res => {
+        vehicleSelect.innerHTML = '<option value="" selected disabled>Select Vehicle...</option>';
+        (res.data || []).forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = `${v.make_name || ''} ${v.vehicle_model} (${v.vin})`;
+          vehicleSelect.appendChild(opt);
+        });
+      });
+
+    Promise.all([fetchCustomers, fetchVehicles])
+      .then(() => {
+        modalDropdownsLoaded = true;
+        if (callback) callback();
+      })
+      .catch(err => console.error('Dropdown load error:', err));
+  }
+
   if (addBtn) {
     addBtn.addEventListener('click', function() {
-      crudForm.reset();
-      crudForm.classList.remove('was-validated');
-      editIdInput.value = '';
-      modalTitle.textContent = 'Add Sale Record';
+      loadModalDropdowns(() => {
+        crudForm.reset();
+        crudForm.classList.remove('was-validated');
+        editIdInput.value = '';
+        modalTitle.textContent = 'Add Sale Record';
+      });
     });
   }
 
@@ -486,29 +525,31 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function openEditModal(id) {
-    const url = `/api/sales/${id}/`;
-    fetch(url)
-      .then(res => res.json())
-      .then(res => {
-        if (res.status && res.data) {
-          crudForm.reset();
-          crudForm.classList.remove('was-validated');
-          editIdInput.value = res.data.sell_id;
-          customerSelect.value = res.data.customer;
-          vehicleSelect.value = res.data.vehicle;
-          employeeSelect.value = res.data.employee;
-          storeSelect.value = res.data.store;
-          priceInput.value = res.data.selling_price;
-          dateInput.value = res.data.selling_date;
-          modalTitle.textContent = 'Edit Sale Record';
-          bootstrapModal.show();
-        } else {
-          showError("Could not retrieve sales details.");
-        }
-      })
-      .catch(err => {
-        showError("Failed to fetch record details: " + err.message);
-      });
+    loadModalDropdowns(() => {
+      const url = `/api/sales/${id}/`;
+      fetch(url)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status && res.data) {
+            crudForm.reset();
+            crudForm.classList.remove('was-validated');
+            editIdInput.value = res.data.sell_id;
+            customerSelect.value = res.data.customer;
+            vehicleSelect.value = res.data.vehicle;
+            employeeSelect.value = res.data.employee;
+            storeSelect.value = res.data.store;
+            priceInput.value = res.data.selling_price;
+            dateInput.value = res.data.selling_date;
+            modalTitle.textContent = 'Edit Sale Record';
+            bootstrapModal.show();
+          } else {
+            showError("Could not retrieve sales details.");
+          }
+        })
+        .catch(err => {
+          showError("Failed to fetch record details: " + err.message);
+        });
+    });
   }
 
   function deleteRecord(id) {

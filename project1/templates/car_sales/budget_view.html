@@ -66,8 +66,8 @@
                 <i class="bi bi-wallet2"></i>
               </div>
               <div class="ps-3">
-                <h6 id="card-total-count">0</h6>
-                <span class="text-muted small pt-2 ps-1">budget allocations</span>
+                <h6 id="card-total-count">—</h6>
+                <span class="text-muted small pt-2 ps-1">allocations in <span class="card-year-label fw-bold"></span></span>
               </div>
             </div>
           </div>
@@ -84,8 +84,8 @@
                 <i class="bi bi-currency-dollar"></i>
               </div>
               <div class="ps-3">
-                <h6 id="card-page-target">$0</h6>
-                <span class="text-muted small pt-2 ps-1">total budget allocation</span>
+                <h6 id="card-page-target">—</h6>
+                <span class="text-muted small pt-2 ps-1">total for <span class="card-year-label fw-bold"></span></span>
               </div>
             </div>
           </div>
@@ -102,8 +102,8 @@
                 <i class="bi bi-calculator" style="color: #ff771d;"></i>
               </div>
               <div class="ps-3">
-                <h6 id="card-page-avg">$0</h6>
-                <span class="text-muted small pt-2 ps-1">average per budget record</span>
+                <h6 id="card-page-avg">—</h6>
+                <span class="text-muted small pt-2 ps-1">avg per record in <span class="card-year-label fw-bold"></span></span>
               </div>
             </div>
           </div>
@@ -481,31 +481,52 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Fetch stats (count/sum/avg) from a single lightweight API call
+  function fetchStats() {
+    const selectedYear = yearSelect.value;
+    document.querySelectorAll('.card-year-label').forEach(el => el.textContent = selectedYear);
+    // Show loading dashes while fetching
+    document.getElementById('card-total-count').textContent = '—';
+    document.getElementById('card-page-target').textContent = '—';
+    document.getElementById('card-page-avg').textContent = '—';
+
+    fetch(`/api/budgets/stats/?budget_year=${selectedYear}`)
+      .then(r => r.json())
+      .then(res => {
+        if (res.status) {
+          document.getElementById('card-total-count').textContent = res.total_count.toLocaleString();
+          document.getElementById('card-page-target').textContent = '$' + Math.round(res.total_sum).toLocaleString();
+          document.getElementById('card-page-avg').textContent = '$' + Math.round(res.avg_amount).toLocaleString();
+        }
+      })
+      .catch(err => console.error('Stats fetch error:', err));
+  }
+
   function fetchData() {
     loadingSpinner.style.display = 'block';
     tableWrapper.style.display = 'none';
     paginationControls.style.display = 'none';
 
+    // Fetch card stats separately — single DB query, no data download
+    fetchStats();
+
     const selectedYear = yearSelect.value;
-    // Querying with large page_size=10000 to fetch all records for the selected year
-    const url = `/api/budgets/?page=1&page_size=10000&budget_year=${selectedYear}`;
+    const url = `/api/budgets/?page=1&page_size=100&budget_year=${selectedYear}`;
 
     fetch(url)
       .then(response => {
-        if (!response.ok) {
-          throw new Error(`API returned status ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API returned status ${response.status}`);
         return response.json();
       })
       .then(res => {
-        if (res.status && Array.isArray(res.data)) {
-          rawData = res.data;
-          processPivotData();
-          renderTable();
-        } else {
+        if (!res.status || !Array.isArray(res.data)) {
           showError(res.message || 'Failed to fetch budget records.');
           loadingSpinner.style.display = 'none';
+          return;
         }
+        rawData = res.data;
+        processPivotData();
+        renderTable();
       })
       .catch(err => {
         console.error('Fetch error:', err);
@@ -513,6 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingSpinner.style.display = 'none';
       });
   }
+
 
   function processPivotData() {
     pivotData = {};
@@ -613,7 +635,6 @@ document.addEventListener('DOMContentLoaded', function() {
       drawGoogleChart(window.currentEmployees, window.currentEmployeeAmounts);
     }
   });
-  }
 
   function renderTable() {
     loadingSpinner.style.display = 'none';

@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/inventory/', inventory_api, name='inventory_api'),
     path('api/inventory/<int:pk>/', inventory_api, name='inventory_api_detail'),
     path('api-page/inventory/', inventory_api_page_view, name='inventory_api_page_view'),
+    path('api/budgets/stats/', budget_stats_api, name='budget_stats_api'),
 ]
 
 # Dynamically register the 10 CRUD API endpoints to avoid boilerplate code
