@@ -272,11 +272,20 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
 
     let mmrSum = 0;
+    let odoSum = 0;
+    let odoCount = 0;
     records.forEach(rec => {
       mmrSum += parseFloat(rec.mmr) || 0;
+      if (rec.odometer !== null && rec.odometer !== undefined && !isNaN(parseFloat(rec.odometer))) {
+        odoSum += parseFloat(rec.odometer);
+        odoCount++;
+      }
     });
     const avgMmr = records.length > 0 ? (mmrSum / records.length) : 0;
     document.getElementById('card-page-mmr').textContent = '$' + Math.round(avgMmr).toLocaleString();
+
+    const avgOdometer = odoCount > 0 ? (odoSum / odoCount) : 0;
+    document.getElementById('card-page-odometer').textContent = Math.round(avgOdometer).toLocaleString() + ' mi';
   }
 
   // State Variables

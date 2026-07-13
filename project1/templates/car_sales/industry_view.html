@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let resizeHandler = function() {};
 
   function fetchChartData() {
-    const url = `/api/industry/?page=1&page_size=1000`;
+    const url = `/api/industry/?page=1&page_size=100`;
     fetch(url)
       .then(response => {
         if (!response.ok) {
