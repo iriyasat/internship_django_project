@@ -127,7 +127,7 @@
             <div class="col-md-6 text-md-end">
               <div class="d-flex justify-content-md-end align-items-center gap-2">
                 <div class="input-group input-group-sm ms-md-auto" style="max-width: 300px;">
-                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <button class="input-group-text" type="button" id="search-btn" style="cursor: pointer;"><i class="bi bi-search"></i></button>
                   <input type="text" class="form-control" id="search-input" placeholder="Search cities or countries...">
                 </div>
                 <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
@@ -374,12 +374,18 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentRecords = [];
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
 
-  // Initialize data fetch
+  // Parse URL query parameter for search
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchParam = urlParams.get('search');
+  if (searchParam) {
+    searchInput.value = searchParam;
+    searchQuery = searchParam;
+  }
+
   // Initialize data fetch
   fetchData();
 
   // Auto-open Add modal if action=add is passed
-  const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('action') === 'add' && addBtn) {
     addBtn.click();
   }
@@ -397,6 +403,27 @@ document.addEventListener('DOMContentLoaded', function() {
       fetchData();
     }, 300);
   });
+
+  // Enter key press search immediately
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      clearTimeout(searchTimeout);
+      searchQuery = this.value;
+      currentPage = 1;
+      fetchData();
+    }
+  });
+
+  // Click search button
+  const searchBtn = document.getElementById('search-btn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', function() {
+      clearTimeout(searchTimeout);
+      searchQuery = searchInput.value;
+      currentPage = 1;
+      fetchData();
+    });
+  }
 
   pageSizeSelect.addEventListener('change', function() {
     pageSize = parseInt(this.value);
@@ -604,64 +631,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  let lastTotalCount = 0;
+
   function updatePagination(totalCount) {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalCount);
-    paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalCount} entries`;
-
-    const totalPages = Math.ceil(totalCount / pageSize);
-    paginationList.innerHTML = '';
-
-    if (totalPages <= 1) {
-      paginationControls.style.display = 'none';
-      return;
-    }
-
-    paginationControls.style.display = 'flex';
-
-    // Previous Button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
-    if (currentPage > 1) {
-      prevLi.addEventListener('click', () => {
-        currentPage--;
+    lastTotalCount = totalCount;
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      totalCount,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
         fetchData();
-      });
-    }
-    paginationList.appendChild(prevLi);
-
-    // Page numbers
-    const maxPagesToShow = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-    if (endPage - startPage + 1 < maxPagesToShow) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      const li = document.createElement('li');
-      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-      li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
-      li.addEventListener('click', () => {
-        currentPage = i;
-        fetchData();
-      });
-      paginationList.appendChild(li);
-    }
-
-    // Next Button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
-    if (currentPage < totalPages) {
-      nextLi.addEventListener('click', () => {
-        currentPage++;
-        fetchData();
-      });
-    }
-    paginationList.appendChild(nextLi);
+      }
+    );
   }
+
+  // Live responsive pagination on resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (lastTotalCount) {
+        updatePagination(lastTotalCount);
+      }
+    }, 100);
+  });
 
   function downloadPDF() {
     if (currentRecords.length === 0) {

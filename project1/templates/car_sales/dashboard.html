@@ -1,0 +1,293 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Dashboard - Car Sales{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>Dashboard</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Dashboard</li>
+        </ol>
+      </nav>
+    </div><!-- End Page Title -->
+
+    <section class="section dashboard">
+      <div class="row">
+
+        <!-- Left side columns -->
+        <div class="col-lg-8">
+          <div class="row">
+
+            <!-- Sales Card -->
+            <div class="col-xxl-6 col-md-6">
+              <div class="card info-card sales-card">
+                <div class="card-body">
+                  <h5 class="card-title">Sales <span>| Total</span></h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-cart"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ sales_count|intcomma }}</h6>
+                      <span class="text-muted small pt-2 ps-1">completed orders</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div><!-- End Sales Card -->
+
+            <!-- Revenue Card -->
+            <div class="col-xxl-6 col-md-6">
+              <div class="card info-card revenue-card">
+                <div class="card-body">
+                  <h5 class="card-title">Revenue <span>| Total</span></h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>${{ total_revenue|intcomma }}</h6>
+                      <span class="text-muted small pt-2 ps-1">total sales volume</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div><!-- End Revenue Card -->
+
+            <!-- Customers Card -->
+            <div class="col-xxl-12 col-12">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Customers <span>| Total</span></h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ customers_count|intcomma }}</h6>
+                      <span class="text-muted small pt-2 ps-1">registered customers</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div><!-- End Customers Card -->
+
+            <!-- Reports -->
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Reports <span>| Monthly Sales Trend</span></h5>
+
+                  <!-- Line Chart -->
+                  <div id="reportsChart"></div>
+
+                  {{ chart_sales|json_script:"chart-sales-data" }}
+                  {{ chart_revenue|json_script:"chart-revenue-data" }}
+                  {{ chart_dates|json_script:"chart-dates-data" }}
+
+
+                  <!-- End Line Chart -->
+
+                </div>
+
+              </div>
+            </div><!-- End Reports -->
+
+
+
+            <!-- Recent Sales -->
+            <div class="col-12">
+              <div class="card recent-sales overflow-auto">
+                <div class="card-body">
+                  <h5 class="card-title">Recent Sales <span>| Latest Transactions</span></h5>
+
+                  <table class="table table-borderless">
+                    <thead>
+                      <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Vehicle</th>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Price</th>
+                        <th scope="col">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for sale in recent_sales %}
+                      <tr>
+                        <th scope="row"><a href="#">#{{ sale.sell_id }}</a></th>
+                        <td>{{ sale.customer.firstname }} {{ sale.customer.lastname }}</td>
+                        <td><a href="#" class="text-primary">{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</a></td>
+                        <td>{{ sale.employee.first_name }} {{ sale.employee.last_name }}</td>
+                        <td>${{ sale.selling_price|intcomma }}</td>
+                        <td>{{ sale.selling_date }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="6" class="text-center text-muted">No sales found</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+
+                </div>
+
+              </div>
+            </div><!-- End Recent Sales -->
+
+            <!-- Top Selling -->
+            <div class="col-12">
+              <div class="card top-selling overflow-auto">
+                <div class="card-body">
+                  <h5 class="card-title">Top Brands <span>| Best Sellers</span></h5>
+
+                  <table class="table table-borderless">
+                    <thead>
+                      <tr>
+                        <th scope="col">Brand / Make</th>
+                        <th scope="col">Sold Quantity</th>
+                        <th scope="col">Total Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for item in top_selling %}
+                      <tr>
+                        <td><a href="#" class="text-primary fw-bold">{{ item.vehicle__make__make_name }}</a></td>
+                        <td class="fw-bold">{{ item.count|intcomma }}</td>
+                        <td>${{ item.revenue|intcomma }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3" class="text-center text-muted">No brand statistics found</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+
+                </div>
+
+              </div>
+            </div><!-- End Top Selling -->
+
+          </div>
+        </div><!-- End Left side columns -->
+
+        <!-- Right side columns -->
+        <div class="col-lg-4">
+
+          <!-- Recent Activity -->
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Recent Updates <span>| System</span></h5>
+
+              <div class="activity">
+                {% for sale in recent_sales %}
+                <div class="activity-item d-flex">
+                  <div class="activite-label">
+                    {{ sale.selling_date|date:"M d" }}
+                    <span class="d-block text-muted" style="font-size: 0.75rem;">{{ sale.selling_date|date:"Y" }}</span>
+                  </div>
+                  <i class='bi bi-circle-fill activity-badge {% cycle "text-success" "text-primary" "text-info" "text-warning" "text-danger" %} align-self-start'></i>
+                  <div class="activity-content">
+                    Sold <strong>{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</strong> to {{ sale.customer.firstname }} {{ sale.customer.lastname }} for <span class="text-dark fw-bold">${{ sale.selling_price|intcomma }}</span>.
+                  </div>
+                </div><!-- End activity item-->
+                {% empty %}
+                <div class="activity-item d-flex">
+                  <div class="activite-label">No updates</div>
+                  <i class='bi bi-circle-fill activity-badge text-secondary align-self-start'></i>
+                  <div class="activity-content">
+                    No recent transaction updates found.
+                  </div>
+                </div><!-- End activity item-->
+                {% endfor %}
+              </div>
+
+            </div>
+          </div><!-- End Recent Activity -->
+
+        </div><!-- End Right side columns -->
+
+      </div>
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const chartSalesEl = document.getElementById('chart-sales-data');
+  const chartRevenueEl = document.getElementById('chart-revenue-data');
+  const chartDatesEl = document.getElementById('chart-dates-data');
+  
+  let chartSales = [];
+  let chartRevenue = [];
+  let chartDates = [];
+
+  if (chartSalesEl && chartRevenueEl && chartDatesEl) {
+    chartSales = JSON.parse(chartSalesEl.textContent);
+    chartRevenue = JSON.parse(chartRevenueEl.textContent);
+    chartDates = JSON.parse(chartDatesEl.textContent);
+  }
+
+  let googleChartsLoaded = false;
+  google.charts.load('current', {
+    'packages':['corechart', 'geochart']
+  });
+
+  google.charts.setOnLoadCallback(function() {
+    googleChartsLoaded = true;
+    drawMonthlyChart();
+  });
+
+  function drawMonthlyChart() {
+    const container = document.getElementById('reportsChart');
+    if (!container || chartDates.length === 0) return;
+    container.innerHTML = '';
+
+    const dataArray = [['Month', 'Sales Count', 'Revenue ($)']];
+    chartDates.forEach((date, i) => {
+      dataArray.push([date, chartSales[i] || 0, Math.round(chartRevenue[i] || 0)]);
+    });
+
+    const data = google.visualization.arrayToDataTable(dataArray);
+
+    const options = {
+      colors: ['#4154f1', '#2eca6a'],
+      backgroundColor: '#ffffff',
+      chartArea: { left: '10%', top: '10%', width: '80%', height: '75%' },
+      hAxis: {
+        textStyle: { color: '#899bbd', fontSize: 11 }
+      },
+      vAxes: {
+        0: { title: 'Sales Count', titleTextStyle: { color: '#4154f1', italic: false, fontSize: 11 }, textStyle: { color: '#899bbd', fontSize: 11 } },
+        1: { title: 'Revenue ($)', titleTextStyle: { color: '#2eca6a', italic: false, fontSize: 11 }, format: '$#,###', textStyle: { color: '#899bbd', fontSize: 11 } }
+      },
+      series: {
+        0: { targetAxisIndex: 0, type: 'bars' },
+        1: { targetAxisIndex: 1, type: 'line', curveType: 'function' }
+      },
+      width: container.offsetWidth || '100%',
+      height: 350,
+      legend: { position: 'bottom', alignment: 'center', textStyle: { fontSize: 11 } }
+    };
+
+    const chart = new google.visualization.ComboChart(container);
+    chart.draw(data, options);
+  }
+
+  window.addEventListener('resize', function() {
+    if (googleChartsLoaded) {
+      drawMonthlyChart();
+    }
+  });
+});
+</script>
+{% endblock %}

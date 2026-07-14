@@ -48,7 +48,7 @@
             <div class="col-md-6 text-md-end">
               <div class="d-flex justify-content-md-end align-items-center gap-2">
                 <div class="input-group input-group-sm ms-md-auto" style="max-width: 300px;">
-                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <button class="input-group-text" type="button" id="search-btn" style="cursor: pointer;"><i class="bi bi-search"></i></button>
                   <input type="text" class="form-control" id="search-input" placeholder="Search by ID, Vehicle, Store, Employee...">
                 </div>
                 <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
@@ -230,6 +230,14 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentRecords = [];
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
 
+  // Parse URL query parameter for search
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchParam = urlParams.get('search');
+  if (searchParam) {
+    searchInput.value = searchParam;
+    searchQuery = searchParam;
+  }
+
   // Initialize data fetch
   fetchData();
 
@@ -246,6 +254,27 @@ document.addEventListener('DOMContentLoaded', function() {
       fetchData();
     }, 300);
   });
+
+  // Enter key press search immediately
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      clearTimeout(searchTimeout);
+      searchQuery = this.value;
+      currentPage = 1;
+      fetchData();
+    }
+  });
+
+  // Click search button
+  const searchBtn = document.getElementById('search-btn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', function() {
+      clearTimeout(searchTimeout);
+      searchQuery = searchInput.value;
+      currentPage = 1;
+      fetchData();
+    });
+  }
 
   pageSizeSelect.addEventListener('change', function() {
     pageSize = parseInt(this.value);

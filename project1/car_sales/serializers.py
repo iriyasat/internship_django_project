@@ -348,9 +348,10 @@ def execute_raw_sql_query(db_name, select_base, count_base, table_alias, field_m
         cursor.execute(count_query, params)
         total = cursor.fetchone()[0]
         
-    query += " LIMIT %s OFFSET %s"
-    params.extend([limit, offset])
-    
+    if limit is not None and limit >= 0:
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
     with connections[db_name].cursor() as cursor:
         cursor.execute(query, params)
         columns = [col[0] for col in cursor.description]
@@ -919,6 +920,8 @@ class CustomerInfoSerializer:
             for field in ['firstname', 'lastname', 'customer_status', 'customer_address']:
                 search_clauses.append(f"ci.{field} LIKE %s")
                 params.append(search_param)
+            search_clauses.append("CONCAT(ci.firstname, ' ', ci.lastname) LIKE %s")
+            params.append(search_param)
             where_clauses.append("(" + " OR ".join(search_clauses) + ")")
             
         where_str = " AND ".join(where_clauses)
@@ -1045,9 +1048,14 @@ class SellingInfoSerializer:
                 ci.firstname LIKE %s OR 
                 ci.lastname LIKE %s OR 
                 vi.vehicle_model LIKE %s OR 
-                ii.make_name LIKE %s
+                ii.make_name LIKE %s OR
+                e.first_name LIKE %s OR
+                e.last_name LIKE %s OR
+                s.store_name LIKE %s OR
+                CONCAT(e.first_name, ' ', e.last_name) LIKE %s OR
+                CONCAT(ci.firstname, ' ', ci.lastname) LIKE %s
             )""")
-            params.extend([search_param] * 4)
+            params.extend([search_param] * 9)
             
         where_str = " AND ".join(where_clauses)
         
@@ -1187,11 +1195,17 @@ class EmployeeBudgetSerializer:
                 
         if search:
             search_param = f"%{search}%"
-            where_clauses.append("(e.first_name LIKE %s OR e.last_name LIKE %s OR s.store_name LIKE %s OR eb.budget_year LIKE %s)")
-            params.extend([search_param] * 4)
+            where_clauses.append("(e.first_name LIKE %s OR e.last_name LIKE %s OR s.store_name LIKE %s OR eb.budget_year LIKE %s OR CONCAT(e.first_name, ' ', e.last_name) LIKE %s)")
+            params.extend([search_param] * 5)
             
         where_str = " AND ".join(where_clauses)
         
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
         select_query = f"""
         SELECT eb.id, eb.employee_id AS employee, eb.budget_year, eb.budget_month, eb.store_id AS store, eb.budget_qty, eb.budget_amount,
                CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
@@ -1201,7 +1215,7 @@ class EmployeeBudgetSerializer:
         INNER JOIN store s ON eb.store_id = s.store_id
         WHERE {where_str}
         ORDER BY eb.id ASC
-        LIMIT %s OFFSET %s
+        {limit_clause}
         """
         
         count_query = f"""
@@ -1216,9 +1230,8 @@ class EmployeeBudgetSerializer:
             cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
             
-        params.extend([limit, offset])
         with connections[EmployeeBudgetSerializer.DB_NAME].cursor() as cursor:
-            cursor.execute(select_query, params)
+            cursor.execute(select_query, query_params)
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
             
@@ -1312,8 +1325,8 @@ class EmployeeSerializer:
                 
         if search:
             search_param = f"%{search}%"
-            where_clauses.append("(e.first_name LIKE %s OR e.last_name LIKE %s OR e.employee_addr LIKE %s)")
-            params.extend([search_param] * 3)
+            where_clauses.append("(e.first_name LIKE %s OR e.last_name LIKE %s OR e.employee_addr LIKE %s OR CONCAT(e.first_name, ' ', e.last_name) LIKE %s)")
+            params.extend([search_param] * 4)
             
         where_str = " AND ".join(where_clauses)
         

@@ -308,7 +308,100 @@
 
   <!-- jsPDF & AutoTable for PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- Global Responsive Pagination Helper -->
+  <script>
+    window.updatePaginationHelper = function(paginationList, paginationControls, paginationInfo, totalCount, currentPage, pageSize, onPageClick) {
+      if (!paginationList || !paginationControls || !paginationInfo) return;
+      
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalCount);
+      paginationInfo.textContent = `Showing ${totalCount > 0 ? startIndex + 1 : 0} to ${endIndex} of ${totalCount} entries`;
+
+      const totalPages = Math.ceil(totalCount / pageSize);
+      paginationList.innerHTML = '';
+
+      if (totalPages <= 1) {
+        paginationControls.style.display = 'none';
+        return;
+      }
+
+      paginationControls.style.display = 'flex';
+
+      // Helper to create page item LI
+      function createPageItem(label, pageNum, disabled = false, active = false) {
+        const li = document.createElement('li');
+        li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+        
+        const btn = document.createElement('button');
+        btn.className = 'page-link';
+        btn.type = 'button';
+        btn.innerHTML = label;
+        
+        if (!disabled && !active) {
+          btn.addEventListener('click', () => {
+            onPageClick(pageNum);
+          });
+        }
+        li.appendChild(btn);
+        return li;
+      }
+
+      // Helper to create ellipsis item
+      function createEllipsis() {
+        const li = document.createElement('li');
+        li.className = 'page-item disabled';
+        li.innerHTML = '<span class="page-link">...</span>';
+        return li;
+      }
+
+      // 1. First Page Button
+      paginationList.appendChild(createPageItem('First', 1, currentPage === 1));
+
+      // 2. Previous Page Button
+      paginationList.appendChild(createPageItem('<i class="bi bi-chevron-left"></i>', currentPage - 1, currentPage === 1));
+
+      // Determine range based on screen width for live responsiveness
+      let range = 2; // Desktop default
+      if (window.innerWidth < 576) {
+        range = 0; // Extra small / mobile
+      } else if (window.innerWidth < 768) {
+        range = 1; // Small / tablet
+      }
+
+      // 3. Page Numbers and Ellipses
+      const startPage = Math.max(1, currentPage - range);
+      const endPage = Math.min(totalPages, currentPage + range);
+
+      // Show page 1 and ellipsis if range starts > 1
+      if (startPage > 1) {
+        paginationList.appendChild(createPageItem('1', 1, false, currentPage === 1));
+        if (startPage > 2) {
+          paginationList.appendChild(createEllipsis());
+        }
+      }
+
+      // Show pages within active range
+      for (let i = startPage; i <= endPage; i++) {
+        if (i === 1 && startPage > 1) continue; // Already rendered page 1
+        if (i === totalPages && endPage < totalPages) continue; // Will render page totalPages
+        paginationList.appendChild(createPageItem(i.toString(), i, false, currentPage === i));
+      }
+
+      // Show ellipsis and last page if range ends < totalPages
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          paginationList.appendChild(createEllipsis());
+        }
+        paginationList.appendChild(createPageItem(totalPages.toString(), totalPages, false, currentPage === totalPages));
+      }
+
+      // 4. Next Page Button
+      paginationList.appendChild(createPageItem('<i class="bi bi-chevron-right"></i>', currentPage + 1, currentPage === totalPages));
+
+      // 5. Last Page Button
+      paginationList.appendChild(createPageItem('Last', totalPages, currentPage === totalPages));
+    };
+  </script>
 
   {% block extra_js %}{% endblock %}
 

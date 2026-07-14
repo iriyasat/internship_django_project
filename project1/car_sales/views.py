@@ -122,10 +122,14 @@ def home_view(request):
         'chart_sales': chart_sales,
         'chart_revenue': chart_revenue,
     }
-    return render(request, 'car_sales/index.html', context)
+    return render(request, 'car_sales/dashboard.html', context)
 
 # Alias to support dashboard name referencing
 dashboard_view = home_view
+
+def index_view(request):
+    """Public landing page at /"""
+    return render(request, 'car_sales/index.html')
 
 @login_required
 def employee_view(request):
@@ -923,7 +927,13 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
             page = 1
             page_size = 25
             
-        offset = (page - 1) * page_size
+        if page_size < 0:
+            limit = None
+            offset = 0
+        else:
+            limit = page_size
+            offset = (page - 1) * page_size
+
         search = request.GET.get('search', '').strip()
         
         # Apply role-based hierarchy filters if applicable
@@ -944,7 +954,7 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
                             employee_id = profile.employee_id
                         elif store_field:
                             store_id = profile.store.store_id
-
+ 
         # Filter by direct fields if present in GET parameters
         filters = {}
         for key, value in request.GET.items():
@@ -956,9 +966,9 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
                     filters[key] = value
             except Exception:
                 pass
-
+ 
         total, data = serializer_class.fetch(
-            limit=page_size,
+            limit=limit,
             offset=offset,
             search=search,
             store_id=store_id,
