@@ -1498,3 +1498,293 @@ class budgetvssalesserializer:
                 item['achievement'] = 0.00
                 
         return data
+
+
+class InvoiceSerializer:
+    DB_NAME = 'default'
+
+    @staticmethod
+    def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
+        where_clauses = ['1=1']
+        params = []
+
+        if store_id is not None:
+            where_clauses.append('si.store_id = %s')
+            params.append(store_id)
+        if employee_id is not None:
+            where_clauses.append('si.employee_id = %s')
+            params.append(employee_id)
+
+        field_map = {
+            'payment_status': 'inv.payment_status',
+            'payment_method': 'inv.payment_method',
+            'sell_id':        'inv.sell_id',
+        }
+        for key, val in filters.items():
+            if val is not None and val != '':
+                col = field_map.get(key, f'inv.{key}')
+                where_clauses.append(f'{col} = %s')
+                params.append(val)
+
+        if search:
+            search_param = f'%{search}%'
+            where_clauses.append("""(
+                CAST(inv.invoice_id AS CHAR) LIKE %s OR
+                CONCAT(ci.firstname, ' ', ci.lastname) LIKE %s OR
+                ci.customer_address LIKE %s OR
+                CONCAT(ii.make_name, ' ', vi.vehicle_model) LIKE %s OR
+                vi.vin LIKE %s OR
+                CONCAT(e.first_name, ' ', e.last_name) LIKE %s OR
+                s.store_name LIKE %s OR
+                s.address LIKE %s OR
+                inv.payment_status LIKE %s OR
+                inv.payment_method LIKE %s
+            )""")
+            params.extend([search_param] * 10)
+
+        where_str = ' AND '.join(where_clauses)
+
+        select_query = f"""
+        SELECT
+            inv.invoice_id,
+            inv.sell_id,
+            inv.invoice_date,
+            inv.due_date,
+            inv.payment_status,
+            inv.payment_method,
+            inv.mmr,
+            inv.discount_amount,
+            inv.discount_pct,
+            inv.notes,
+            inv.created_at,
+            inv.updated_at,
+            si.selling_price,
+            si.selling_date,
+            (si.selling_price - inv.discount_amount) AS final_amount,
+            CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
+            ci.customer_address,
+            CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
+            vi.vin,
+            CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+            er.role_name AS employee_role,
+            s.store_name,
+            s.address AS store_address
+        FROM invoice inv
+        INNER JOIN selling_info si  ON inv.sell_id = si.sell_id
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN vehicle_info vi  ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        INNER JOIN employee e       ON si.employee_id = e.employee_id
+        INNER JOIN employee_role er ON e.employee_role = er.role_id
+        INNER JOIN store s          ON si.store_id = s.store_id
+        WHERE {where_str}
+        ORDER BY inv.invoice_id DESC
+        LIMIT %s OFFSET %s
+        """
+
+        count_query = f"""
+        SELECT COUNT(*)
+        FROM invoice inv
+        INNER JOIN selling_info si  ON inv.sell_id = si.sell_id
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN vehicle_info vi  ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        INNER JOIN employee e       ON si.employee_id = e.employee_id
+        INNER JOIN store s          ON si.store_id = s.store_id
+        WHERE {where_str}
+        """
+
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(count_query, params)
+            total = cursor.fetchone()[0]
+
+        params.extend([limit, offset])
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(select_query, params)
+            columns = [col[0] for col in cursor.description]
+            rows = cursor.fetchall()
+
+        data = [dict(zip(columns, row)) for row in rows]
+        for item in data:
+            for date_field in ('invoice_date', 'due_date', 'selling_date'):
+                if item.get(date_field) and not isinstance(item[date_field], str):
+                    item[date_field] = item[date_field].strftime('%Y-%m-%d')
+            for dt_field in ('created_at', 'updated_at'):
+                if item.get(dt_field) and not isinstance(item[dt_field], str):
+                    item[dt_field] = item[dt_field].strftime('%Y-%m-%d %H:%M')
+        return total, data
+
+    @staticmethod
+    def fetch_one(invoice_id):
+        query = """
+        SELECT
+            inv.invoice_id,
+            inv.sell_id,
+            inv.invoice_date,
+            inv.due_date,
+            inv.payment_status,
+            inv.payment_method,
+            inv.mmr,
+            inv.discount_amount,
+            inv.discount_pct,
+            inv.notes,
+            inv.created_at,
+            inv.updated_at,
+            si.selling_price,
+            si.selling_date,
+            si.customer_id,
+            si.vehicle_id,
+            si.employee_id,
+            si.store_id,
+            (si.selling_price - inv.discount_amount) AS final_amount,
+            CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
+            ci.customer_address,
+            CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
+            vi.vin,
+            CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+            er.role_name AS employee_role,
+            s.store_name,
+            s.address AS store_address
+        FROM invoice inv
+        INNER JOIN selling_info si  ON inv.sell_id = si.sell_id
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN vehicle_info vi  ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        INNER JOIN employee e       ON si.employee_id = e.employee_id
+        INNER JOIN employee_role er ON e.employee_role = er.role_id
+        INNER JOIN store s          ON si.store_id = s.store_id
+        WHERE inv.invoice_id = %s
+        """
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [invoice_id])
+            row = cursor.fetchone()
+            if row:
+                columns = [col[0] for col in cursor.description]
+                item = dict(zip(columns, row))
+                for date_field in ('invoice_date', 'due_date', 'selling_date'):
+                    if item.get(date_field) and not isinstance(item[date_field], str):
+                        item[date_field] = item[date_field].strftime('%Y-%m-%d')
+                for dt_field in ('created_at', 'updated_at'):
+                    if item.get(dt_field) and not isinstance(item[dt_field], str):
+                        item[dt_field] = item[dt_field].strftime('%Y-%m-%d %H:%M')
+                return item
+        return None
+
+    @staticmethod
+    def fetch_by_sell_id(sell_id):
+        query = "SELECT invoice_id FROM invoice WHERE sell_id = %s"
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [sell_id])
+            row = cursor.fetchone()
+            if row:
+                return InvoiceSerializer.fetch_one(row[0])
+        return None
+
+    @staticmethod
+    def create(sell_id, invoice_date, payment_status='Paid', payment_method='Cash',
+               discount_amount=0, notes=None, due_date=None,
+               customer_id=None, employee_id=None, store_id=None, created_at=None):
+        # Fetch details from selling_info and vehicle_info
+        selling_price = 0
+        mmr_val = 0
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT si.customer_id, si.employee_id, si.store_id, si.selling_date, si.created_at,
+                       si.selling_price, vi.mmr
+                FROM selling_info si
+                INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
+                WHERE si.sell_id = %s
+                """,
+                [sell_id]
+            )
+            row = cursor.fetchone()
+            if row:
+                customer_id  = customer_id  or row[0]
+                employee_id  = employee_id  or row[1]
+                store_id     = store_id     or row[2]
+                invoice_date = invoice_date or row[3]
+                created_at   = created_at   or row[4]
+                selling_price = row[5]
+                mmr_val      = row[6]
+
+        # Calculate discount_amount and discount_pct
+        try:
+            discount_amount = int(discount_amount)
+        except (ValueError, TypeError):
+            discount_amount = 0
+
+        if discount_amount == 0:
+            if mmr_val > selling_price:
+                discount_amount = mmr_val - selling_price
+                discount_pct = round(((mmr_val - selling_price) / mmr_val) * 100, 2)
+            else:
+                discount_amount = 0
+                discount_pct = 0.00
+        else:
+            if mmr_val > 0:
+                discount_pct = round((discount_amount / mmr_val) * 100, 2)
+            else:
+                discount_pct = 0.00
+
+        import random
+        invoice_id = None
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            while True:
+                candidate = random.randint(1000000, 9999999)
+                cursor.execute("SELECT 1 FROM invoice WHERE invoice_id = %s", [candidate])
+                if not cursor.fetchone():
+                    invoice_id = candidate
+                    break
+
+        query = """
+        INSERT INTO invoice
+            (invoice_id, sell_id, customer_id, employee_id, store_id,
+             invoice_date, due_date, payment_status, payment_method,
+             mmr, discount_amount, discount_pct, notes, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [
+                invoice_id, sell_id, customer_id, employee_id, store_id,
+                invoice_date, due_date, payment_status, payment_method,
+                mmr_val, discount_amount, discount_pct, notes,
+                created_at, created_at or None,
+            ])
+            return invoice_id
+
+    @staticmethod
+    def update(invoice_id, invoice_date, due_date, payment_status, payment_method,
+               discount_amount, notes):
+        # Fetch mmr to recalculate discount_pct if discount_amount changes
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute("SELECT mmr FROM invoice WHERE invoice_id = %s", [invoice_id])
+            row = cursor.fetchone()
+            mmr_val = row[0] if row else 0
+
+        try:
+            discount_amount = int(discount_amount)
+        except (ValueError, TypeError):
+            discount_amount = 0
+
+        if mmr_val > 0:
+            discount_pct = round((discount_amount / mmr_val) * 100, 2)
+        else:
+            discount_pct = 0.00
+
+        query = """
+        UPDATE invoice
+        SET invoice_date = %s, due_date = %s, payment_status = %s,
+            payment_method = %s, discount_amount = %s, discount_pct = %s, notes = %s, updated_at = NOW()
+        WHERE invoice_id = %s
+        """
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [invoice_date, due_date, payment_status,
+                                   payment_method, discount_amount, discount_pct, notes, invoice_id])
+
+
+    @staticmethod
+    def delete(invoice_id):
+        query = "DELETE FROM invoice WHERE invoice_id = %s"
+        with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, [invoice_id])

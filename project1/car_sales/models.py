@@ -264,3 +264,82 @@ class Inventory(models.Model):
     class Meta:
         db_table = 'inventory'
         verbose_name_plural = 'inventories'
+
+
+class Invoice(models.Model):
+    invoice_id = models.IntegerField(primary_key=True, verbose_name="Invoice ID")
+    selling_info = models.OneToOneField(
+        SellingInfo,
+        on_delete=models.CASCADE,
+        db_column='sell_id',
+        related_name='invoice',
+        verbose_name="Selling Info"
+    )
+    customer = models.ForeignKey(
+        CustomerInfo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='customer_id',
+        related_name='invoices',
+        verbose_name="Customer"
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='employee_id',
+        related_name='invoices',
+        verbose_name="Employee"
+    )
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='store_id',
+        related_name='invoices',
+        verbose_name="Store"
+    )
+    invoice_date = models.DateField(verbose_name="Invoice Date")
+    due_date = models.DateField(null=True, blank=True, verbose_name="Due Date")
+
+    class PaymentStatusChoices(models.TextChoices):
+        UNPAID = 'Unpaid', 'Unpaid'
+        PAID = 'Paid', 'Paid'
+        PENDING = 'Pending', 'Pending'
+        OVERDUE = 'Overdue', 'Overdue'
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatusChoices.choices,
+        default=PaymentStatusChoices.PAID,
+        verbose_name="Payment Status"
+    )
+
+    class PaymentMethodChoices(models.TextChoices):
+        CASH = 'Cash', 'Cash'
+        CARD = 'Card', 'Card'
+        BANK_TRANSFER = 'Bank Transfer', 'Bank Transfer'
+        FINANCING = 'Financing', 'Financing'
+
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethodChoices.choices,
+        default=PaymentMethodChoices.CASH,
+        verbose_name="Payment Method"
+    )
+    discount_amount = models.IntegerField(default=0, verbose_name='Discount Amount')
+    mmr = models.IntegerField(default=0, verbose_name='MMR Price')
+    discount_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, verbose_name='Discount %')
+    notes = models.TextField(null=True, blank=True, verbose_name='Notes')
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def __str__(self):
+        return f"Invoice #{self.invoice_id} for Sale {self.selling_info_id}"
+
+    class Meta:
+        db_table = 'invoice'
+        verbose_name_plural = 'invoices'

@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
-    SellingInfo, EmployeeBudget, Inventory
+    SellingInfo, EmployeeBudget, Inventory, Invoice
 )
 
 @admin.register(Country)
@@ -85,3 +85,12 @@ class InventoryAdmin(admin.ModelAdmin):
     search_fields = ('vehicle__vin', 'vehicle__vehicle_model', 'employee__first_name', 'employee__last_name')
     autocomplete_fields = ('vehicle', 'selling_info', 'employee')
     list_select_related = ('vehicle__make', 'store', 'selling_info', 'employee')
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('invoice_id', 'selling_info', 'invoice_date', 'due_date', 'payment_status', 'payment_method', 'discount_amount', 'created_at', 'updated_at')
+    list_filter = ('payment_status', 'payment_method', 'invoice_date')
+    search_fields = ('invoice_id', 'selling_info__sell_id', 'selling_info__customer__firstname', 'selling_info__customer__lastname')
+    autocomplete_fields = ('selling_info',)
+    list_select_related = ('selling_info__customer', 'selling_info__vehicle__make', 'selling_info__store')
+    readonly_fields = ('created_at', 'updated_at')

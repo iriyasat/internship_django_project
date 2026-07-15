@@ -214,6 +214,13 @@
       </li>
 
       <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'invoices' %}{% else %}collapsed{% endif %}" href="/invoices/">
+          <i class="bi bi-receipt"></i>
+          <span>Invoices</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link {% if active_tab == 'budgets' %}{% else %}collapsed{% endif %}" href="/budgets/">
           <i class="bi bi-wallet2"></i>
           <span>Employee Budget</span>
@@ -308,6 +315,7 @@
 
   <!-- jsPDF & AutoTable for PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <!-- Global Responsive Pagination Helper -->
   <script>
     window.updatePaginationHelper = function(paginationList, paginationControls, paginationInfo, totalCount, currentPage, pageSize, onPageClick) {

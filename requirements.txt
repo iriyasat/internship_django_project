@@ -48,6 +48,13 @@ python-dateutil==2.9.0.post0
 # Timezone support database for handling timezone-aware dates
 tzdata==2026.2
 
+# PDF generation engine used for invoice PDF output
+reportlab==5.0.0
+
+# Character encoding auto-detection dependency of reportlab
+charset-normalizer==3.4.9
+
+
 
 # ==========================================
 # Image and Media Support

@@ -1,0 +1,684 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Invoices - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Invoices</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">Invoices</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <div class="row">
+    <!-- Action Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <!-- Total Invoices -->
+      <div class="col-xxl-3 col-md-6 mb-3">
+        <div class="card info-card sales-card">
+          <div class="card-body">
+            <h5 class="card-title">Total <span>| Invoices</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-receipt"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-total-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">all matching records</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paid -->
+      <div class="col-xxl-3 col-md-6 mb-3">
+        <div class="card info-card revenue-card">
+          <div class="card-body">
+            <h5 class="card-title">Paid <span>| This Page</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-check-circle"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-paid-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">paid invoices</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unpaid / Pending -->
+      <div class="col-xxl-3 col-md-6 mb-3">
+        <div class="card info-card customers-card">
+          <div class="card-body">
+            <h5 class="card-title">Unpaid/Pending <span>| This Page</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-hourglass-split"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-unpaid-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">pending invoices</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page Final Amount -->
+      <div class="col-xxl-3 col-md-6 mb-3">
+        <div class="card info-card">
+          <div class="card-body">
+            <h5 class="card-title">Final Revenue <span>| This Page</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                <i class="bi bi-currency-dollar"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-final-revenue">$0</h6>
+                <span class="text-muted small pt-2 ps-1">after discounts</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body pt-3">
+          <h5 class="card-title">
+            Invoice Registry <span>| Live Query &amp; CRUD Interface</span>
+            {% if request.user.is_staff %}
+            <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
+              <i class="bi bi-plus-circle me-1"></i> Create Invoice
+            </button>
+            {% endif %}
+          </h5>
+
+          <!-- Filters Row -->
+          <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-2">
+              <label for="filter-status" class="small fw-bold text-muted mb-1">Payment Status</label>
+              <select class="form-select form-select-sm" id="filter-status">
+                <option value="">All Statuses</option>
+                {% for val, label in payment_status_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label for="filter-method" class="small fw-bold text-muted mb-1">Payment Method</label>
+              <select class="form-select form-select-sm" id="filter-method">
+                <option value="">All Methods</option>
+                {% for val, label in payment_method_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label for="page-size-select" class="small fw-bold text-muted mb-1">Show</label>
+              <select class="form-select form-select-sm" id="page-size-select">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div class="col-md-4 ms-auto">
+              <label class="small fw-bold text-muted mb-1">Search</label>
+              <div class="d-flex gap-2">
+                <div class="input-group input-group-sm">
+                  <button class="input-group-text" type="button" id="search-btn" style="cursor:pointer;"><i class="bi bi-search"></i></button>
+                  <input type="text" class="form-control" id="search-input" placeholder="Invoice #, customer, vehicle, store...">
+                </div>
+                <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading invoice records...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper" style="display: none;">
+            <table class="table table-hover align-middle" id="invoice-table">
+              <thead class="table-light">
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Customer &amp; Address</th>
+                  <th>Sold By</th>
+                  <th>Vehicle</th>
+                  <th>Selling Price</th>
+                  <th>Discount</th>
+                  <th>Final Amount</th>
+                  <th>Invoice Date</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="api-table-body">
+                <!-- Populated via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none !important;">
+            <div class="small text-muted" id="pagination-info">Showing 0 to 0 of 0 entries</div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CRUD Modal -->
+{% if request.user.is_staff %}
+<div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="crudModalLabel">Create Invoice</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="crud-form" novalidate>
+        {% csrf_token %}
+        <input type="hidden" id="edit-id" value="">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <!-- Sale selection (create only) -->
+            <div class="col-12" id="sale-select-row">
+              <label for="id_sell_id" class="form-label fw-bold">Link to Sale <span class="text-danger">*</span></label>
+              <select class="form-select" id="id_sell_id">
+                <option value="" selected disabled>Loading sales...</option>
+              </select>
+              <div class="invalid-feedback">Please link this invoice to a sale.</div>
+              <small class="text-muted">Only sales without an existing invoice are listed.</small>
+            </div>
+
+            <!-- Invoice Date -->
+            <div class="col-md-6">
+              <label for="id_invoice_date" class="form-label fw-bold">Invoice Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="id_invoice_date" required>
+              <div class="invalid-feedback">Please select an invoice date.</div>
+            </div>
+
+            <!-- Due Date -->
+            <div class="col-md-6">
+              <label for="id_due_date" class="form-label fw-bold">Due Date</label>
+              <input type="date" class="form-control" id="id_due_date">
+            </div>
+
+            <!-- Payment Status -->
+            <div class="col-md-6">
+              <label for="id_payment_status" class="form-label fw-bold">Payment Status <span class="text-danger">*</span></label>
+              <select class="form-select" id="id_payment_status" required>
+                {% for val, label in payment_status_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please select a payment status.</div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="col-md-6">
+              <label for="id_payment_method" class="form-label fw-bold">Payment Method <span class="text-danger">*</span></label>
+              <select class="form-select" id="id_payment_method" required>
+                {% for val, label in payment_method_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Please select a payment method.</div>
+            </div>
+
+            <!-- Discount -->
+            <div class="col-md-6">
+              <label for="id_discount_amount" class="form-label fw-bold">Discount Amount ($)</label>
+              <input type="number" class="form-control" id="id_discount_amount" min="0" value="0" placeholder="0">
+            </div>
+
+            <!-- Notes -->
+            <div class="col-md-6">
+              <label for="id_notes" class="form-label fw-bold">Notes</label>
+              <textarea class="form-control" id="id_notes" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save Invoice</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const tableBody      = document.getElementById('api-table-body');
+  const tableWrapper   = document.getElementById('table-wrapper');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const alertContainer = document.getElementById('alert-container');
+  const searchInput    = document.getElementById('search-input');
+  const pageSizeSelect = document.getElementById('page-size-select');
+  const paginationInfo = document.getElementById('pagination-info');
+  const paginationList = document.getElementById('pagination-list');
+  const paginationControls = document.getElementById('pagination-controls');
+  const filterStatus   = document.getElementById('filter-status');
+  const filterMethod   = document.getElementById('filter-method');
+  const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+  const crudModalEl = document.getElementById('crudModal');
+  const crudForm    = document.getElementById('crud-form');
+  const addBtn      = document.getElementById('add-btn');
+  const modalTitle  = document.getElementById('crudModalLabel');
+  const editIdInput = document.getElementById('edit-id');
+  const sellIdSelect     = document.getElementById('id_sell_id');
+  const invoiceDateInput = document.getElementById('id_invoice_date');
+  const dueDateInput     = document.getElementById('id_due_date');
+  const paymentStatusSel = document.getElementById('id_payment_status');
+  const paymentMethodSel = document.getElementById('id_payment_method');
+  const discountInput    = document.getElementById('id_discount_amount');
+  const notesInput       = document.getElementById('id_notes');
+  const saleSelectRow    = document.getElementById('sale-select-row');
+
+  const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
+
+  let bootstrapModal = null;
+  if (crudModalEl) bootstrapModal = new bootstrap.Modal(crudModalEl);
+
+  let currentPage  = 1;
+  let pageSize     = 25;
+  let searchQuery  = '';
+  let currentRecords = [];
+
+  // ─── Status badge helper ───────────────────────
+  function statusBadge(s) {
+    const map = {
+      'Paid':    'success',
+      'Unpaid':  'danger',
+      'Pending': 'warning',
+      'Overdue': 'dark',
+    };
+    return `<span class="badge bg-${map[s] || 'secondary'}">${s}</span>`;
+  }
+
+  // ─── Alert helper ──────────────────────────────
+  function showAlert(msg, type = 'success') {
+    const div = document.createElement('div');
+    div.className = `alert alert-${type} alert-dismissible fade show`;
+    div.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    alertContainer.appendChild(div);
+    setTimeout(() => div.remove(), 5000);
+  }
+
+  // ─── Update summary cards ──────────────────────
+  function updateCards(records, total) {
+    document.getElementById('card-total-count').textContent = total.toLocaleString();
+    let paid = 0, unpaid = 0, finalRev = 0;
+    records.forEach(r => {
+      if (r.payment_status === 'Paid') paid++;
+      else unpaid++;
+      finalRev += parseFloat(r.final_amount) || 0;
+    });
+    document.getElementById('card-paid-count').textContent   = paid.toLocaleString();
+    document.getElementById('card-unpaid-count').textContent = unpaid.toLocaleString();
+    document.getElementById('card-final-revenue').textContent = '$' + Math.round(finalRev).toLocaleString();
+  }
+
+  // ─── Fetch & render table ──────────────────────
+  function fetchData() {
+    loadingSpinner.style.display = 'block';
+    tableWrapper.style.display   = 'none';
+    document.getElementById('pagination-controls').style.display = 'none';
+
+    const offset = (currentPage - 1) * pageSize;
+    let url = `/api/invoices/?page=${currentPage}&page_size=${pageSize}`;
+    if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+    if (filterStatus && filterStatus.value) url += `&payment_status=${encodeURIComponent(filterStatus.value)}`;
+    if (filterMethod && filterMethod.value) url += `&payment_method=${encodeURIComponent(filterMethod.value)}`;
+
+    fetch(url, { headers: { 'X-CSRFToken': getCsrfToken() } })
+      .then(r => r.json())
+      .then(res => {
+        loadingSpinner.style.display = 'none';
+        tableWrapper.style.display   = 'block';
+        document.getElementById('pagination-controls').style.display = 'flex';
+
+        currentRecords = res.data || [];
+        const total    = res.total || 0;
+
+        updateCards(currentRecords, total);
+        renderTable(currentRecords);
+        renderPagination(total);
+      })
+      .catch(err => {
+        loadingSpinner.style.display = 'none';
+        showAlert('Failed to load invoice data: ' + err.message, 'danger');
+      });
+  }
+
+  function renderTable(records) {
+    tableBody.innerHTML = '';
+    if (!records.length) {
+      tableBody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-4">No invoice records found.</td></tr>`;
+      return;
+    }
+    records.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>#${r.invoice_id}</strong></td>
+        <td>
+          <span class="fw-semibold">${r.customer_name || '—'}</span>
+          ${r.customer_address
+            ? `<br><small class="text-muted"><i class="bi bi-geo-alt me-1"></i>${r.customer_address}</small>`
+            : '<br><small class="text-muted fst-italic">No address on file</small>'}
+        </td>
+        <td>
+          <span class="fw-semibold">${r.employee_name || '—'}</span>
+          ${r.employee_role
+            ? `<br><small><span class="badge bg-light text-dark border">${r.employee_role}</span></small>`
+            : ''}
+          <br><small class="text-muted"><i class="bi bi-shop me-1"></i>${r.store_name || '—'}</small>
+          ${r.store_address
+            ? `<br><small class="text-muted" style="font-size:0.75rem;"><i class="bi bi-geo-alt me-1"></i>${r.store_address}</small>`
+            : ''}
+        </td>
+        <td>
+          <small>${r.vehicle_name || '—'}</small>
+          <br><small class="text-muted">VIN: ${r.vin || '—'}</small>
+        </td>
+        <td>$${parseInt(r.selling_price || 0).toLocaleString()}</td>
+        <td>
+          ${r.mmr ? `<small class="text-muted">MMR: $${parseInt(r.mmr).toLocaleString()}</small><br>` : ''}
+          ${r.discount_amount > 0
+            ? `<span class="text-danger fw-semibold">-$${parseInt(r.discount_amount).toLocaleString()}</span>
+               <br><span class="badge bg-warning text-dark">${parseFloat(r.discount_pct || 0).toFixed(2)}% off MMR</span>`
+            : `<span class="badge bg-success-subtle text-success border border-success-subtle">No discount</span>`
+          }
+        </td>
+        <td><strong>$${parseInt(r.final_amount || 0).toLocaleString()}</strong></td>
+        <td>${r.invoice_date || '—'}</td>
+        <td>${r.due_date || '<span class="text-muted">—</span>'}</td>
+        <td>${statusBadge(r.payment_status)}</td>
+        <td><span class="badge bg-secondary">${r.payment_method}</span></td>
+        <td>
+          <a href="/invoices/${r.invoice_id}/pdf/" target="_blank" class="btn btn-sm btn-outline-danger me-1" title="Download PDF">
+            <i class="bi bi-file-earmark-pdf"></i>
+          </a>
+          ${isStaff ? `
+          <button class="btn btn-sm btn-outline-primary me-1 edit-btn" data-id="${r.invoice_id}" title="Edit">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${r.invoice_id}" title="Delete">
+            <i class="bi bi-trash"></i>
+          </button>` : ''}
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
+
+
+    if (isStaff) {
+      tableBody.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+      });
+      tableBody.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteRecord(btn.dataset.id));
+      });
+    }
+  }
+
+
+  function renderPagination(total) {
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      total,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
+        fetchData();
+      }
+    );
+  }
+
+  // ─── Load sales without invoices for dropdown ──
+  let salesLoaded = false;
+  function loadSalesDropdown(callback) {
+    if (salesLoaded) { if (callback) callback(); return; }
+    sellIdSelect.innerHTML = '<option value="" disabled>Loading unlinked sales...</option>';
+    // Fetch all sales, then all invoices, subtract
+    Promise.all([
+      fetch('/api/sales/?page=1&page_size=5000').then(r => r.json()),
+      fetch('/api/invoices/?page=1&page_size=5000').then(r => r.json()),
+    ]).then(([salesRes, invRes]) => {
+      const linkedSellIds = new Set((invRes.data || []).map(i => i.sell_id));
+      const available = (salesRes.data || []).filter(s => !linkedSellIds.has(s.sell_id));
+      sellIdSelect.innerHTML = '<option value="" selected disabled>Select Sale...</option>';
+      available.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.sell_id;
+        opt.textContent = `#${s.sell_id} — ${s.customer_name} | ${s.vehicle_name} ($${parseInt(s.selling_price).toLocaleString()}) — ${s.selling_date}`;
+        sellIdSelect.appendChild(opt);
+      });
+      salesLoaded = true;
+      if (callback) callback();
+    }).catch(err => {
+      sellIdSelect.innerHTML = '<option value="" disabled>Error loading sales</option>';
+      console.error(err);
+    });
+  }
+
+  // Set today's date as default
+  function setTodayDate() {
+    const today = new Date().toISOString().split('T')[0];
+    if (invoiceDateInput) invoiceDateInput.value = today;
+  }
+
+  // ─── Add modal ────────────────────────────────
+  if (addBtn) {
+    addBtn.addEventListener('click', function () {
+      crudForm.reset();
+      crudForm.classList.remove('was-validated');
+      editIdInput.value = '';
+      modalTitle.textContent = 'Create Invoice';
+      if (saleSelectRow) saleSelectRow.style.display = 'block';
+      if (sellIdSelect) sellIdSelect.disabled = false;
+      setTodayDate();
+      if (paymentStatusSel) paymentStatusSel.value = 'Paid';
+      salesLoaded = false; // force reload in case sales changed
+      loadSalesDropdown();
+    });
+  }
+
+  // ─── Edit modal ────────────────────────────────
+  function openEditModal(invoiceId) {
+    fetch(`/api/invoices/${invoiceId}/`)
+      .then(r => r.json())
+      .then(res => {
+        if (!res.status) { showAlert('Could not load invoice.', 'danger'); return; }
+        const d = res.data;
+        editIdInput.value = d.invoice_id;
+        modalTitle.textContent = `Edit Invoice #${d.invoice_id}`;
+
+        // Hide sale selector on edit — sale is fixed
+        if (saleSelectRow) saleSelectRow.style.display = 'none';
+
+        invoiceDateInput.value  = d.invoice_date || '';
+        dueDateInput.value      = d.due_date || '';
+        paymentStatusSel.value  = d.payment_status;
+        paymentMethodSel.value  = d.payment_method;
+        discountInput.value     = d.discount_amount || 0;
+        notesInput.value        = d.notes || '';
+
+        bootstrapModal.show();
+      });
+  }
+
+  // ─── Form submit (create / update) ────────────
+  if (crudForm) {
+    crudForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      crudForm.classList.add('was-validated');
+
+      const isEdit = !!editIdInput.value;
+
+      // Validate required fields
+      if (!invoiceDateInput.value) { invoiceDateInput.classList.add('is-invalid'); return; }
+      if (!isEdit && (!sellIdSelect || !sellIdSelect.value)) {
+        sellIdSelect.classList.add('is-invalid'); return;
+      }
+
+      const payload = {
+        invoice_date:   invoiceDateInput.value,
+        due_date:       dueDateInput.value || null,
+        payment_status: paymentStatusSel.value,
+        payment_method: paymentMethodSel.value,
+        discount_amount: parseInt(discountInput.value) || 0,
+        notes:          notesInput.value || null,
+      };
+      if (!isEdit) payload.sell_id = sellIdSelect.value;
+
+      const url    = isEdit ? `/api/invoices/${editIdInput.value}/` : '/api/invoices/';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify(payload),
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status) {
+            bootstrapModal.hide();
+            showAlert(res.message || 'Invoice saved successfully.', 'success');
+            salesLoaded = false;
+            fetchData();
+          } else {
+            showAlert(res.message || 'Error saving invoice.', 'danger');
+          }
+        })
+        .catch(err => showAlert('Request error: ' + err.message, 'danger'));
+    });
+  }
+
+  // ─── Delete ────────────────────────────────────
+  function deleteRecord(invoiceId) {
+    if (!confirm(`Delete invoice #${invoiceId}? This cannot be undone.`)) return;
+    fetch(`/api/invoices/${invoiceId}/`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status) {
+          showAlert(`Invoice #${invoiceId} deleted.`, 'success');
+          fetchData();
+        } else {
+          showAlert(res.message || 'Delete failed.', 'danger');
+        }
+      });
+  }
+
+  // ─── PDF download ──────────────────────────────
+  if (downloadPdfBtn) {
+    downloadPdfBtn.addEventListener('click', function () {
+      if (!currentRecords.length) { showAlert('No data to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      if (!jsPDF) { showAlert('jsPDF not loaded.', 'danger'); return; }
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(14);
+      doc.text('Invoice Report', 14, 15);
+      doc.setFontSize(9);
+      const headers = [['Invoice #', 'Customer', 'Customer Address', 'Sold By', 'Role', 'Vehicle', 'VIN', 'Store', 'Store Address', 'Price', 'Discount', 'Final', 'Inv. Date', 'Due Date', 'Status', 'Method']];
+      const rows = currentRecords.map(r => [
+        r.invoice_id,
+        r.customer_name, r.customer_address || '—',
+        r.employee_name, r.employee_role || '—',
+        r.vehicle_name, r.vin || '—',
+        r.store_name, r.store_address || '—',
+        '$' + parseInt(r.selling_price).toLocaleString(),
+        r.discount_amount > 0 ? '-$' + parseInt(r.discount_amount).toLocaleString() : '0',
+        '$' + parseInt(r.final_amount).toLocaleString(),
+        r.invoice_date, r.due_date || '—', r.payment_status, r.payment_method,
+      ]);
+      if (doc.autoTable) {
+        doc.autoTable({ head: headers, body: rows, startY: 22, styles: { fontSize: 6 } });
+      } else {
+        doc.text('Enable jspdf-autotable for table export.', 14, 30);
+      }
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'invoices.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  window.downloadSingleInvoicePDF = function(id) {
+    window.location.href = `/invoices/${id}/pdf/`;
+  };
+
+
+  // ─── Filter / search listeners ─────────────────
+  let searchTimeout = null;
+  searchInput.addEventListener('input', function () {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { searchQuery = this.value; currentPage = 1; fetchData(); }, 300);
+  });
+  searchInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { clearTimeout(searchTimeout); searchQuery = this.value; currentPage = 1; fetchData(); }
+  });
+  document.getElementById('search-btn').addEventListener('click', function () {
+    clearTimeout(searchTimeout); searchQuery = searchInput.value; currentPage = 1; fetchData();
+  });
+  pageSizeSelect.addEventListener('change', function () { pageSize = parseInt(this.value); currentPage = 1; fetchData(); });
+  if (filterStatus) filterStatus.addEventListener('change', () => { currentPage = 1; fetchData(); });
+  if (filterMethod) filterMethod.addEventListener('change', () => { currentPage = 1; fetchData(); });
+
+  // ─── CSRF helper ───────────────────────────────
+  function getCsrfToken() {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return cookie ? cookie.trim().split('=')[1] : '';
+  }
+
+  // ─── Initial fetch ─────────────────────────────
+  fetchData();
+});
+</script>
+{% endblock %}

@@ -268,6 +268,8 @@ def admin_panel_view(request):
         'customers': {'name': 'Customers', 'count': CustomerInfo.objects.count(), 'url': '/customers/', 'slug': 'customerinfo'},
         'sales': {'name': 'Sales Transactions', 'count': SellingInfo.objects.count(), 'url': '/sales/', 'slug': 'sellinginfo'},
         'budgets': {'name': 'Employee Budget', 'count': EmployeeBudget.objects.count(), 'url': '/budgets/', 'slug': 'employeebudget'},
+        'invoices': {'name': 'Invoices', 'count': Invoice.objects.count(), 'url': '/invoices/', 'slug': 'invoice'},
+
     }
     context = {
         'active_tab': 'admin_panel',
@@ -1094,7 +1096,64 @@ def customer_api(request, pk=None):
 
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 def sales_api(request, pk=None):
-    return generic_model_api(request, SellingInfo, SellingInfoSerializer, ['customer__firstname', 'customer__lastname', 'vehicle__vehicle_model', 'vehicle__make__make_name'], pk, 'store', 'employee')
+    if not request.user.is_authenticated:
+        return Response({'status': False, 'message': 'Authentication required.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
+    is_staff = request.user.is_superuser or request.user.is_staff
+
+    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
+        return Response(
+            {'status': False, 'message': 'Permission denied. Only staff members can modify selling info data.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if request.method == 'POST':
+        # Extract fields
+        import inspect
+        sig = inspect.signature(SellingInfoSerializer.create)
+        create_params = {}
+        for param_name, param in sig.parameters.items():
+            if param_name in request.data:
+                create_params[param_name] = request.data[param_name]
+            elif param.default is not inspect.Parameter.empty:
+                create_params[param_name] = param.default
+            else:
+                create_params[param_name] = None
+
+        try:
+            new_sell_id = SellingInfoSerializer.create(**create_params)
+            new_item = SellingInfoSerializer.fetch_one(new_sell_id)
+
+            # ── Auto-create invoice for this new sale ──
+            selling_date = new_item.get('selling_date') if new_item else None
+            try:
+                InvoiceSerializer.create(
+                    sell_id=new_sell_id,
+                    invoice_date=selling_date,
+                    payment_status='Paid',
+                    payment_method='Cash',
+                    discount_amount=0,
+                    notes=None,
+                    due_date=None,
+                )
+            except Exception:
+                pass  # Invoice creation failure should not block the sale
+
+            return Response({
+                'status': True,
+                'message': 'Sale Info record created successfully.',
+                'data': new_item,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Delegate all other methods to the generic handler
+    return generic_model_api(request, SellingInfo, SellingInfoSerializer,
+                             ['customer__firstname', 'customer__lastname',
+                              'vehicle__vehicle_model', 'vehicle__make__make_name'],
+                             pk, 'store', 'employee')
+
 
 
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
@@ -1277,4 +1336,427 @@ class EmployeeBackend(BaseBackend):
             return User.objects.get(pk=uid)
         except User.DoesNotExist:
             return None
+
+
+# ─────────────────────────────────────────────
+# Invoice Views
+# ─────────────────────────────────────────────
+
+@login_required
+def invoice_view(request):
+    profile = get_employee_profile(request)
+    stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
+    context = {
+        'active_tab': 'invoices',
+        'stores': stores,
+        'payment_status_choices': Invoice.PaymentStatusChoices.choices,
+        'payment_method_choices': Invoice.PaymentMethodChoices.choices,
+    }
+    return render(request, 'car_sales/invoice_view.html', context)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+def invoice_api(request, pk=None):
+    if not request.user.is_authenticated:
+        return Response({'status': False, 'message': 'Authentication required.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
+    is_staff = request.user.is_superuser or request.user.is_staff
+    profile = get_employee_profile(request)
+
+    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
+        return Response({'status': False, 'message': 'Permission denied. Only staff members can modify invoice data.'},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    # ── GET ──────────────────────────────────────
+    if request.method == 'GET':
+        # Fetch by sell_id convenience lookup
+        sell_id_param = request.GET.get('sell_id')
+        if sell_id_param:
+            item = InvoiceSerializer.fetch_by_sell_id(sell_id_param)
+            if item:
+                return Response({'status': True, 'data': item}, status=status.HTTP_200_OK)
+            return Response({'status': False, 'message': 'No invoice found for that sale.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if pk is not None:
+            item = InvoiceSerializer.fetch_one(pk)
+            if item:
+                return Response({'status': True, 'data': item}, status=status.HTTP_200_OK)
+            return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            page      = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 25))
+        except ValueError:
+            page, page_size = 1, 25
+
+        offset = (page - 1) * page_size
+        search = request.GET.get('search', '').strip()
+
+        store_id    = None
+        employee_id = None
+        if not request.user.is_superuser and profile and profile.employee_role:
+            role = profile.employee_role.role_name
+            if role in ['Branch Manager', 'Showroom Manager', 'Sales Manager', 'Finance & Insurance Officer']:
+                store_id = profile.store.store_id
+            elif role not in ['Regional Sales Manager', 'Customer Relations Officer']:
+                employee_id = profile.employee_id
+
+        # Optional filter by payment_status passed as query param
+        filters = {}
+        for key in ('payment_status', 'payment_method'):
+            val = request.GET.get(key)
+            if val:
+                filters[key] = val
+
+        total, data = InvoiceSerializer.fetch(
+            limit=page_size, offset=offset, search=search,
+            store_id=store_id, employee_id=employee_id, **filters
+        )
+        return Response({'status': True, 'total': total, 'page': page, 'page_size': page_size, 'data': data},
+                        status=status.HTTP_200_OK)
+
+    # ── POST (manual invoice creation) ──────────
+    elif request.method == 'POST':
+        sell_id        = request.data.get('sell_id')
+        invoice_date   = request.data.get('invoice_date')
+        due_date       = request.data.get('due_date') or None
+        payment_status_val  = request.data.get('payment_status', 'Paid')
+        payment_method_val  = request.data.get('payment_method', 'Cash')
+        discount_amount = request.data.get('discount_amount', 0)
+        notes           = request.data.get('notes') or None
+
+        if not sell_id or not invoice_date:
+            return Response({'status': False, 'message': 'sell_id and invoice_date are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Check no duplicate invoice for this sale
+        existing = InvoiceSerializer.fetch_by_sell_id(sell_id)
+        if existing:
+            return Response({'status': False, 'message': f'An invoice (#{existing["invoice_id"]}) already exists for sale #{sell_id}.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            new_id = InvoiceSerializer.create(
+                sell_id=sell_id,
+                invoice_date=invoice_date,
+                due_date=due_date,
+                payment_status=payment_status_val,
+                payment_method=payment_method_val,
+                discount_amount=discount_amount,
+                notes=notes,
+            )
+            item = InvoiceSerializer.fetch_one(new_id)
+            return Response({'status': True, 'message': 'Invoice created successfully.', 'data': item},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ── PUT ──────────────────────────────────────
+    elif request.method == 'PUT':
+        item = InvoiceSerializer.fetch_one(pk)
+        if not item:
+            return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        invoice_date    = request.data.get('invoice_date',   item['invoice_date'])
+        due_date        = request.data.get('due_date',        item.get('due_date')) or None
+        payment_status_val  = request.data.get('payment_status',  item['payment_status'])
+        payment_method_val  = request.data.get('payment_method',  item['payment_method'])
+        discount_amount = request.data.get('discount_amount', item['discount_amount'])
+        notes           = request.data.get('notes',           item.get('notes')) or None
+
+        try:
+            InvoiceSerializer.update(pk, invoice_date, due_date, payment_status_val,
+                                     payment_method_val, discount_amount, notes)
+            updated = InvoiceSerializer.fetch_one(pk)
+            return Response({'status': True, 'message': 'Invoice updated successfully.', 'data': updated},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ── DELETE ───────────────────────────────────
+    elif request.method == 'DELETE':
+        item = InvoiceSerializer.fetch_one(pk)
+        if not item:
+            return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            InvoiceSerializer.delete(pk)
+            return Response({'status': True, 'message': 'Invoice deleted successfully.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@login_required
+def invoice_api_page_view(request):
+    profile = get_employee_profile(request)
+    stores = filter_by_hierarchy(Store.objects.all(), request, profile, 'self', None)
+    sales = SellingInfo.objects.select_related('customer', 'vehicle__make').all()[:2000]
+    context = {
+        'active_tab': 'invoices',
+        'stores': stores,
+        'sales': sales,
+        'payment_status_choices': Invoice.PaymentStatusChoices.choices,
+        'payment_method_choices': Invoice.PaymentMethodChoices.choices,
+    }
+    return render(request, 'car_sales/invoice_view.html', context)
+
+
+@login_required
+def download_invoice_pdf(request, invoice_id):
+    r = InvoiceSerializer.fetch_one(invoice_id)
+    if not r:
+        raise Http404("Invoice not found")
+
+    is_staff = request.user.is_superuser or request.user.is_staff
+    if not is_staff:
+        profile = get_employee_profile(request)
+        if profile and profile.employee_role:
+            role = profile.employee_role.role_name
+            if role in ['Branch Manager', 'Showroom Manager', 'Sales Manager', 'Finance & Insurance Officer']:
+                if r.get('store_id') != profile.store.store_id:
+                    return HttpResponse("Permission denied", status=403)
+            elif role not in ['Regional Sales Manager', 'Customer Relations Officer']:
+                if r.get('employee_id') != profile.employee_id:
+                    return HttpResponse("Permission denied", status=403)
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="INV_{invoice_id}.pdf"'
+
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=letter,
+        rightMargin=45,
+        leftMargin=45,
+        topMargin=45,
+        bottomMargin=45
+    )
+    story = []
+
+    styles = getSampleStyleSheet()
+
+    # Premium Brand Colors
+    PRIMARY = colors.HexColor('#4F46E5')      # Royal Indigo
+    TEXT_DARK = colors.HexColor('#1E293B')    # Slate 800
+    TEXT_MUTED = colors.HexColor('#64748B')   # Slate 500
+    BG_LIGHT = colors.HexColor('#F8FAFC')     # Slate 50
+    BORDER_COLOR = colors.HexColor('#E2E8F0') # Slate 200
+
+    title_style = ParagraphStyle(
+        'InvoiceTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        leading=28,
+        textColor=PRIMARY,
+        spaceAfter=5
+    )
+
+    brand_style = ParagraphStyle(
+        'BrandText',
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=16,
+        textColor=TEXT_DARK
+    )
+
+    section_hdr_style = ParagraphStyle(
+        'SectionHeader',
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=13,
+        textColor=TEXT_MUTED,
+        spaceAfter=4
+    )
+
+    meta_val_style = ParagraphStyle(
+        'MetaValue',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=TEXT_DARK
+    )
+
+    meta_val_bold = ParagraphStyle(
+        'MetaValueBold',
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=13,
+        textColor=TEXT_DARK
+    )
+
+    body_normal = ParagraphStyle(
+        'BodyNormal',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=TEXT_DARK
+    )
+
+    body_bold = ParagraphStyle(
+        'BodyBold',
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=13,
+        textColor=TEXT_DARK
+    )
+
+    header_style = ParagraphStyle(
+        'TableHeader',
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=13,
+        textColor=colors.white
+    )
+
+    # 1. Invoice Title & Metadata Header
+    meta_content = (
+        f"<b>Invoice #:</b> {r['invoice_id']}<br/>"
+        f"<b>Date:</b> {r['invoice_date']}<br/>"
+        f"<b>Status:</b> {r['payment_status'].upper()}<br/>"
+        f"<b>Method:</b> {r['payment_method']}"
+    )
+    if r.get('due_date'):
+        meta_content += f"<br/><b>Due Date:</b> {r['due_date']}"
+
+    header_data = [
+        [
+            [Paragraph("CAR SALES INC.", brand_style), Paragraph("Premium Automotive Registry", meta_val_style)],
+            [Paragraph("INVOICE", title_style), Paragraph(meta_content, meta_val_style)]
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[260, 260])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 15),
+    ]))
+    story.append(header_table)
+
+    # Primary colored divider line
+    line_table = Table([[""]], colWidths=[520], rowHeights=[2])
+    line_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), PRIMARY),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(line_table)
+    story.append(Spacer(1, 15))
+
+    # 2. FROM / TO address columns
+    address_data = [
+        [Paragraph("FROM STORE", section_hdr_style), Paragraph("TO CUSTOMER", section_hdr_style)],
+        [Paragraph(f"<b>{r['store_name']}</b><br/>{r['store_address'] or ''}", meta_val_style),
+         Paragraph(f"<b>{r['customer_name']}</b><br/>{r['customer_address'] or ''}", meta_val_style)]
+    ]
+    address_table = Table(address_data, colWidths=[260, 260])
+    address_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(address_table)
+    story.append(Spacer(1, 10))
+
+    # 3. Spec sheet for transaction details
+    detail_headers = [
+        Paragraph("VEHICLE MODEL", section_hdr_style),
+        Paragraph("VIN / CHASSIS NUMBER", section_hdr_style),
+        Paragraph("SALES AGENT", section_hdr_style)
+    ]
+    detail_vals = [
+        Paragraph(r['vehicle_name'], meta_val_bold),
+        Paragraph(r['vin'] or '—', meta_val_style),
+        Paragraph(f"{r['employee_name']}<br/><font color='#64748B'>{r['employee_role'] or 'Staff'}</font>", meta_val_style)
+    ]
+    detail_table = Table([detail_headers, detail_vals], colWidths=[180, 180, 160])
+    detail_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (-1,-1), BG_LIGHT),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(detail_table)
+    story.append(Spacer(1, 20))
+
+    # 4. Item details and financial totals
+    discount_detail = "No discount"
+    if r['discount_amount'] > 0:
+        discount_detail = f"-${int(r['discount_amount']):,} ({float(r['discount_pct'] or 0):.2f}% off MMR Price: ${int(r['mmr'] or 0):,})"
+
+    fin_headers = [
+        Paragraph("DESCRIPTION", header_style),
+        Paragraph("REFERENCE DETAILS", header_style),
+        Paragraph("AMOUNT", header_style)
+    ]
+    fin_rows = [
+        fin_headers,
+        [Paragraph("Vehicle Base Selling Price", body_bold), Paragraph(r['vehicle_name'], body_normal), Paragraph(f"${int(r['selling_price'] or 0):,}", body_normal)],
+        [Paragraph("MMR Comparison Discount", body_bold), Paragraph(discount_detail, body_normal), Paragraph(f"-${int(r['discount_amount'] or 0):,}", body_normal)],
+        [Paragraph("Total Amount Paid", body_bold), Paragraph(f"Payment Method: {r['payment_method']} | Status: {r['payment_status']}", body_bold), Paragraph(f"${int(r['final_amount'] or 0):,}", body_bold)]
+    ]
+
+    fin_table = Table(fin_rows, colWidths=[160, 240, 120])
+    fin_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0F172A')), # Dark slate header
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,0), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 10),
+
+        ('LINEBELOW', (0,1), (-1,1), 0.5, BORDER_COLOR),
+        ('LINEBELOW', (0,2), (-1,2), 0.5, BORDER_COLOR),
+
+        ('TOPPADDING', (0,1), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,1), (-1,-1), 10),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+
+        ('ALIGN', (2,0), (2,-1), 'RIGHT'),
+
+        ('BACKGROUND', (0,3), (-1,3), colors.HexColor('#EEF2F6')), # Highlight row
+        ('LINEBELOW', (0,3), (-1,3), 1.5, PRIMARY),
+        ('TOPPADDING', (0,3), (-1,3), 12),
+        ('BOTTOMPADDING', (0,3), (-1,3), 12),
+    ]))
+    story.append(fin_table)
+
+    # Notes
+    if r.get('notes'):
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("NOTES / TERMS", section_hdr_style))
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(r['notes'], body_normal))
+
+    # 5. Clean footer thank you message
+    story.append(Spacer(1, 40))
+    footer_divider = Table([[""]], colWidths=[520], rowHeights=[0.5])
+    footer_divider.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), BORDER_COLOR),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(footer_divider)
+    story.append(Spacer(1, 10))
+
+    thank_you_style = ParagraphStyle(
+        'ThankYouText',
+        fontName='Helvetica-Oblique',
+        fontSize=10,
+        leading=14,
+        textColor=TEXT_MUTED,
+        alignment=1
+    )
+    story.append(Paragraph("Thank you for choosing Car Sales Inc. for your premium vehicle purchase!", thank_you_style))
+
+    doc.build(story)
+    return response
+
+
 
