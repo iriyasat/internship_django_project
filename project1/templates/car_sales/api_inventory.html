@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     tableWrapper.style.display = 'block';
-    renderPagination(totalCount);
+    updatePagination(totalCount);
   }
 
   // Open Edit Modal & Load single item
@@ -522,84 +522,19 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Render Pagination controls
-  function renderPagination(totalCount) {
-    paginationList.innerHTML = '';
-    const totalPages = Math.ceil(totalCount / pageSize);
-
-    if (totalPages <= 1) {
-      paginationControls.style.display = 'none';
-      return;
-    }
-
-    const startEntry = (currentPage - 1) * pageSize + 1;
-    const endEntry = Math.min(startEntry + pageSize - 1, totalCount);
-    paginationInfo.textContent = `Showing ${startEntry} to ${endEntry} of ${totalCount.toLocaleString()} entries`;
-
-    // Previous Button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
-    if (currentPage > 1) {
-      prevLi.addEventListener('click', () => {
-        currentPage--;
+  function updatePagination(totalCount) {
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      totalCount,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
         fetchData();
-      });
-    }
-    paginationList.appendChild(prevLi);
-
-    // Dynamic Pages Listing (showing max 5 page links around current)
-    const range = 2;
-    const startPage = Math.max(1, currentPage - range);
-    const endPage = Math.min(totalPages, currentPage + range);
-
-    if (startPage > 1) {
-      addPageButton(1);
-      if (startPage > 2) {
-        const dotLi = document.createElement('li');
-        dotLi.className = 'page-item disabled';
-        dotLi.innerHTML = `<span class="page-link">...</span>`;
-        paginationList.appendChild(dotLi);
       }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      addPageButton(i);
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        const dotLi = document.createElement('li');
-        dotLi.className = 'page-item disabled';
-        dotLi.innerHTML = `<span class="page-link">...</span>`;
-        paginationList.appendChild(dotLi);
-      }
-      addPageButton(totalPages);
-    }
-
-    // Next Button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
-    if (currentPage < totalPages) {
-      nextLi.addEventListener('click', () => {
-        currentPage++;
-        fetchData();
-      });
-    }
-    paginationList.appendChild(nextLi);
-
-    paginationControls.style.display = 'flex';
-  }
-
-  function addPageButton(pageNumber) {
-    const li = document.createElement('li');
-    li.className = `page-item ${pageNumber === currentPage ? 'active' : ''}`;
-    li.innerHTML = `<button class="page-link" type="button">${pageNumber}</button>`;
-    li.addEventListener('click', () => {
-      currentPage = pageNumber;
-      fetchData();
-    });
-    paginationList.appendChild(li);
+    );
   }
 
   function downloadPDF() {

@@ -330,56 +330,22 @@ document.addEventListener('DOMContentLoaded', function() {
     tableWrapper.style.display = 'block';
     
     // Update pagination controls
-    paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredRecords.length} entries`;
-    updatePagination(filteredRecords.length);
+    updatePagination();
   }
 
-  function updatePagination(totalCount) {
-    const totalPages = Math.ceil(totalCount / pageSize);
-    paginationList.innerHTML = '';
-
-    if (totalPages <= 1) {
-      paginationControls.style.setProperty('display', 'none', 'important');
-      return;
-    }
-
-    paginationControls.style.setProperty('display', 'flex', 'important');
-
-    // Previous Button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-left"></i></button>`;
-    if (currentPage > 1) {
-      prevLi.addEventListener('click', () => {
-        currentPage--;
+  function updatePagination() {
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      filteredRecords.length,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
         renderTable();
-      });
-    }
-    paginationList.appendChild(prevLi);
-
-    // Pages
-    for (let i = 1; i <= totalPages; i++) {
-      const li = document.createElement('li');
-      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-      li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
-      li.addEventListener('click', () => {
-        currentPage = i;
-        renderTable();
-      });
-      paginationList.appendChild(li);
-    }
-
-    // Next Button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<button class="page-link" type="button"><i class="bi bi-chevron-right"></i></button>`;
-    if (currentPage < totalPages) {
-      nextLi.addEventListener('click', () => {
-        currentPage++;
-        renderTable();
-      });
-    }
-    paginationList.appendChild(nextLi);
+      }
+    );
   }
 
   // PDF Export

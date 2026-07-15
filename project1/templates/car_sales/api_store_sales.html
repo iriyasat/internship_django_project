@@ -318,69 +318,23 @@ document.addEventListener('DOMContentLoaded', function() {
     tableWrapper.style.display = 'block';
     
     // Pagination Controls update
-    updatePagination(startIndex, endIndex);
+    updatePagination();
   }
 
   // Generate pagination links
-  function updatePagination(startIndex, endIndex) {
-    paginationInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredRecords.length} entries`;
-    
-    const totalPages = Math.ceil(filteredRecords.length / pageSize);
-    paginationList.innerHTML = '';
-
-    if (totalPages <= 1) {
-      paginationControls.style.setProperty('display', 'none', 'important');
-      return;
-    }
-
-    paginationControls.style.display = 'flex';
-
-    // Previous Button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous">&laquo;</a>`;
-    prevLi.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (currentPage > 1) {
-        currentPage--;
+  function updatePagination() {
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      filteredRecords.length,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
         renderTable();
       }
-    });
-    paginationList.appendChild(prevLi);
-
-    // Page Numbers (Show max 5 pages with ellipsis)
-    const maxPagesToShow = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-    
-    if (endPage - startPage + 1 < maxPagesToShow) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      const pageLi = document.createElement('li');
-      pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
-      pageLi.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-      pageLi.addEventListener('click', function(e) {
-        e.preventDefault();
-        currentPage = i;
-        renderTable();
-      });
-      paginationList.appendChild(pageLi);
-    }
-
-    // Next Button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next">&raquo;</a>`;
-    nextLi.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (currentPage < totalPages) {
-        currentPage++;
-        renderTable();
-      }
-    });
-    paginationList.appendChild(nextLi);
+    );
   }
 
   function downloadPDF() {
