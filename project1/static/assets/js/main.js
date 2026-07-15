@@ -334,4 +334,22 @@
     }, 200);
   }
 
+  // ─── Global PDF styling & helper configurations ───
+  window.pdfStyles = {
+    primary: [79, 70, 229],      // Indigo (#4F46E5)
+    textDark: [30, 41, 59],      // Slate 800 (#1E293B)
+    textMuted: [100, 116, 139],  // Slate 500 (#64748B)
+    bgLight: [248, 250, 252],   // Slate 50 (#F8FAFC)
+    borderColor: [226, 232, 240], // Slate 200 (#E2E8F0)
+    headStyles: {
+      fillColor: [79, 70, 229],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold'
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      font: 'helvetica'
+    }
+  };
+
 })();

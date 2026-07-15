@@ -239,14 +239,19 @@ class inventoryserializer:
 
         count_query = f"SELECT COUNT(*) FROM ({query}) AS temp"
         
-        query += " ORDER BY i.inventory_id ASC LIMIT %s OFFSET %s"
-        params.extend([limit, offset])
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
+        query += f" ORDER BY i.inventory_id ASC {limit_clause}"
 
         with connections[inventoryserializer.DB_NAME].cursor() as cursor:
-            cursor.execute(count_query, params[:-2])
+            cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
 
-            cursor.execute(query, params)
+            cursor.execute(query, query_params)
             columns = [col[0] for col in cursor.description] if cursor.description else []
             rows = cursor.fetchall()
             
@@ -926,6 +931,12 @@ class CustomerInfoSerializer:
             
         where_str = " AND ".join(where_clauses)
         
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
         select_query = f"""
         SELECT ci.customer_id, ci.firstname, ci.lastname, ci.customer_status, ci.customer_address, ci.city_id AS city, ci.country_id AS country,
                c.city_name, co.country_name, ci.created_at, ci.updated_at
@@ -934,7 +945,7 @@ class CustomerInfoSerializer:
         INNER JOIN country co ON ci.country_id = co.country_id
         WHERE {where_str}
         ORDER BY ci.customer_id ASC
-        LIMIT %s OFFSET %s
+        {limit_clause}
         """
         
         count_query = f"""
@@ -949,9 +960,8 @@ class CustomerInfoSerializer:
             cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
             
-        params.extend([limit, offset])
         with connections[CustomerInfoSerializer.DB_NAME].cursor() as cursor:
-            cursor.execute(select_query, params)
+            cursor.execute(select_query, query_params)
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
             
@@ -1059,6 +1069,12 @@ class SellingInfoSerializer:
             
         where_str = " AND ".join(where_clauses)
         
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
         select_query = f"""
         SELECT si.sell_id, si.customer_id AS customer, si.vehicle_id AS vehicle, si.employee_id AS employee, si.store_id AS store, si.selling_price, si.selling_date,
                CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
@@ -1073,7 +1089,7 @@ class SellingInfoSerializer:
         INNER JOIN store s ON si.store_id = s.store_id
         WHERE {where_str}
         ORDER BY si.sell_id ASC
-        LIMIT %s OFFSET %s
+        {limit_clause}
         """
         
         count_query = f"""
@@ -1091,9 +1107,8 @@ class SellingInfoSerializer:
             cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
             
-        params.extend([limit, offset])
         with connections[SellingInfoSerializer.DB_NAME].cursor() as cursor:
-            cursor.execute(select_query, params)
+            cursor.execute(select_query, query_params)
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
             
@@ -1163,6 +1178,130 @@ class SellingInfoSerializer:
         query = "DELETE FROM selling_info WHERE sell_id = %s"
         with connections[SellingInfoSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(query, [sell_id])
+
+    @staticmethod
+    def fetch_dashboard_stats(store_id=None, employee_id=None):
+        where_clauses = ["1=1"]
+        params = []
+        if store_id is not None:
+            where_clauses.append("si.store_id = %s")
+            params.append(store_id)
+        if employee_id is not None:
+            where_clauses.append("si.employee_id = %s")
+            params.append(employee_id)
+        where_str = " AND ".join(where_clauses)
+
+        stats_query = f"""
+        SELECT 
+            COUNT(si.sell_id) AS sales_count,
+            COALESCE(SUM(si.selling_price), 0) AS total_revenue
+        FROM selling_info si
+        WHERE {where_str}
+        """
+        
+        cust_query = f"""
+        SELECT COUNT(DISTINCT si.customer_id) AS customers_count
+        FROM selling_info si
+        WHERE {where_str}
+        """
+        
+        recent_query = f"""
+        SELECT 
+            si.sell_id, 
+            si.selling_date, 
+            si.selling_price,
+            CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name,
+            CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
+            CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+            s.store_name
+        FROM selling_info si
+        INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
+        INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        INNER JOIN employee e ON si.employee_id = e.employee_id
+        INNER JOIN store s ON si.store_id = s.store_id
+        WHERE {where_str}
+        ORDER BY si.selling_date DESC, si.sell_id DESC
+        LIMIT 5
+        """
+        
+        top_query = f"""
+        SELECT 
+            ii.make_name AS `vehicle__make__make_name`, 
+            COUNT(si.sell_id) AS `count`, 
+            SUM(si.selling_price) AS `revenue`
+        FROM selling_info si
+        INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
+        INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+        WHERE {where_str}
+        GROUP BY ii.make_id, ii.make_name
+        ORDER BY `count` DESC
+        LIMIT 5
+        """
+        
+        monthly_query = f"""
+        SELECT 
+            DATE_FORMAT(si.selling_date, '%%Y-%%m-01') AS `month`, 
+            COUNT(si.sell_id) AS `count`, 
+            SUM(si.selling_price) AS `revenue`
+        FROM selling_info si
+        WHERE {where_str}
+        GROUP BY DATE_FORMAT(si.selling_date, '%%Y-%%m-01')
+        ORDER BY `month` ASC
+        """
+        
+        with connections[SellingInfoSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(stats_query, params)
+            row = cursor.fetchone()
+            sales_count = row[0] or 0
+            total_revenue = float(row[1] or 0)
+            
+            cursor.execute(cust_query, params)
+            customers_count = cursor.fetchone()[0] or 0
+            
+            cursor.execute(recent_query, params)
+            cols_r = [col[0] for col in cursor.description]
+            recent_sales_raw = [dict(zip(cols_r, r)) for r in cursor.fetchall()]
+            recent_sales = []
+            for item in recent_sales_raw:
+                if item['selling_date'] and not isinstance(item['selling_date'], str):
+                    item['selling_date'] = item['selling_date'].strftime('%Y-%m-%d')
+                recent_sales.append(item)
+                
+            cursor.execute(top_query, params)
+            cols_t = [col[0] for col in cursor.description]
+            top_selling = [dict(zip(cols_t, r)) for r in cursor.fetchall()]
+            
+            cursor.execute(monthly_query, params)
+            cols_m = [col[0] for col in cursor.description]
+            monthly_sales = [dict(zip(cols_m, r)) for r in cursor.fetchall()]
+            
+        import datetime
+        chart_dates = []
+        chart_sales = []
+        chart_revenue = []
+        for item in monthly_sales:
+            try:
+                if isinstance(item['month'], str):
+                    dt = datetime.datetime.strptime(item['month'], '%Y-%m-%d')
+                else:
+                    dt = item['month']
+                chart_dates.append(dt.strftime('%b %Y'))
+            except Exception:
+                chart_dates.append(str(item['month']))
+            chart_sales.append(item['count'])
+            chart_revenue.append(float(item['revenue'] or 0))
+            
+        return {
+            'sales_count': sales_count,
+            'total_revenue': total_revenue,
+            'customers_count': customers_count,
+            'recent_sales': recent_sales,
+            'top_selling': top_selling,
+            'chart_dates': chart_dates,
+            'chart_sales': chart_sales,
+            'chart_revenue': chart_revenue,
+        }
 
 
 class EmployeeBudgetSerializer:
@@ -1293,6 +1432,33 @@ class EmployeeBudgetSerializer:
         with connections[EmployeeBudgetSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(query, [budget_id])
 
+    @staticmethod
+    def get_distinct_years():
+        query = "SELECT DISTINCT budget_year FROM employee_budget ORDER BY budget_year DESC"
+        with connections[EmployeeBudgetSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query)
+            return [row[0] for row in cursor.fetchall()]
+
+    @staticmethod
+    def fetch_stats(budget_year=None):
+        query = """
+        SELECT COUNT(id) AS total_count, COALESCE(SUM(budget_amount), 0) AS total_sum, COALESCE(AVG(budget_amount), 0) AS avg_amount 
+        FROM employee_budget
+        """
+        params = []
+        if budget_year:
+            query += " WHERE budget_year = %s"
+            params.append(budget_year)
+            
+        with connections[EmployeeBudgetSerializer.DB_NAME].cursor() as cursor:
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            return {
+                "total_count": row[0] or 0,
+                "total_sum": float(row[1] or 0),
+                "avg_amount": float(row[2] or 0)
+            }
+
 
 class EmployeeSerializer:
     DB_NAME = 'default'
@@ -1330,6 +1496,12 @@ class EmployeeSerializer:
             
         where_str = " AND ".join(where_clauses)
         
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
         select_query = f"""
         SELECT e.employee_id, e.first_name, e.last_name, e.date_of_joining, e.employee_addr,
                e.employee_role, e.status, e.store_id AS store, e.city_id AS city, e.country_id AS country,
@@ -1343,7 +1515,7 @@ class EmployeeSerializer:
         INNER JOIN country co ON e.country_id = co.country_id
         WHERE {where_str}
         ORDER BY e.employee_id ASC
-        LIMIT %s OFFSET %s
+        {limit_clause}
         """
         
         count_query = f"""
@@ -1361,9 +1533,8 @@ class EmployeeSerializer:
             cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
             
-        params.extend([limit, offset])
         with connections[EmployeeSerializer.DB_NAME].cursor() as cursor:
-            cursor.execute(select_query, params)
+            cursor.execute(select_query, query_params)
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
             
@@ -1544,6 +1715,12 @@ class InvoiceSerializer:
 
         where_str = ' AND '.join(where_clauses)
 
+        limit_clause = ""
+        query_params = list(params)
+        if limit is not None and limit >= 0:
+            limit_clause = "LIMIT %s OFFSET %s"
+            query_params.extend([limit, offset])
+
         select_query = f"""
         SELECT
             inv.invoice_id,
@@ -1579,7 +1756,7 @@ class InvoiceSerializer:
         INNER JOIN store s          ON si.store_id = s.store_id
         WHERE {where_str}
         ORDER BY inv.invoice_id DESC
-        LIMIT %s OFFSET %s
+        {limit_clause}
         """
 
         count_query = f"""
@@ -1598,9 +1775,8 @@ class InvoiceSerializer:
             cursor.execute(count_query, params)
             total = cursor.fetchone()[0]
 
-        params.extend([limit, offset])
         with connections[InvoiceSerializer.DB_NAME].cursor() as cursor:
-            cursor.execute(select_query, params)
+            cursor.execute(select_query, query_params)
             columns = [col[0] for col in cursor.description]
             rows = cursor.fetchall()
 
