@@ -123,9 +123,9 @@
                       {% for sale in recent_sales %}
                       <tr>
                         <th scope="row"><a href="#">#{{ sale.sell_id }}</a></th>
-                        <td>{{ sale.customer.firstname }} {{ sale.customer.lastname }}</td>
-                        <td><a href="#" class="text-primary">{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</a></td>
-                        <td>{{ sale.employee.first_name }} {{ sale.employee.last_name }}</td>
+                        <td>{{ sale.customer_name }}</td>
+                        <td><a href="#" class="text-primary">{{ sale.vehicle_name }}</a></td>
+                        <td>{{ sale.employee_name }}</td>
                         <td>${{ sale.selling_price|intcomma }}</td>
                         <td>{{ sale.selling_date }}</td>
                       </tr>
@@ -159,7 +159,7 @@
                     <tbody>
                       {% for item in top_selling %}
                       <tr>
-                        <td><a href="#" class="text-primary fw-bold">{{ item.vehicle__make__make_name }}</a></td>
+                        <td><a href="#" class="text-primary fw-bold">{{ item.brand_name }}</a></td>
                         <td class="fw-bold">{{ item.count|intcomma }}</td>
                         <td>${{ item.revenue|intcomma }}</td>
                       </tr>
@@ -191,12 +191,11 @@
                 {% for sale in recent_sales %}
                 <div class="activity-item d-flex">
                   <div class="activite-label">
-                    {{ sale.selling_date|date:"M d" }}
-                    <span class="d-block text-muted" style="font-size: 0.75rem;">{{ sale.selling_date|date:"Y" }}</span>
+                    {{ sale.selling_date }}
                   </div>
                   <i class='bi bi-circle-fill activity-badge {% cycle "text-success" "text-primary" "text-info" "text-warning" "text-danger" %} align-self-start'></i>
                   <div class="activity-content">
-                    Sold <strong>{{ sale.vehicle.make.make_name }} {{ sale.vehicle.vehicle_model }}</strong> to {{ sale.customer.firstname }} {{ sale.customer.lastname }} for <span class="text-dark fw-bold">${{ sale.selling_price|intcomma }}</span>.
+                    Sold <strong>{{ sale.vehicle_name }}</strong> to {{ sale.customer_name }} for <span class="text-dark fw-bold">${{ sale.selling_price|intcomma }}</span>.
                   </div>
                 </div><!-- End activity item-->
                 {% empty %}

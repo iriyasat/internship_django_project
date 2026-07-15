@@ -218,7 +218,7 @@ class inventoryserializer:
     @staticmethod
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None):
         query = """
-        SELECT i.inventory_id, CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name, s.store_name, CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+        SELECT i.inventory_id, CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name, vi.vin, vi.mmr, s.store_name, CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
                CASE WHEN i.status = 1 THEN 'Sold' WHEN i.status = 2 THEN 'Pre-order' WHEN i.status = 0 THEN 'Unavailable' WHEN i.status = 4 THEN 'Available' ELSE 'Unknown' END AS status_label,
                i.sell_id AS selling_info, i.status, i.created_at, i.updated_at
         FROM inventory i
@@ -236,8 +236,8 @@ class inventoryserializer:
             query += " AND i.employee_id = %s"
             params.append(employee_id)
         if search:
-            query += " AND (i.inventory_id LIKE %s OR vi.vehicle_model LIKE %s OR ii.make_name LIKE %s OR s.store_name LIKE %s OR e.first_name LIKE %s OR e.last_name LIKE %s)"
-            params.extend([f"%{search}%"] * 6)
+            query += " AND (i.inventory_id LIKE %s OR vi.vehicle_model LIKE %s OR vi.vin LIKE %s OR ii.make_name LIKE %s OR s.store_name LIKE %s OR e.first_name LIKE %s OR e.last_name LIKE %s)"
+            params.extend([f"%{search}%"] * 7)
 
         count_query = f"SELECT COUNT(*) FROM ({query}) AS temp"
         limit_clause = ""
@@ -255,7 +255,7 @@ class inventoryserializer:
 
     @staticmethod
     def fetch_one(inventory_id):
-        return execute_fetchone_query(inventoryserializer.DB_NAME, "SELECT inventory_id, vehicle_id AS vehicle, store_id AS store, employee_id AS employee, status, sell_id AS selling_info FROM inventory WHERE inventory_id = %s", [inventory_id])
+        return execute_fetchone_query(inventoryserializer.DB_NAME, "SELECT i.inventory_id, i.vehicle_id AS vehicle, vi.vin, i.store_id AS store, i.employee_id AS employee, i.status, i.sell_id AS selling_info FROM inventory i INNER JOIN vehicle_info vi ON i.vehicle_id = vi.id WHERE i.inventory_id = %s", [inventory_id])
 
     @staticmethod
     def create(vehicle_id, store_id, employee_id, status, selling_info=None):
@@ -616,19 +616,21 @@ class SellingInfoSerializer:
         stats_query = f"SELECT COUNT(si.sell_id), SUM(si.selling_price) FROM selling_info si WHERE {where_str}"
         cust_query = f"SELECT COUNT(DISTINCT si.customer_id) FROM selling_info si WHERE {where_str}"
         recent_query = f"""
-            SELECT si.sell_id, CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name, CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name, si.selling_price, si.selling_date
+            SELECT si.sell_id, CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name, CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
+                   CONCAT(e.first_name, ' ', e.last_name) AS employee_name, si.selling_price, si.selling_date
             FROM selling_info si
             INNER JOIN customer_info ci ON si.customer_id = ci.customer_id
             INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
             INNER JOIN industry_info ii ON vi.make_id = ii.make_id
+            INNER JOIN employee e ON si.employee_id = e.employee_id
             WHERE {where_str} ORDER BY si.selling_date DESC, si.sell_id DESC LIMIT 5
         """
         top_query = f"""
-            SELECT ii.make_name AS name, COUNT(si.sell_id) AS value
+            SELECT ii.make_name AS brand_name, COUNT(si.sell_id) AS count, SUM(si.selling_price) AS revenue
             FROM selling_info si
             INNER JOIN vehicle_info vi ON si.vehicle_id = vi.id
             INNER JOIN industry_info ii ON vi.make_id = ii.make_id
-            WHERE {where_str} GROUP BY ii.make_id, ii.make_name ORDER BY value DESC LIMIT 5
+            WHERE {where_str} GROUP BY ii.make_id, ii.make_name ORDER BY count DESC LIMIT 5
         """
         monthly_query = f"""
             SELECT DATE_FORMAT(si.selling_date, '%%Y-%%m-01') AS month, COUNT(si.sell_id) AS count, SUM(si.selling_price) AS revenue
@@ -899,9 +901,10 @@ class InvoiceSerializer:
             where_clauses.append("""(
                 CAST(inv.invoice_id AS CHAR) LIKE %s OR CONCAT(ci.firstname, ' ', ci.lastname) LIKE %s OR ci.customer_address LIKE %s OR
                 CONCAT(ii.make_name, ' ', vi.vehicle_model) LIKE %s OR vi.vin LIKE %s OR CONCAT(e.first_name, ' ', e.last_name) LIKE %s OR
-                s.store_name LIKE %s OR s.address LIKE %s OR inv.payment_status LIKE %s OR inv.payment_method LIKE %s
+                s.store_name LIKE %s OR s.address LIKE %s OR inv.payment_status LIKE %s OR inv.payment_method LIKE %s OR
+                CAST(inv.invoice_date AS CHAR) LIKE %s
             )""")
-            params.extend([search_param] * 10)
+            params.extend([search_param] * 11)
 
         where_str = ' AND '.join(where_clauses)
         limit_clause = ""
@@ -922,7 +925,7 @@ class InvoiceSerializer:
         INNER JOIN employee e       ON si.employee_id = e.employee_id
         INNER JOIN employee_role er ON e.employee_role = er.role_id
         INNER JOIN store s          ON si.store_id = s.store_id
-        WHERE {where_str} ORDER BY inv.invoice_id DESC {limit_clause}
+        WHERE {where_str} ORDER BY inv.invoice_date DESC, inv.invoice_id DESC {limit_clause}
         """
         count_query = f"""
         SELECT COUNT(*) FROM invoice inv
@@ -978,19 +981,12 @@ class InvoiceSerializer:
             selling_price = row['selling_price']
             mmr_val = row['mmr']
 
-        try:
-            discount_amount = int(discount_amount)
-        except (ValueError, TypeError):
-            discount_amount = 0
-
-        if discount_amount == 0:
-            if mmr_val > selling_price:
-                discount_amount = mmr_val - selling_price
-                discount_pct = round(((mmr_val - selling_price) / mmr_val) * 100, 2)
-            else:
-                discount_amount, discount_pct = 0, 0.00
+        if mmr_val > selling_price:
+            discount_amount = mmr_val - selling_price
+            discount_pct = round(((mmr_val - selling_price) / mmr_val) * 100, 2)
         else:
-            discount_pct = round((discount_amount / mmr_val) * 100, 2) if mmr_val > 0 else 0.00
+            discount_amount = 0
+            discount_pct = 0.00
 
         import random
         while True:
@@ -1008,13 +1004,24 @@ class InvoiceSerializer:
 
     @staticmethod
     def update(invoice_id, invoice_date, due_date, payment_status, payment_method, discount_amount, notes):
-        row = execute_fetchone_query(InvoiceSerializer.DB_NAME, "SELECT mmr FROM invoice WHERE invoice_id = %s", [invoice_id])
-        mmr_val = row['mmr'] if row else 0
-        try:
-            discount_amount = int(discount_amount)
-        except (ValueError, TypeError):
+        row = execute_fetchone_query(InvoiceSerializer.DB_NAME, """
+            SELECT i.mmr, s.selling_price
+            FROM invoice i
+            INNER JOIN selling_info s ON i.sell_id = s.sell_id
+            WHERE i.invoice_id = %s
+        """, [invoice_id])
+        if row:
+            mmr_val = row['mmr']
+            selling_price = row['selling_price']
+            if mmr_val > selling_price:
+                discount_amount = mmr_val - selling_price
+                discount_pct = round(((mmr_val - selling_price) / mmr_val) * 100, 2)
+            else:
+                discount_amount = 0
+                discount_pct = 0.00
+        else:
             discount_amount = 0
-        discount_pct = round((discount_amount / mmr_val) * 100, 2) if mmr_val > 0 else 0.00
+            discount_pct = 0.00
 
         query = "UPDATE invoice SET invoice_date = %s, due_date = %s, payment_status = %s, payment_method = %s, discount_amount = %s, discount_pct = %s, notes = %s, updated_at = NOW() WHERE invoice_id = %s"
         execute_cud_query(InvoiceSerializer.DB_NAME, query, [invoice_date, due_date, payment_status, payment_method, discount_amount, discount_pct, notes, invoice_id])
@@ -1027,8 +1034,49 @@ class InvoiceSerializer:
     def create_from_request(data):
         sell_id = data.get('sell_id')
         invoice_date = data.get('invoice_date')
-        if not sell_id or not invoice_date:
-            raise ValueError('sell_id and invoice_date are required.')
+        if not invoice_date:
+            raise ValueError('invoice_date is required.')
+        
+        # If sell_id is not provided, we create a new sale from scratch using inventory_id
+        if not sell_id:
+            inventory_id = data.get('inventory_id')
+            customer = data.get('customer')
+            employee = data.get('employee')
+            selling_price = data.get('selling_price')
+            selling_date = data.get('selling_date') or invoice_date
+
+            if not inventory_id or not customer or not employee or selling_price is None:
+                raise ValueError('To create an invoice from scratch, inventory_id, customer, employee, and selling_price are required.')
+
+            from django.db import transaction
+            with transaction.atomic():
+                # Fetch inventory details
+                inv_item = inventoryserializer.fetch_one(inventory_id)
+                if not inv_item:
+                    raise ValueError('Selected inventory item does not exist.')
+                if inv_item['status'] == 1:
+                    raise ValueError('Selected inventory item is already sold.')
+
+                # Create SellingInfo record
+                sell_id = SellingInfoSerializer.create(
+                    customer=customer,
+                    vehicle=inv_item['vehicle'],
+                    employee=employee,
+                    store=inv_item['store'],
+                    selling_price=selling_price,
+                    selling_date=selling_date
+                )
+
+                # Link sale to inventory and mark as Sold (1)
+                inventoryserializer.update(
+                    inventory_id=inventory_id,
+                    vehicle_id=inv_item['vehicle'],
+                    store_id=inv_item['store'],
+                    employee_id=inv_item['employee'],
+                    status=1, # Sold
+                    selling_info=sell_id
+                )
+
         existing = InvoiceSerializer.fetch_by_sell_id(sell_id)
         if existing:
             raise ValueError(f'An invoice (#{existing["invoice_id"]}) already exists for sale #{sell_id}.')

@@ -74,7 +74,7 @@
                   <th>Inventory ID</th>
                   <th>Vehicle Name / Details</th>
                   <th>Store Location</th>
-                  <th>Assigned Employee</th>
+                  <th>Entry By</th>
                   <th>Status</th>
                   <th>Selling ID</th>
                   <th>Created At</th>
@@ -148,7 +148,7 @@
 
             <!-- Employee Selection -->
             <div class="col-md-6">
-              <label for="id_employee" class="form-label fw-bold small text-muted">Assigned Employee</label>
+              <label for="id_employee" class="form-label fw-bold small text-muted">Entry By</label>
               <select class="form-select form-select-sm" id="id_employee" required>
                 <option value="" disabled selected>-- Select Employee --</option>
                 {% for e in employees %}
@@ -425,6 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td><span class="badge bg-dark">${item.inventory_id}</span></td>
         <td>
           <div class="fw-bold">${escapeHtml(item.vehicle_name || 'N/A')}</div>
+          <small class="text-muted">VIN: ${escapeHtml(item.vin || 'N/A')}</small>
         </td>
         <td>${escapeHtml(item.store_name || 'N/A')}</td>
         <td>${escapeHtml(item.employee_name || 'N/A')}</td>
@@ -562,10 +563,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Data Table headers and rows
-    const headers = [["ID", "Vehicle Name / Details", "Store Location", "Assigned Employee", "Status", "Selling ID", "Created At", "Updated At"]];
+    const headers = [["ID", "Vehicle Name / Details", "Store Location", "Entry By", "Status", "Selling ID", "Created At", "Updated At"]];
     const rows = currentRecords.map(rec => [
       rec.inventory_id || 'N/A',
-      rec.vehicle_name || 'N/A',
+      rec.vin ? `${rec.vehicle_name || 'N/A'}\nVIN: ${rec.vin}` : (rec.vehicle_name || 'N/A'),
       rec.store_name || 'N/A',
       rec.employee_name || 'N/A',
       rec.status_label || 'N/A',

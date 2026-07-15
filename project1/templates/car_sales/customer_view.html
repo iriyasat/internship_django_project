@@ -92,11 +92,6 @@
         <div class="card-body pt-3">
           <h5 class="card-title">
             Customer Directory <span>| Live Query & CRUD Interface</span>
-            {% if request.user.is_staff %}
-            <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
-              <i class="bi bi-plus-circle me-1"></i> Add Customer
-            </button>
-            {% endif %}
           </h5>
 
           <!-- Search and Table Controls -->

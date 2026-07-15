@@ -227,13 +227,16 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
 
         if model_name == 'Invoice':
             if data:
-                posted_sell_id = data.get('sell_id') or data.get('selling_info')
-                if posted_sell_id:
-                    sale = SellingInfoSerializer.fetch_one(posted_sell_id)
-                    if not sale:
-                        return False, "Invalid selling info referenced."
-                    if not check_record_permission(request, SellingInfo, sale):
-                        return False, "Permission denied. You do not have access to the referenced sale."
+                posted_employee = data.get('employee')
+                posted_inventory = data.get('inventory_id')
+                if posted_inventory:
+                    inv_item = inventoryserializer.fetch_one(posted_inventory)
+                    if not inv_item:
+                        return False, "Invalid inventory item referenced."
+                    if employee_id is not None and posted_employee is not None and int(posted_employee) != employee_id:
+                        return False, "Permission denied. You can only record sales for yourself."
+                    if store_id is not None and inv_item['store'] != store_id:
+                        return False, "Permission denied. You can only sell vehicles from your assigned store."
             return True, None
 
         if model_name == 'Inventory':
@@ -368,6 +371,9 @@ def budget_view(request):
 
 @staff_member_required(login_url='login')
 def admin_panel_view(request):
+    if not request.user.is_superuser:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     stats = {
         'countries': {'name': 'Countries', 'count': CountrySerializer.fetch(limit=0)[0], 'url': '/countries/', 'slug': 'country'},
         'cities': {'name': 'Cities', 'count': CitySerializer.fetch(limit=0)[0], 'url': '/cities/', 'slug': 'city'},
@@ -857,13 +863,20 @@ class EmployeeBackend(BaseBackend):
 @login_required
 def invoice_view(request):
     profile = get_employee_profile(request)
-    store_id, _ = get_user_filters(request, profile)
+    store_id, employee_id = get_user_filters(request, profile)
     _, stores = StoreSerializer.fetch(limit=-1, store_id=store_id)
+    _, employees = EmployeeSerializer.fetch(limit=-1, store_id=store_id, employee_id=employee_id)
+    _, cities = CitySerializer.fetch(limit=-1)
+    _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/invoice_view.html', {
         'active_tab': 'invoices',
         'stores': stores,
+        'employees': employees,
+        'cities': cities,
+        'countries': countries,
         'payment_status_choices': Invoice.PaymentStatusChoices.choices,
         'payment_method_choices': Invoice.PaymentMethodChoices.choices,
+        'current_employee_id': profile.employee_id if profile else None,
     })
 
 invoice_api_page_view = invoice_view
@@ -951,6 +964,9 @@ def invoice_api(request, pk=None):
 
 @login_required
 def documentation_view(request):
+    if not request.user.is_superuser:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     base_url = request.build_absolute_uri('/')[:-1]
     return render(request, 'car_sales/documentation.html', {
         'active_tab': 'documentation',

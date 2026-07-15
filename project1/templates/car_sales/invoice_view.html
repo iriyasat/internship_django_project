@@ -210,14 +210,96 @@
         <div class="modal-body">
           <div class="row g-3">
 
-            <!-- Sale selection (create only) -->
-            <div class="col-12" id="sale-select-row">
-              <label for="id_sell_id" class="form-label fw-bold">Link to Sale <span class="text-danger">*</span></label>
-              <select class="form-select" id="id_sell_id">
-                <option value="" selected disabled>Loading sales...</option>
+            <!-- New Sale Fields (create from scratch mode only) -->
+            <div class="col-md-6 new-sale-field">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="new_sale_customer_search" class="form-label fw-bold mb-0">Customer <span class="text-danger">*</span></label>
+                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" id="btn-add-new-customer">+ New Customer</button>
+              </div>
+              <input type="text" class="form-control" id="new_sale_customer_search" placeholder="Type name to search customer..." list="customer-datalist" autocomplete="off" required>
+              <datalist id="customer-datalist"></datalist>
+              <input type="hidden" id="new_sale_customer">
+              <div class="invalid-feedback">Please select a customer from the search options.</div>
+            </div>
+
+            <!-- Dynamic New Customer Form inline section -->
+            <div class="col-12 new-sale-field" id="new-customer-section" style="display: none;">
+              <div class="card p-3 mb-2 bg-light border shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-person-plus-fill me-1"></i>Create New Customer</h6>
+                  <button type="button" class="btn-close btn-sm" id="cancel-new-customer" aria-label="Close"></button>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label for="new_cust_firstname" class="form-label small fw-bold mb-1">First Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_cust_firstname">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_cust_lastname" class="form-label small fw-bold mb-1">Last Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_cust_lastname">
+                  </div>
+                  <div class="col-md-12">
+                    <label for="new_cust_address" class="form-label small fw-bold mb-1">Address <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_cust_address">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_cust_city" class="form-label small fw-bold mb-1">City <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" id="new_cust_city">
+                      <option value="" selected disabled>-- Select City --</option>
+                      {% for city in cities %}
+                      <option value="{{ city.city_id }}">{{ city.city_name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_cust_country" class="form-label small fw-bold mb-1">Country <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" id="new_cust_country">
+                      <option value="" selected disabled>-- Select Country --</option>
+                      {% for country in countries %}
+                      <option value="{{ country.country_id }}">{{ country.country_name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-12 mt-3 text-end">
+                    <button type="button" class="btn btn-primary btn-sm px-3" id="save-new-customer-btn">Save & Select</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Inventory selector: only lists physical vehicles in stock -->
+            <div class="col-md-6 new-sale-field">
+              <label for="new_sale_inventory_search" class="form-label fw-bold">Select from Inventory <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="new_sale_inventory_search" placeholder="Type VIN, model or store..." list="inventory-datalist" autocomplete="off" required>
+              <datalist id="inventory-datalist"></datalist>
+              <input type="hidden" id="new_sale_inventory">
+              <div class="invalid-feedback">Please select a valid stocked vehicle from the search options.</div>
+            </div>
+
+            <!-- Employee selection -->
+            <div class="col-md-6 new-sale-field">
+              <label for="new_sale_employee" class="form-label fw-bold">Sales Executive <span class="text-danger">*</span></label>
+              <select class="form-select" id="new_sale_employee" required>
+                <option value="" selected disabled>-- Select Employee --</option>
+                {% for emp in employees %}
+                <option value="{{ emp.employee_id }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role_name %} ({{ emp.role_name }}){% endif %}</option>
+                {% endfor %}
               </select>
-              <div class="invalid-feedback">Please link this invoice to a sale.</div>
-              <small class="text-muted">Only sales without an existing invoice are listed.</small>
+              <div class="invalid-feedback">Please select the sales executive.</div>
+            </div>
+
+            <!-- Selling Price -->
+            <div class="col-md-6 new-sale-field">
+              <label for="new_sale_price" class="form-label fw-bold">Selling Price ($) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="new_sale_price" min="0" placeholder="e.g. 25000" required>
+              <div class="invalid-feedback">Please enter a valid selling price.</div>
+            </div>
+
+            <!-- Sale Date -->
+            <div class="col-md-6 new-sale-field">
+              <label for="new_sale_date" class="form-label fw-bold">Sale Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="new_sale_date" required>
+              <div class="invalid-feedback">Please select the sale date.</div>
             </div>
 
             <!-- Invoice Date -->
@@ -257,8 +339,8 @@
 
             <!-- Discount -->
             <div class="col-md-6">
-              <label for="id_discount_amount" class="form-label fw-bold">Discount Amount ($)</label>
-              <input type="number" class="form-control" id="id_discount_amount" min="0" value="0" placeholder="0">
+              <label for="id_discount_amount" class="form-label fw-bold">Discount Amount ($) <small class="text-muted">(Auto-calculated from MMR)</small></label>
+              <input type="number" class="form-control" id="id_discount_amount" min="0" value="0" placeholder="0" readonly>
             </div>
 
             <!-- Notes -->
@@ -311,6 +393,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const saleSelectRow    = document.getElementById('sale-select-row');
 
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
+  const isSuperuser = {% if request.user.is_superuser %}true{% else %}false{% endif %};
+  const currentEmployeeId = {{ current_employee_id|default:"null" }};
 
   let bootstrapModal = null;
   if (crudModalEl) bootstrapModal = new bootstrap.Modal(crudModalEl);
@@ -473,30 +557,212 @@ document.addEventListener('DOMContentLoaded', function () {
     );
   }
 
-  // ─── Load sales without invoices for dropdown ──
-  let salesLoaded = false;
-  function loadSalesDropdown(callback) {
-    if (salesLoaded) { if (callback) callback(); return; }
-    sellIdSelect.innerHTML = '<option value="" disabled>Loading unlinked sales...</option>';
-    // Fetch all sales, then all invoices, subtract
-    Promise.all([
-      fetch('/api/sales/?page=1&page_size=5000').then(r => r.json()),
-      fetch('/api/invoices/?page=1&page_size=5000').then(r => r.json()),
-    ]).then(([salesRes, invRes]) => {
-      const linkedSellIds = new Set((invRes.data || []).map(i => i.sell_id));
-      const available = (salesRes.data || []).filter(s => !linkedSellIds.has(s.sell_id));
-      sellIdSelect.innerHTML = '<option value="" selected disabled>Select Sale...</option>';
-      available.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.sell_id;
-        opt.textContent = `#${s.sell_id} — ${s.customer_name} | ${s.vehicle_name} ($${parseInt(s.selling_price).toLocaleString()}) — ${s.selling_date}`;
-        sellIdSelect.appendChild(opt);
+
+
+  // Debounce helper
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Maps to store name/details -> ID lookup for datalists
+  const customerMap = new Map();
+  const inventoryMap = new Map();
+  const inventoryMmrMap = new Map();
+
+  const customerSearch = document.getElementById('new_sale_customer_search');
+  const customerDatalist = document.getElementById('customer-datalist');
+  const customerHidden = document.getElementById('new_sale_customer');
+
+  const inventorySearch = document.getElementById('new_sale_inventory_search');
+  const inventoryDatalist = document.getElementById('inventory-datalist');
+  const inventoryHidden = document.getElementById('new_sale_inventory');
+
+  const invoiceModeRow = document.getElementById('invoice-mode-row');
+  const newSaleFields = document.querySelectorAll('.new-sale-field');
+
+  // Calculate discount automatically from MMR - selling price
+  function calculateDiscountAmount() {
+    const invId = parseInt(inventoryHidden.value);
+    const sellingPrice = parseInt(document.getElementById('new_sale_price').value) || 0;
+    if (invId && inventoryMmrMap.has(invId)) {
+      const mmr = inventoryMmrMap.get(invId) || 0;
+      const discount = Math.max(0, mmr - sellingPrice);
+      discountInput.value = discount;
+    } else {
+      discountInput.value = 0;
+    }
+  }
+
+  // Customer search API fetch
+  const handleCustomerSearch = debounce((query) => {
+    if (!query || query.length < 2) return;
+    fetch(`/api/customers/?search=${encodeURIComponent(query)}&page_size=10`)
+      .then(r => r.json())
+      .then(res => {
+        customerDatalist.innerHTML = '';
+        (res.data || []).forEach(c => {
+          const label = `${c.firstname} ${c.lastname}`;
+          customerMap.set(label, c.customer_id);
+          const opt = document.createElement('option');
+          opt.value = label;
+          customerDatalist.appendChild(opt);
+        });
       });
-      salesLoaded = true;
-      if (callback) callback();
-    }).catch(err => {
-      sellIdSelect.innerHTML = '<option value="" disabled>Error loading sales</option>';
-      console.error(err);
+  }, 250);
+
+  if (customerSearch) {
+    customerSearch.addEventListener('input', function() {
+      const val = this.value;
+      if (customerMap.has(val)) {
+        customerHidden.value = customerMap.get(val);
+        customerSearch.setCustomValidity('');
+      } else {
+        customerHidden.value = '';
+        customerSearch.setCustomValidity('invalid');
+        handleCustomerSearch(val);
+      }
+    });
+  }
+
+  // Inventory search API fetch (Available=4, Pre-order=2)
+  const handleInventorySearch = debounce((query) => {
+    if (!query || query.length < 2) return;
+    fetch(`/api/inventory/?search=${encodeURIComponent(query)}&page_size=30`)
+      .then(r => r.json())
+      .then(res => {
+        inventoryDatalist.innerHTML = '';
+        (res.data || []).forEach(i => {
+          if (i.status === 4 || i.status === 2) {
+            const statusStr = i.status === 4 ? 'Available' : 'Pre-order';
+            const label = `${i.vehicle_name || ''} (VIN: ${i.vin || '—'}) | Store: ${i.store_name || '—'} [${statusStr}]`;
+            inventoryMap.set(label, i.inventory_id);
+            inventoryMmrMap.set(i.inventory_id, i.mmr);
+            const opt = document.createElement('option');
+            opt.value = label;
+            inventoryDatalist.appendChild(opt);
+          }
+        });
+      });
+  }, 250);
+
+  if (inventorySearch) {
+    inventorySearch.addEventListener('input', function() {
+      const val = this.value;
+      if (inventoryMap.has(val)) {
+        inventoryHidden.value = inventoryMap.get(val);
+        inventorySearch.setCustomValidity('');
+        calculateDiscountAmount();
+      } else {
+        inventoryHidden.value = '';
+        inventorySearch.setCustomValidity('invalid');
+        handleInventorySearch(val);
+        calculateDiscountAmount();
+      }
+    });
+  }
+
+  const priceInput = document.getElementById('new_sale_price');
+  if (priceInput) {
+    priceInput.addEventListener('input', calculateDiscountAmount);
+  }
+
+  // ─── Inline New Customer Handling ───────────────
+  const btnAddNewCustomer = document.getElementById('btn-add-new-customer');
+  const cancelNewCustomer = document.getElementById('cancel-new-customer');
+  const newCustomerSection = document.getElementById('new-customer-section');
+  const saveNewCustomerBtn = document.getElementById('save-new-customer-btn');
+
+  if (btnAddNewCustomer) {
+    btnAddNewCustomer.addEventListener('click', () => {
+      if (newCustomerSection) newCustomerSection.style.display = 'block';
+    });
+  }
+
+  if (cancelNewCustomer) {
+    cancelNewCustomer.addEventListener('click', () => {
+      if (newCustomerSection) newCustomerSection.style.display = 'none';
+      clearNewCustomerFields();
+    });
+  }
+
+  function clearNewCustomerFields() {
+    const fName = document.getElementById('new_cust_firstname');
+    const lName = document.getElementById('new_cust_lastname');
+    const addr = document.getElementById('new_cust_address');
+    const city = document.getElementById('new_cust_city');
+    const country = document.getElementById('new_cust_country');
+    if (fName) fName.value = '';
+    if (lName) lName.value = '';
+    if (addr) addr.value = '';
+    if (city) city.value = '';
+    if (country) country.value = '';
+  }
+
+  if (saveNewCustomerBtn) {
+    saveNewCustomerBtn.addEventListener('click', () => {
+      const firstnameVal = document.getElementById('new_cust_firstname')?.value.trim();
+      const lastnameVal = document.getElementById('new_cust_lastname')?.value.trim();
+      const addressVal = document.getElementById('new_cust_address')?.value.trim();
+      const cityVal = document.getElementById('new_cust_city')?.value;
+      const countryVal = document.getElementById('new_cust_country')?.value;
+
+      if (!firstnameVal || !lastnameVal || !addressVal || !cityVal || !countryVal) {
+        alert('Please fill out all required fields to create a customer.');
+        return;
+      }
+
+      const payload = {
+        firstname: firstnameVal,
+        lastname: lastnameVal,
+        customer_status: 'Active',
+        customer_address: addressVal,
+        city: parseInt(cityVal),
+        country: parseInt(countryVal)
+      };
+
+      const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+      fetch('/api/customers/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status && res.data) {
+          const newCust = res.data;
+          const fullName = `${newCust.firstname} ${newCust.lastname}`;
+          customerMap.set(fullName, newCust.customer_id);
+          
+          if (customerSearch) {
+            customerSearch.value = fullName;
+            customerSearch.setCustomValidity('');
+          }
+          if (customerHidden) {
+            customerHidden.value = newCust.customer_id;
+          }
+          if (newCustomerSection) newCustomerSection.style.display = 'none';
+          clearNewCustomerFields();
+          showAlert('New customer created and selected successfully!', 'success');
+        } else {
+          alert('Error creating customer: ' + (res.message || 'Unknown error'));
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Error creating customer. Please check console.');
+      });
     });
   }
 
@@ -513,12 +779,42 @@ document.addEventListener('DOMContentLoaded', function () {
       crudForm.classList.remove('was-validated');
       editIdInput.value = '';
       modalTitle.textContent = 'Create Invoice';
-      if (saleSelectRow) saleSelectRow.style.display = 'block';
-      if (sellIdSelect) sellIdSelect.disabled = false;
+      
+      // Reset searches & hidden inputs
+      if (customerSearch) { customerSearch.value = ''; customerSearch.setCustomValidity(''); }
+      if (customerHidden) customerHidden.value = '';
+      if (inventorySearch) { inventorySearch.value = ''; inventorySearch.setCustomValidity(''); }
+      if (inventoryHidden) inventoryHidden.value = '';
+      if (newCustomerSection) newCustomerSection.style.display = 'none';
+      clearNewCustomerFields();
+
+      // Show all sale creation fields for create mode
+      newSaleFields.forEach(el => {
+        if (el.id !== 'new-customer-section') {
+          el.style.display = 'block';
+        }
+      });
+      if (customerSearch) customerSearch.required = true;
+      if (inventorySearch) inventorySearch.required = true;
+      document.getElementById('new_sale_employee').required = true;
+      document.getElementById('new_sale_price').required = true;
+      document.getElementById('new_sale_date').required = true;
+
+      const empSelect = document.getElementById('new_sale_employee');
+      if (empSelect) {
+        if (!isSuperuser && currentEmployeeId) {
+          empSelect.value = currentEmployeeId;
+          empSelect.disabled = true;
+        } else {
+          empSelect.value = '';
+          empSelect.disabled = false;
+        }
+      }
+
       setTodayDate();
       if (paymentStatusSel) paymentStatusSel.value = 'Paid';
-      salesLoaded = false; // force reload in case sales changed
-      loadSalesDropdown();
+      const newSaleDate = document.getElementById('new_sale_date');
+      if (newSaleDate) newSaleDate.value = new Date().toISOString().split('T')[0];
     });
   }
 
@@ -532,8 +828,16 @@ document.addEventListener('DOMContentLoaded', function () {
         editIdInput.value = d.invoice_id;
         modalTitle.textContent = `Edit Invoice #${d.invoice_id}`;
 
-        // Hide sale selector on edit — sale is fixed
-        if (saleSelectRow) saleSelectRow.style.display = 'none';
+        // Hide all sale creation fields during edit mode
+        newSaleFields.forEach(el => el.style.display = 'none');
+        if (newCustomerSection) newCustomerSection.style.display = 'none';
+        clearNewCustomerFields();
+
+        if (customerSearch) { customerSearch.required = false; customerSearch.setCustomValidity(''); }
+        if (inventorySearch) { inventorySearch.required = false; inventorySearch.setCustomValidity(''); }
+        document.getElementById('new_sale_employee').required = false;
+        document.getElementById('new_sale_price').required = false;
+        document.getElementById('new_sale_date').required = false;
 
         invoiceDateInput.value  = d.invoice_date || '';
         dueDateInput.value      = d.due_date || '';
@@ -554,10 +858,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const isEdit = !!editIdInput.value;
 
-      // Validate required fields
-      if (!invoiceDateInput.value) { invoiceDateInput.classList.add('is-invalid'); return; }
-      if (!isEdit && (!sellIdSelect || !sellIdSelect.value)) {
-        sellIdSelect.classList.add('is-invalid'); return;
+      if (!crudForm.checkValidity()) {
+        e.stopPropagation();
+        return;
       }
 
       const payload = {
@@ -568,7 +871,14 @@ document.addEventListener('DOMContentLoaded', function () {
         discount_amount: parseInt(discountInput.value) || 0,
         notes:          notesInput.value || null,
       };
-      if (!isEdit) payload.sell_id = sellIdSelect.value;
+
+      if (!isEdit) {
+        payload.customer = parseInt(document.getElementById('new_sale_customer').value);
+        payload.inventory_id = parseInt(document.getElementById('new_sale_inventory').value);
+        payload.employee = parseInt(document.getElementById('new_sale_employee').value);
+        payload.selling_price = parseInt(document.getElementById('new_sale_price').value);
+        payload.selling_date = document.getElementById('new_sale_date').value;
+      }
 
       const url    = isEdit ? `/api/invoices/${editIdInput.value}/` : '/api/invoices/';
       const method = isEdit ? 'PUT' : 'POST';

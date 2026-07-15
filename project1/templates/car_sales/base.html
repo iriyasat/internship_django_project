@@ -85,7 +85,7 @@
             <li>
               <hr class="dropdown-divider">
             </li>
-            {% if request.user.is_staff %}
+            {% if request.user.is_superuser %}
             <li>
               <a class="dropdown-item d-flex align-items-center" href="/admin-panel/">
                 <i class="bi bi-gear"></i>
@@ -95,7 +95,6 @@
             <li>
               <hr class="dropdown-divider">
             </li>
-            {% endif %}
             <li>
               <a class="dropdown-item d-flex align-items-center" href="{% url 'documentation' %}">
                 <i class="bi bi-file-earmark-code"></i>
@@ -105,6 +104,7 @@
             <li>
               <hr class="dropdown-divider">
             </li>
+            {% endif %}
             <li>
               <form action="{% url 'logout' %}" method="post" style="margin: 0; padding: 0;">
                 {% csrf_token %}
@@ -209,6 +209,13 @@
       </li>
 
       <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'api_inventory' %}{% else %}collapsed{% endif %}" href="/api-page/inventory/">
+          <i class="bi bi-box-seam"></i>
+          <span>Inventory</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link {% if active_tab == 'customers' %}{% else %}collapsed{% endif %}" href="/customers/">
           <i class="bi bi-people-fill"></i>
           <span>Customers</span>
@@ -272,11 +279,6 @@
           <li>
             <a href="/api-page/budget-vs-sales/" class="{% if active_tab == 'api_budget_vs_sales' %}active{% endif %}">
               <i class="bi bi-circle"></i><span>Budget vs Sales Report</span>
-            </a>
-          </li>
-          <li>
-            <a href="/api-page/inventory/" class="{% if active_tab == 'api_inventory' %}active{% endif %}">
-              <i class="bi bi-circle"></i><span>Inventory CRUD Report</span>
             </a>
           </li>
         </ul>
