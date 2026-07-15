@@ -94,6 +94,158 @@ def render_analytical_page(request, template, active_tab):
         return redirect('home')
     return render(request, template, {'active_parent': 'api_pages', 'active_tab': active_tab})
 
+def check_record_permission(request, model_class, record):
+    if not request.user.is_authenticated:
+        return False
+    if request.user.is_superuser:
+        return True
+    profile = get_employee_profile(request)
+    store_id, employee_id = get_user_filters(request, profile)
+    if store_id is None and employee_id is None:
+        return True
+
+    model_name = model_class.__name__
+
+    if model_name == 'Store':
+        r_store_id = record.get('store_id')
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    elif model_name == 'Employee':
+        r_employee_id = record.get('employee_id')
+        r_store_id = record.get('store')
+        if employee_id is not None and r_employee_id != employee_id:
+            return False
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    elif model_name == 'CustomerInfo':
+        customer_id = record.get('customer_id')
+        if employee_id is not None:
+            has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
+            if has_sales and not SellingInfo.objects.filter(customer_id=customer_id, employee_id=employee_id).exists():
+                return False
+        elif store_id is not None:
+            has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
+            if has_sales and not SellingInfo.objects.filter(customer_id=customer_id, store_id=store_id).exists():
+                return False
+
+    elif model_name == 'SellingInfo':
+        r_employee_id = record.get('employee')
+        r_store_id = record.get('store')
+        if employee_id is not None and r_employee_id != employee_id:
+            return False
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    elif model_name == 'Invoice':
+        r_employee_id = record.get('employee_id')
+        r_store_id = record.get('store_id')
+        if employee_id is not None and r_employee_id != employee_id:
+            return False
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    elif model_name == 'Inventory':
+        r_store_id = record.get('store')
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    elif model_name == 'EmployeeBudget':
+        r_employee_id = record.get('employee')
+        r_store_id = record.get('store')
+        if employee_id is not None and r_employee_id != employee_id:
+            return False
+        if store_id is not None and r_store_id != store_id:
+            return False
+
+    return True
+
+def check_crud_permission(request, model_class, action, pk=None, data=None):
+    if not request.user.is_authenticated:
+        return False, "Authentication required."
+
+    if request.user.is_superuser:
+        return True, None
+
+    profile = get_employee_profile(request)
+    role_name = (profile.employee_role.role_name.lower() if profile and profile.employee_role else "").strip()
+    is_manager = "manager" in role_name or "admin" in role_name or request.user.is_staff or role_name == "regional sales manager"
+
+    # Get user filters
+    store_id, employee_id = get_user_filters(request, profile)
+
+    model_name = model_class.__name__
+
+    if action == 'GET':
+        return True, None
+
+    if action == 'DELETE':
+        if not is_manager:
+            return False, f"Permission denied. Only managers and administrators can delete {model_class._meta.verbose_name} data."
+        return True, None
+
+    if action in ['POST', 'PUT']:
+        admin_models = ['Country', 'City', 'Store', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo', 'VehicleInfo', 'EmployeeBudget']
+        if model_name in admin_models:
+            if not is_manager:
+                return False, f"Permission denied. Only managers and administrators can modify {model_class._meta.verbose_name} data."
+            return True, None
+
+        if model_name == 'Employee':
+            if is_manager:
+                if store_id is not None and data:
+                    emp_store = data.get('store')
+                    if emp_store and int(emp_store) != store_id:
+                        return False, "Permission denied. You cannot modify/create an employee for a different store."
+                return True, None
+            # Regular employees can only modify their own profile
+            if action == 'PUT' and pk is not None and profile and pk == profile.employee_id:
+                if data:
+                    if 'employee_role' in data and int(data['employee_role']) != profile.employee_role.role_id:
+                        return False, "Permission denied. You cannot change your own employee role."
+                    if 'status' in data and int(data['status']) != profile.status.status_id:
+                        return False, "Permission denied. You cannot change your own employee status."
+                    if 'store' in data and int(data['store']) != profile.store.store_id:
+                        return False, "Permission denied. You cannot change your own store."
+                return True, None
+            return False, "Permission denied. You can only modify your own employee profile."
+
+        if model_name == 'CustomerInfo':
+            # Any authenticated user can create or update customer info
+            return True, None
+
+        if model_name == 'SellingInfo':
+            if data:
+                posted_employee = data.get('employee')
+                posted_store = data.get('store')
+                if employee_id is not None and posted_employee is not None and int(posted_employee) != employee_id:
+                    return False, "Permission denied. You can only record sales for yourself."
+                if store_id is not None and posted_store is not None and int(posted_store) != store_id:
+                    return False, "Permission denied. You can only record sales for your store."
+            return True, None
+
+        if model_name == 'Invoice':
+            if data:
+                posted_sell_id = data.get('sell_id') or data.get('selling_info')
+                if posted_sell_id:
+                    sale = SellingInfoSerializer.fetch_one(posted_sell_id)
+                    if not sale:
+                        return False, "Invalid selling info referenced."
+                    if not check_record_permission(request, SellingInfo, sale):
+                        return False, "Permission denied. You do not have access to the referenced sale."
+            return True, None
+
+        if model_name == 'Inventory':
+            # Creating inventory is restricted to managers
+            if action == 'POST':
+                if not is_manager:
+                    return False, "Permission denied. Only staff members can modify inventory data."
+            # PUT is allowed for all, but checked in view
+            return True, None
+
+    return True, None
+
 # ─────────────────────────────────────────────
 # Standard Views
 # ─────────────────────────────────────────────
@@ -339,14 +491,20 @@ def budget_vs_sales_page_view(request):
 def inventory_api(request, pk=None):
     if not request.user.is_authenticated:
         return Response({"status": False, "message": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
-    is_staff = request.user.is_superuser or request.user.is_staff
-    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
-        return Response({"status": False, "message": "Permission denied. Only staff members can modify inventory data."}, status=status.HTTP_403_FORBIDDEN)
+    
+    action_map = {'GET': 'GET', 'POST': 'POST', 'PUT': 'PUT', 'DELETE': 'DELETE'}
+    action = action_map.get(request.method)
+    
+    is_allowed, err_msg = check_crud_permission(request, Inventory, action, pk, request.data if request.method in ['POST', 'PUT'] else None)
+    if not is_allowed:
+        return Response({"status": False, "message": err_msg}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':
         if pk is not None:
             item = inventoryserializer.fetch_one(pk)
             if item:
+                if not check_record_permission(request, Inventory, item):
+                    return Response({"status": False, "message": "Permission denied. You do not have access to this record."}, status=status.HTTP_403_FORBIDDEN)
                 return Response({"status": True, "data": item}, status=status.HTTP_200_OK)
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -371,6 +529,11 @@ def inventory_api(request, pk=None):
             return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
+        item = inventoryserializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, Inventory, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to modify this record."}, status=status.HTTP_403_FORBIDDEN)
         try:
             updated_item = inventoryserializer.update_from_request(pk, request.data)
             if not updated_item:
@@ -380,6 +543,11 @@ def inventory_api(request, pk=None):
             return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
+        item = inventoryserializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, Inventory, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to delete this record."}, status=status.HTTP_403_FORBIDDEN)
         try:
             success = inventoryserializer.delete_by_id(pk)
             if not success:
@@ -409,16 +577,19 @@ def inventory_api_page_view(request):
 # ─────────────────────────────────────────────
 
 def generic_model_api(request, model_class, serializer_class, search_fields, pk=None, store_field=None, employee_field=None):
-    if not request.user.is_authenticated:
-        return Response({"status": False, "message": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
-    is_staff = request.user.is_superuser or request.user.is_staff
-    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
-        return Response({"status": False, "message": f"Permission denied. Only staff members can modify {model_class._meta.verbose_name} data."}, status=status.HTTP_403_FORBIDDEN)
+    action_map = {'GET': 'GET', 'POST': 'POST', 'PUT': 'PUT', 'DELETE': 'DELETE'}
+    action = action_map.get(request.method)
+
+    is_allowed, err_msg = check_crud_permission(request, model_class, action, pk, request.data if request.method in ['POST', 'PUT'] else None)
+    if not is_allowed:
+        return Response({"status": False, "message": err_msg}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':
         if pk is not None:
             data = serializer_class.fetch_one(pk)
             if data:
+                if not check_record_permission(request, model_class, data):
+                    return Response({"status": False, "message": "Permission denied. You do not have access to this record."}, status=status.HTTP_403_FORBIDDEN)
                 return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -434,7 +605,7 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
             profile = get_employee_profile(request)
             if profile and not request.user.is_superuser:
                 role = profile.employee_role.role_name if profile.employee_role else ""
-                if role not in ["Regional Sales Manager"]:
+                if role not in ["Regional Sales Manager", "Customer Relations Officer"]:
                     if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
                         if store_field:
                             store_id = profile.store.store_id
@@ -474,6 +645,8 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         item = serializer_class.fetch_one(pk)
         if not item:
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, model_class, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to modify this record."}, status=status.HTTP_403_FORBIDDEN)
         import inspect
         sig = inspect.signature(serializer_class.update)
         pk_param_name = list(sig.parameters.keys())[0]
@@ -495,6 +668,8 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         item = serializer_class.fetch_one(pk)
         if not item:
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, model_class, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to delete this record."}, status=status.HTTP_403_FORBIDDEN)
         try:
             serializer_class.delete(pk)
             return Response({"status": True, "message": f"{model_class._meta.verbose_name.title()} record deleted successfully."}, status=status.HTTP_200_OK)
@@ -537,9 +712,11 @@ def customer_api(request, pk=None):
 def sales_api(request, pk=None):
     if not request.user.is_authenticated:
         return Response({'status': False, 'message': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
-    is_staff = request.user.is_superuser or request.user.is_staff
-    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
-        return Response({'status': False, 'message': 'Permission denied. Only staff members can modify selling info data.'}, status=status.HTTP_403_FORBIDDEN)
+    action_map = {'GET': 'GET', 'POST': 'POST', 'PUT': 'PUT', 'DELETE': 'DELETE'}
+    action = action_map.get(request.method)
+    is_allowed, err_msg = check_crud_permission(request, SellingInfo, action, pk, request.data if request.method in ['POST', 'PUT'] else None)
+    if not is_allowed:
+        return Response({"status": False, "message": err_msg}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'POST':
         import inspect
@@ -695,21 +872,32 @@ invoice_api_page_view = invoice_view
 def invoice_api(request, pk=None):
     if not request.user.is_authenticated:
         return Response({'status': False, 'message': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
-    is_staff = request.user.is_superuser or request.user.is_staff
+    
+    action_map = {'GET': 'GET', 'POST': 'POST', 'PUT': 'PUT', 'DELETE': 'DELETE'}
+    action = action_map.get(request.method)
+    
+    is_allowed, err_msg = check_crud_permission(request, Invoice, action, pk, request.data if request.method in ['POST', 'PUT'] else None)
+    if not is_allowed:
+        return Response({"status": False, "message": err_msg}, status=status.HTTP_403_FORBIDDEN)
+
     profile = get_employee_profile(request)
-    if request.method in ['POST', 'PUT', 'DELETE'] and not is_staff:
-        return Response({'status': False, 'message': 'Permission denied. Only staff members can modify invoice data.'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':
         sell_id_param = request.GET.get('sell_id')
         if sell_id_param:
             item = InvoiceSerializer.fetch_by_sell_id(sell_id_param)
             if item:
+                # Need to fetch the full invoice to verify permission
+                full_item = InvoiceSerializer.fetch_one(item.get('invoice_id'))
+                if full_item and not check_record_permission(request, Invoice, full_item):
+                    return Response({"status": False, "message": "Permission denied. You do not have access to this record."}, status=status.HTTP_403_FORBIDDEN)
                 return Response({'status': True, 'data': item}, status=status.HTTP_200_OK)
             return Response({'status': False, 'message': 'No invoice found for that sale.'}, status=status.HTTP_404_NOT_FOUND)
         if pk is not None:
             item = InvoiceSerializer.fetch_one(pk)
             if item:
+                if not check_record_permission(request, Invoice, item):
+                    return Response({"status": False, "message": "Permission denied. You do not have access to this record."}, status=status.HTTP_403_FORBIDDEN)
                 return Response({'status': True, 'data': item}, status=status.HTTP_200_OK)
             return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -733,6 +921,11 @@ def invoice_api(request, pk=None):
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
+        item = InvoiceSerializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, Invoice, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to modify this record."}, status=status.HTTP_403_FORBIDDEN)
         try:
             updated = InvoiceSerializer.update_from_request(pk, request.data)
             if not updated:
@@ -742,6 +935,11 @@ def invoice_api(request, pk=None):
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
+        item = InvoiceSerializer.fetch_one(pk)
+        if not item:
+            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not check_record_permission(request, Invoice, item):
+            return Response({"status": False, "message": "Permission denied. You do not have access to delete this record."}, status=status.HTTP_403_FORBIDDEN)
         try:
             success = InvoiceSerializer.delete_by_id(pk)
             if not success:
