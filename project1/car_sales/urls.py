@@ -40,7 +40,6 @@ urlpatterns = [
     path('invoices/', invoice_view, name='invoice'),
     path('api/invoices/', invoice_api, name='invoice_api'),
     path('api/invoices/<int:pk>/', invoice_api, name='invoice_api_detail'),
-    path('invoices/<int:invoice_id>/pdf/', download_invoice_pdf, name='download_invoice_pdf'),
 ]
 
 # Dynamically register the 10 CRUD API endpoints to avoid boilerplate code

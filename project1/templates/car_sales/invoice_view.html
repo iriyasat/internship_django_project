@@ -431,9 +431,9 @@ document.addEventListener('DOMContentLoaded', function () {
         <td>${statusBadge(r.payment_status)}</td>
         <td><span class="badge bg-secondary">${r.payment_method}</span></td>
         <td>
-          <a href="/invoices/${r.invoice_id}/pdf/" target="_blank" class="btn btn-sm btn-outline-danger me-1" title="Download PDF">
+          <button onclick="downloadSingleInvoicePDF(${r.invoice_id})" class="btn btn-sm btn-outline-danger me-1" title="Download PDF">
             <i class="bi bi-file-earmark-pdf"></i>
-          </a>
+          </button>
           ${isStaff ? `
           <button class="btn btn-sm btn-outline-primary me-1 edit-btn" data-id="${r.invoice_id}" title="Edit">
             <i class="bi bi-pencil"></i>
@@ -651,7 +651,255 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   window.downloadSingleInvoicePDF = function(id) {
-    window.location.href = `/invoices/${id}/pdf/`;
+    const r = currentRecords.find(item => String(item.invoice_id) === String(id));
+    if (!r) {
+      showAlert('Invoice details not found locally.', 'warning');
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
+      showAlert('jsPDF not loaded.', 'danger');
+      return;
+    }
+
+    // Initialize document (portrait, points, A4 page size: 595.28 x 841.89 pt)
+    const doc = new jsPDF('p', 'pt', 'a4');
+
+    // Retrieve styles from global pdfStyles fallback to defaults
+    const styles = window.pdfStyles || {};
+    const PRIMARY = styles.primary || [79, 70, 229];      // Royal Indigo
+    const TEXT_DARK = styles.textDark || [30, 41, 59];      // Slate 800
+    const TEXT_MUTED = styles.textMuted || [100, 116, 139];  // Slate 500
+    const BG_LIGHT = styles.bgLight || [248, 250, 252];    // Slate 50
+    const BORDER_COLOR = styles.borderColor || [226, 232, 240]; // Slate 200
+
+    // Set payment status color
+    let statusColor = TEXT_MUTED;
+    const statusLower = (r.payment_status || '').toLowerCase();
+    if (statusLower.includes('paid')) {
+      statusColor = [16, 185, 129]; // Emerald Green
+    } else if (statusLower.includes('unpaid') || statusLower.includes('fail')) {
+      statusColor = [239, 68, 68]; // Red
+    } else if (statusLower.includes('pending')) {
+      statusColor = [245, 158, 11]; // Amber Yellow
+    } else if (statusLower.includes('overdue')) {
+      statusColor = [185, 28, 28]; // Dark Red
+    }
+
+    // 1. Top Indigo Accent Header Line (Full bleed width of page)
+    doc.setFillColor(...PRIMARY);
+    doc.rect(0, 0, 595, 8, 'F');
+
+    // 2. Main Title and Branding
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(...PRIMARY);
+    doc.text("CAR SALES INC.", 40, 48);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("Premium Automotive Registry & Dealer Network", 40, 62);
+
+    // 3. Right Aligned Invoice Title & Metadata
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(24);
+    doc.setTextColor(...TEXT_DARK);
+    doc.text("INVOICE", 555, 48, { align: "right" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(`Invoice Reference: INV-${r.invoice_id}`, 555, 66, { align: "right" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text(`Date Issued: ${r.invoice_date}`, 555, 78, { align: "right" });
+    if (r.due_date) {
+      doc.text(`Due Date: ${r.due_date}`, 555, 90, { align: "right" });
+    }
+
+    // Divider Line
+    doc.setDrawColor(...BORDER_COLOR);
+    doc.setLineWidth(0.5);
+    doc.line(40, 105, 555, 105);
+
+    // 4. Billed To & Store Details (Two-column layout)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("CLIENT / BILLED TO", 40, 125);
+    doc.text("STORE / PROVIDER", 300, 125);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT_DARK);
+    doc.text(r.customer_name || '—', 40, 138);
+    doc.text(r.store_name || '—', 300, 138);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    const custAddrLines = doc.splitTextToSize(r.customer_address || 'Address not specified', 230);
+    const storeAddrLines = doc.splitTextToSize(r.store_address || 'Address not specified', 230);
+    doc.text(custAddrLines, 40, 150);
+    doc.text(storeAddrLines, 300, 150);
+
+    const maxAddrHeight = Math.max(custAddrLines.length, storeAddrLines.length) * 12;
+    let currentY = 150 + maxAddrHeight + 20;
+
+    // 5. Metadata Bar (Card style)
+    doc.setFillColor(...BG_LIGHT);
+    doc.rect(40, currentY, 515, 38, 'F');
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("VIN / CHASSIS NUMBER", 52, currentY + 13);
+    doc.text("SALES REPRESENTATIVE", 220, currentY + 13);
+    doc.text("PAYMENT METRICS", 390, currentY + 13);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...TEXT_DARK);
+    doc.text(r.vin || '—', 52, currentY + 26);
+    doc.text(r.employee_name || '—', 220, currentY + 26);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...statusColor);
+    doc.text(`${r.payment_method || '—'} / ${(r.payment_status || '').toUpperCase()}`, 390, currentY + 26);
+
+    currentY += 55;
+
+    // 6. Financial Details Table (Itemized format)
+    const discountAmount = parseInt(r.discount_amount || 0);
+    const mmrVal = parseInt(r.mmr || 0);
+    const discountPct = parseFloat(r.discount_pct || 0);
+    
+    let discountDetail = "No discount";
+    if (discountAmount > 0) {
+      discountDetail = `-$${discountAmount.toLocaleString()} (${discountPct.toFixed(2)}% off MMR MMR Price: $${mmrVal.toLocaleString()})`;
+    }
+
+    const headers = [["NO.", "ITEM DESCRIPTION", "UNIT PRICE", "AMOUNT"]];
+    const rows = [
+      [
+        "1",
+        `Vehicle Purchase: ${r.vehicle_name}\nAuthorized purchase of standard automotive vehicle matching the registered description.`,
+        `$${parseInt(r.selling_price || 0).toLocaleString()}`,
+        `$${parseInt(r.selling_price || 0).toLocaleString()}`
+      ]
+    ];
+    if (discountAmount > 0) {
+      rows.push([
+        "2",
+        `MMR Volume Discount Applied\nRegistered discount calculated at ${discountPct.toFixed(2)}% off MMR index value ($${mmrVal.toLocaleString()}).`,
+        `-$${discountAmount.toLocaleString()}`,
+        `-$${discountAmount.toLocaleString()}`
+      ]);
+    }
+
+    // Summary lines
+    rows.push(
+      ["", "Subtotal", "", `$${parseInt(r.selling_price || 0).toLocaleString()}`],
+      ["", "Discount Applied", "", `-$${discountAmount.toLocaleString()}`],
+      ["", "Total Paid (Net)", "", `$${parseInt(r.final_amount || 0).toLocaleString()}`]
+    );
+
+    doc.autoTable({
+      startY: currentY,
+      head: headers,
+      body: rows,
+      theme: 'plain',
+      styles: { fontSize: 8, font: 'helvetica', textColor: TEXT_DARK, cellPadding: 8 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 30, halign: 'center' },
+        1: { cellWidth: 285 },
+        2: { halign: 'right', cellWidth: 100 },
+        3: { halign: 'right', cellWidth: 100 }
+      },
+      didParseCell: function(data) {
+        const totalRowsCount = rows.length;
+        if (data.row.index >= totalRowsCount - 3) {
+          data.cell.styles.fontStyle = 'bold';
+          if (data.column.index < 3) {
+            if (data.column.index === 1) {
+              data.cell.styles.halign = 'right';
+            } else {
+              data.cell.text = '';
+            }
+          }
+          if (data.row.index === totalRowsCount - 1) {
+            data.cell.styles.fontSize = 9;
+            data.cell.styles.textColor = PRIMARY;
+            if (data.column.index >= 1) {
+              data.cell.styles.fillColor = [243, 244, 246];
+            }
+          }
+        }
+      },
+      margin: { left: 40, right: 40 }
+    });
+
+    currentY = doc.autoTable.previous.finalY + 25;
+
+    // 7. Terms and Conditions
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("TERMS & CONDITIONS", 40, currentY);
+
+    currentY += 12;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...TEXT_MUTED);
+    const termsText = [
+      "1. All vehicle sales are final. Warranty terms are subject to manufacturer policy.",
+      "2. Payment must be processed through authorized channels listed on this invoice.",
+      "3. Please retain this copy for vehicle registration, title transfer, and licensing purposes."
+    ];
+    doc.text(termsText, 40, currentY);
+    currentY += termsText.length * 11 + 10;
+
+    if (r.notes) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...TEXT_MUTED);
+      doc.text("CUSTOMER NOTES", 40, currentY);
+
+      currentY += 12;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...TEXT_DARK);
+      const noteLines = doc.splitTextToSize(r.notes, 515);
+      doc.text(noteLines, 40, currentY);
+      currentY += noteLines.length * 11 + 10;
+    }
+
+    // 8. Signatures Block
+    const sigY = 720;
+    doc.setDrawColor(...BORDER_COLOR);
+    doc.setLineWidth(0.5);
+    doc.line(40, sigY, 190, sigY);
+    doc.line(405, sigY, 555, sigY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...TEXT_MUTED);
+    doc.text("Authorized Representative", 40, sigY + 12);
+    doc.text("Customer Signature", 405, sigY + 12);
+
+    // 9. Full Bleed Bottom Accent Ribbon
+    doc.setFillColor(...PRIMARY);
+    doc.rect(0, 820, 595, 22, 'F');
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text("Thank you for choosing Car Sales Inc. for your premium automotive needs.", 297.5, 834, { align: "center" });
+
+    doc.save(`INV_${r.invoice_id}.pdf`);
   };
 
 
