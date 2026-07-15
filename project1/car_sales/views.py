@@ -362,42 +362,28 @@ def inventory_api(request, pk=None):
         return Response({"status": True, "total": total, "page": page, "page_size": page_size, "data": data}, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        vehicle = request.data.get('vehicle')
-        store = request.data.get('store')
-        employee = request.data.get('employee')
-        status_val = request.data.get('status')
-        selling_info = request.data.get('selling_info') or None
-        if not vehicle or not store or not employee or status_val is None:
-            return Response({"status": False, "message": "Vehicle, store, employee, and status are required fields."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            new_id = inventoryserializer.create(vehicle, store, employee, status_val, selling_info)
-            new_item = inventoryserializer.fetch_one(new_id)
+            new_item = inventoryserializer.create_from_request(request.data)
             return Response({"status": True, "message": "Inventory record created successfully.", "data": new_item}, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
-        item = inventoryserializer.fetch_one(pk)
-        if not item:
-            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
-        vehicle = request.data.get('vehicle', item['vehicle'])
-        store = request.data.get('store', item['store'])
-        employee = request.data.get('employee', item['employee'])
-        status_val = request.data.get('status', item['status'])
-        selling_info = request.data.get('selling_info', item['selling_info'])
         try:
-            inventoryserializer.update(pk, vehicle, store, employee, status_val, selling_info)
-            updated_item = inventoryserializer.fetch_one(pk)
+            updated_item = inventoryserializer.update_from_request(pk, request.data)
+            if not updated_item:
+                return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
             return Response({"status": True, "message": "Inventory record updated successfully.", "data": updated_item}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        item = inventoryserializer.fetch_one(pk)
-        if not item:
-            return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
-            inventoryserializer.delete(pk)
+            success = inventoryserializer.delete_by_id(pk)
+            if not success:
+                return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
             return Response({"status": True, "message": "Inventory record deleted successfully."}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -738,47 +724,39 @@ def invoice_api(request, pk=None):
         return Response({'status': True, 'total': total, 'page': page, 'page_size': page_size, 'data': data}, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        sell_id = request.data.get('sell_id')
-        invoice_date = request.data.get('invoice_date')
-        if not sell_id or not invoice_date:
-            return Response({'status': False, 'message': 'sell_id and invoice_date are required.'}, status=status.HTTP_400_BAD_REQUEST)
-        existing = InvoiceSerializer.fetch_by_sell_id(sell_id)
-        if existing:
-            return Response({'status': False, 'message': f'An invoice (#{existing["invoice_id"]}) already exists for sale #{sell_id}.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            new_id = InvoiceSerializer.create(
-                sell_id=sell_id, invoice_date=invoice_date, due_date=request.data.get('due_date') or None,
-                payment_status=request.data.get('payment_status', 'Paid'), payment_method=request.data.get('payment_method', 'Cash'),
-                discount_amount=request.data.get('discount_amount', 0), notes=request.data.get('notes') or None
-            )
-            item = InvoiceSerializer.fetch_one(new_id)
+            item = InvoiceSerializer.create_from_request(request.data)
             return Response({'status': True, 'message': 'Invoice created successfully.', 'data': item}, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
-        item = InvoiceSerializer.fetch_one(pk)
-        if not item:
-            return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            InvoiceSerializer.update(
-                pk, request.data.get('invoice_date', item['invoice_date']), request.data.get('due_date', item.get('due_date')) or None,
-                request.data.get('payment_status', item['payment_status']), request.data.get('payment_method', item['payment_method']),
-                request.data.get('discount_amount', item['discount_amount']), request.data.get('notes', item.get('notes')) or None
-            )
-            updated = InvoiceSerializer.fetch_one(pk)
+            updated = InvoiceSerializer.update_from_request(pk, request.data)
+            if not updated:
+                return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'status': True, 'message': 'Invoice updated successfully.', 'data': updated}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        item = InvoiceSerializer.fetch_one(pk)
-        if not item:
-            return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            InvoiceSerializer.delete(pk)
+            success = InvoiceSerializer.delete_by_id(pk)
+            if not success:
+                return Response({'status': False, 'message': 'Record not found.'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'status': True, 'message': 'Invoice deleted successfully.'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@login_required
+def documentation_view(request):
+    base_url = request.build_absolute_uri('/')[:-1]
+    return render(request, 'car_sales/documentation.html', {
+        'active_tab': 'documentation',
+        'base_url': base_url,
+    })
 
 

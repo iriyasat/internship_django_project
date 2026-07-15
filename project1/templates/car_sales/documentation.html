@@ -1,0 +1,925 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}API Documentation - Car Sales{% endblock %}
+
+{% block content %}
+<style>
+  /* Premium Dark-inspired Developer Theme overrides & components */
+  .api-card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 25px;
+    overflow: hidden;
+  }
+  .api-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+    border-color: rgba(65, 84, 241, 0.2);
+  }
+  .api-header {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .api-badge {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
+    text-align: center;
+  }
+  .badge-get {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+  }
+  .badge-post {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  .badge-put {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+  }
+  .badge-delete {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+  .api-path {
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #212529;
+    background: #f1f3f5;
+    padding: 4px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+  }
+  .api-body {
+    padding: 20px;
+  }
+  .json-block {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    position: relative;
+    margin-top: 10px;
+    border: 1px solid #2d2d2d;
+  }
+  .json-block::before {
+    content: "JSON";
+    position: absolute;
+    top: 6px;
+    right: 12px;
+    font-size: 0.65rem;
+    color: #858585;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .btn-copy {
+    position: absolute;
+    top: 6px;
+    right: 50px;
+    background: transparent;
+    border: none;
+    color: #858585;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .btn-copy:hover {
+    color: #ffffff;
+  }
+  .doc-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    color: #495057;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .doc-sidebar-link:hover {
+    background: #f1f3f5;
+    color: #4154f1;
+  }
+  .doc-sidebar-link.active {
+    background: #e0e7ff;
+    color: #4154f1;
+    font-weight: 600;
+  }
+  .doc-section-header {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 10px;
+    margin-top: 40px;
+    margin-bottom: 20px;
+    color: #012970;
+    font-weight: 700;
+  }
+</style>
+
+<div class="pagetitle">
+  <h1>API Documentation</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">API Documentation</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section">
+  <!-- Top Welcome & Postman Collection Generator Banner -->
+  <div class="card mb-4" style="background: linear-gradient(135deg, #4154f1 0%, #1e293b 100%); color: #fff; border: none; border-radius: 16px;">
+    <div class="card-body p-4 p-md-5">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <h2 class="fw-bold mb-3"><i class="bi bi-file-earmark-code"></i> Car Sales Management API Reference</h2>
+          <p class="lead mb-4" style="opacity: 0.9;">
+            This page provides detailed documentation and payloads for all endpoints in the system. Use this documentation to test operations, inspect payload properties, and build queries in Postman.
+          </p>
+          <div class="d-flex flex-wrap gap-3">
+            <button class="btn btn-warning fw-bold text-dark px-4 py-2" onclick="downloadPostmanCollection()" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(246, 166, 35, 0.4);">
+              <i class="bi bi-download me-2"></i> Download Postman Collection
+            </button>
+            <a href="#authentication-guide" class="btn btn-outline-light px-4 py-2" style="border-radius: 8px;">
+              <i class="bi bi-shield-lock me-2"></i> Authentication Guide
+            </a>
+          </div>
+        </div>
+        <div class="col-lg-4 text-center d-none d-lg-block">
+          <i class="bi bi-braces-asterisk" style="font-size: 8rem; opacity: 0.2;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Navigation Sidebar -->
+    <div class="col-lg-3">
+      <div class="card shadow-sm sticky-top" style="top: 80px; z-index: 10; border-radius: 12px;">
+        <div class="card-header bg-white py-3 border-0">
+          <h5 class="card-title m-0 fw-bold" style="color: #012970;">Documentation Sections</h5>
+        </div>
+        <div class="card-body px-2 pb-3">
+          <div class="input-group mb-3 px-2">
+            <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="apiSearch" class="form-control bg-light border-0" placeholder="Filter APIs..." onkeyup="filterAPIs()">
+          </div>
+          <div class="nav flex-column" id="doc-nav">
+            <a class="doc-sidebar-link active" href="#authentication-guide"><i class="bi bi-shield-lock"></i> Authentication</a>
+            <a class="doc-sidebar-link" href="#report-apis"><i class="bi bi-bar-chart-line"></i> Reports & Analytics</a>
+            <a class="doc-sidebar-link" href="#invoice-apis"><i class="bi bi-receipt"></i> Invoices API</a>
+            <a class="doc-sidebar-link" href="#crud-apis"><i class="bi bi-database"></i> Core CRUD APIs</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Reference Sections -->
+    <div class="col-lg-9">
+      
+      <!-- Authentication Guide -->
+      <div id="authentication-guide" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
+        <h3 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-shield-lock-fill text-primary"></i> API Authentication</h3>
+        <p>
+          All API requests (except public templates) require authentication. Django REST Framework verifies permissions on every request.
+        </p>
+        <div class="alert alert-info border-0 d-flex gap-3 mb-4" style="background: #e0f2fe; color: #0369a1; border-radius: 10px;">
+          <i class="bi bi-info-circle-fill fs-4"></i>
+          <div>
+            <strong>Quick testing in Postman:</strong> Use <strong>Basic Authentication</strong> inside Postman with your normal web portal username and password. This will bypass CSRF token checks and log you in automatically for that API transaction.
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <div class="card bg-light border-0 p-3 h-100">
+              <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-globe"></i> Base URL</h5>
+              <div class="d-flex align-items-center gap-2">
+                <code class="fs-6 text-primary" id="baseUrlText">{{ base_url }}</code>
+                <button class="btn btn-sm btn-outline-secondary p-1 border-0" onclick="copyText('baseUrlText')"><i class="bi bi-clipboard"></i></button>
+              </div>
+              <small class="text-muted mt-2">All API paths listed below should be appended to this Base URL.</small>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <div class="card bg-light border-0 p-3 h-100">
+              <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-shield-check"></i> Permissions Matrix</h5>
+              <ul class="list-unstyled mb-0" style="font-size: 0.9rem;">
+                <li class="mb-1 text-success"><i class="bi bi-check-circle-fill me-2"></i><strong>GET (Read)</strong>: Available to all logged-in users.</li>
+                <li class="mb-1 text-danger"><i class="bi bi-x-circle-fill me-2"></i><strong>POST, PUT, DELETE (Write)</strong>: Restricted to Staff/Superuser accounts.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Reports & Analytics -->
+      <h2 id="report-apis" class="doc-section-header">Reports & Analytics APIs</h2>
+      <p class="text-muted">GET-only endpoints that output aggregated stats, charts, and report matrices.</p>
+
+      <div class="api-container">
+        <!-- Employee Sales -->
+        <div class="api-card" data-search="employee sales report get /api/employee_sales/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/employee_sales/</span>
+            </div>
+            <span class="text-muted small">Employee Sales Report</span>
+          </div>
+          <div class="api-body">
+            <p>Fetches a listing of employees with their total sales count and total revenue generated. Supports search and pagination.</p>
+            <h6 class="fw-bold mt-3">Success Response Structure (200 OK)</h6>
+            <div class="json-block">
+<button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+<pre style="margin:0;">{
+  "status": true,
+  "total": 1,
+  "page": 1,
+  "page_size": 25,
+  "data": [
+    {
+      "employee_id": 1,
+      "employee_name": "Sebastian Vettel",
+      "sales_count": 12,
+      "total_sales_value": 450000.00
+    }
+  ]
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Store Sales -->
+        <div class="api-card" data-search="store sales report get /api/store_sales/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/store_sales/</span>
+            </div>
+            <span class="text-muted small">Store Sales Report</span>
+          </div>
+          <div class="api-body">
+            <p>Fetches total sales count and total revenue grouped by retail store. Supports search and pagination.</p>
+            <h6 class="fw-bold mt-3">Success Response Structure (200 OK)</h6>
+            <div class="json-block">
+<button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+<pre style="margin:0;">{
+  "status": true,
+  "total": 1,
+  "page": 1,
+  "page_size": 25,
+  "data": [
+    {
+      "store_id": 1,
+      "store_name": "Berlin Center",
+      "sales_count": 48,
+      "total_sales_value": 1820000.00
+    }
+  ]
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Store Vehicle Sales -->
+        <div class="api-card" data-search="store vehicle sales report get /api/store_vehicle_sales/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/store_vehicle_sales/</span>
+            </div>
+            <span class="text-muted small">Store Vehicle Sales Report</span>
+          </div>
+          <div class="api-body">
+            <p>Fetches reports on vehicle sales performance per store, grouped by vehicle models and makes.</p>
+          </div>
+        </div>
+
+        <!-- Budget vs Sales -->
+        <div class="api-card" data-search="budget vs sales report stats get /api/budget-vs-sales/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/budget-vs-sales/</span>
+            </div>
+            <span class="text-muted small">Budget vs Sales Comparison</span>
+          </div>
+          <div class="api-body">
+            <p>Compares employee budgets against actual recorded sales revenue by month and year.</p>
+          </div>
+        </div>
+
+        <!-- Budget Stats -->
+        <div class="api-card" data-search="budget stats get /api/budgets/stats/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/budgets/stats/</span>
+            </div>
+            <span class="text-muted small">Global Budget Statistics</span>
+          </div>
+          <div class="api-body">
+            <p>Returns general aggregate information about all budgets recorded in the system.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Invoices API -->
+      <h2 id="invoice-apis" class="doc-section-header">Invoices Management API</h2>
+      <p class="text-muted">CRUD endpoints for Invoice instances. Handles billing details linked to sales records.</p>
+
+      <div class="api-container">
+        <!-- List Invoices -->
+        <div class="api-card" data-search="list invoices query page size get /api/invoices/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/invoices/</span>
+            </div>
+            <span class="text-muted small">List & Search Invoices</span>
+          </div>
+          <div class="api-body">
+            <p>Fetches invoices. Supports query filters like <code>payment_status</code> and <code>payment_method</code>.</p>
+            <table class="table table-sm table-bordered mt-2">
+              <thead class="table-light">
+                <tr><th>Query Parameter</th><th>Type</th><th>Description</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>page</code></td><td>Integer</td><td>Page number (default: 1)</td></tr>
+                <tr><td><code>page_size</code></td><td>Integer</td><td>Items per page (default: 25)</td></tr>
+                <tr><td><code>search</code></td><td>String</td><td>Search query matching customer, invoice ID, or stores</td></tr>
+                <tr><td><code>payment_status</code></td><td>String</td><td>Filter by status: e.g. <code>Paid</code>, <code>Unpaid</code>, <code>Overdue</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Create Invoice -->
+        <div class="api-card" data-search="create invoice post /api/invoices/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/invoices/</span>
+            </div>
+            <span class="text-muted small">Create Invoice (Staff Only)</span>
+          </div>
+          <div class="api-body">
+            <p>Generates a billing invoice for an existing sale transaction.</p>
+            <h6 class="fw-bold">JSON Request Body</h6>
+            <div class="json-block">
+<button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+<pre style="margin:0;">{
+  "sell_id": 1,
+  "invoice_date": "2026-07-15",
+  "due_date": "2026-08-15",
+  "payment_status": "Paid",
+  "payment_method": "Cash",
+  "discount_amount": 150.00,
+  "notes": "Fast payment discount applied."
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Update Invoice -->
+        <div class="api-card" data-search="update invoice put /api/invoices/<id>/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-put">PUT</span>
+              <span class="api-path">/api/invoices/&lt;int:pk&gt;/</span>
+            </div>
+            <span class="text-muted small">Update Invoice (Staff Only)</span>
+          </div>
+          <div class="api-body">
+            <p>Modifies fields of an existing invoice by primary key.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Core CRUD APIs -->
+      <h2 id="crud-apis" class="doc-section-header">Core Entity CRUD APIs</h2>
+      <p class="text-muted">
+        The system dynamically registers CRUD API endpoints for the main database entities. These endpoints support <code>GET</code> (list/detail), <code>POST</code> (create), <code>PUT</code> (update), and <code>DELETE</code> (remove) methods.
+      </p>
+
+      <div class="api-container" id="crud-api-list">
+        <!-- Rendered via JS loop for neatness and interactivity -->
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Notification Toast for Copied Feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+  <div id="copyToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="bi bi-check-circle-fill text-success me-2"></i> Copied to clipboard!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dynamic list of CRUD entities to display in documentation and build Postman items
+  const crudEntities = [
+    {
+      name: "Countries",
+      route: "countries",
+      description: "Manage global countries where business operates.",
+      body: { country_name: "Germany" }
+    },
+    {
+      name: "Cities",
+      route: "cities",
+      description: "Manage city records linked to operating countries.",
+      body: { city_name: "Berlin", country: 1 }
+    },
+    {
+      name: "Stores",
+      route: "stores",
+      description: "Manage physical car showrooms and retail stores.",
+      body: { store_name: "Berlin Center", store_code: "BC01", address: "Friedrichstrasse 10", city: 1, country: 1 }
+    },
+    {
+      name: "Employee Roles",
+      route: "emproles",
+      description: "Manage positions/roles available in the sales hierarchy.",
+      body: { role_name: "Senior Sales Agent" }
+    },
+    {
+      name: "Employee Statuses",
+      route: "statuses",
+      description: "Manage job status choices (Active, On Leave, Resigned, etc.).",
+      body: { status: "Active" }
+    },
+    {
+      name: "Industry Info",
+      route: "industry",
+      description: "Manage manufacturers/makes in the car industry database.",
+      body: { make_name: "Porsche" }
+    },
+    {
+      name: "Vehicles",
+      route: "vehicles",
+      description: "Manage vehicle catalog database with specs and odometer details.",
+      body: { vehicle_model: "911 Carrera", make: 1, mmr: 120000, trim: "Carrera S", body: "Coupe", transmission: "PDK", vin: "WP0AB2A...", state: "CA", condition: "Excellent", odometer: 1500, color: "Silver", interior: "Black" }
+    },
+    {
+      name: "Customers",
+      route: "customers",
+      description: "Manage registered customer directory.",
+      body: { firstname: "Michael", lastname: "Schumacher", customer_status: "VIP", customer_address: "Kerpen Way 1", city: 1, country: 1 }
+    },
+    {
+      name: "Sales",
+      route: "sales",
+      description: "Record sales contracts mapping customer, vehicle, employee, and store.",
+      body: { customer: 1, vehicle: 1, employee: 1, store: 1, selling_price: 115000, selling_date: "2026-07-15" }
+    },
+    {
+      name: "Budgets",
+      route: "budgets",
+      description: "Manage monthly sales targets and budget allocations for employees.",
+      body: { employee: 1, budget: 150000, year: 2026, month: 7 }
+    },
+    {
+      name: "Employees",
+      route: "employees",
+      description: "Manage system employees, positions, and portal credentials.",
+      body: { first_name: "Sebastian", last_name: "Vettel", date_of_joining: "2026-07-15", employee_addr: "Heppenheim 5", employee_role: 1, status: 1, store: 1, city: 1, country: 1, password: "VettelPassword123" }
+    }
+  ];
+
+  // Render the CRUD APIs dynamically
+  const container = document.getElementById("crud-api-list");
+  crudEntities.forEach(entity => {
+    const sectionHtml = `
+      <div class="mt-4 mb-3">
+        <h4 class="fw-bold" style="color: #012970;"><i class="bi bi-chevron-right text-primary"></i> ${entity.name}</h4>
+        <p class="text-muted">${entity.description}</p>
+      </div>
+
+      <!-- GET List -->
+      <div class="api-card" data-search="${entity.name.toLowerCase()} list get /api/${entity.route}/">
+        <div class="api-header">
+          <div class="d-flex align-items-center gap-3">
+            <span class="api-badge badge-get">GET</span>
+            <span class="api-path">/api/${entity.route}/</span>
+          </div>
+          <span class="text-muted small">List & Search ${entity.name}</span>
+        </div>
+        <div class="api-body">
+          <p>Get a paginated listing of ${entity.name.toLowerCase()}. Supports query parameters: <code>page</code>, <code>page_size</code>, and <code>search</code>.</p>
+        </div>
+      </div>
+
+      <!-- GET Detail -->
+      <div class="api-card" data-search="${entity.name.toLowerCase()} detail get /api/${entity.route}/<id>/">
+        <div class="api-header">
+          <div class="d-flex align-items-center gap-3">
+            <span class="api-badge badge-get">GET</span>
+            <span class="api-path">/api/${entity.route}/&lt;int:pk&gt;/</span>
+          </div>
+          <span class="text-muted small">Retrieve ${entity.name.slice(0,-1)}</span>
+        </div>
+        <div class="api-body">
+          <p>Fetch details of a single ${entity.name.toLowerCase().slice(0,-1)} record by ID.</p>
+        </div>
+      </div>
+
+      <!-- POST Create -->
+      <div class="api-card" data-search="${entity.name.toLowerCase()} create post /api/${entity.route}/">
+        <div class="api-header">
+          <div class="d-flex align-items-center gap-3">
+            <span class="api-badge badge-post">POST</span>
+            <span class="api-path">/api/${entity.route}/</span>
+          </div>
+          <span class="text-muted small">Create ${entity.name.slice(0,-1)} (Staff Only)</span>
+        </div>
+        <div class="api-body">
+          <p>Create a new record in ${entity.name.toLowerCase()}. Requires JSON body.</p>
+          <h6 class="fw-bold">JSON Payload Example</h6>
+          <div class="json-block">
+            <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+            <pre style="margin:0;">${JSON.stringify(entity.body, null, 2)}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- PUT Update -->
+      <div class="api-card" data-search="${entity.name.toLowerCase()} update put /api/${entity.route}/<id>/">
+        <div class="api-header">
+          <div class="d-flex align-items-center gap-3">
+            <span class="api-badge badge-put">PUT</span>
+            <span class="api-path">/api/${entity.route}/&lt;int:pk&gt;/</span>
+          </div>
+          <span class="text-muted small">Update ${entity.name.slice(0,-1)} (Staff Only)</span>
+        </div>
+        <div class="api-body">
+          <p>Modify properties of an existing ${entity.name.toLowerCase().slice(0,-1)} record.</p>
+        </div>
+      </div>
+
+      <!-- DELETE Remove -->
+      <div class="api-card" data-search="${entity.name.toLowerCase()} delete remove /api/${entity.route}/<id>/">
+        <div class="api-header">
+          <div class="d-flex align-items-center gap-3">
+            <span class="api-badge badge-delete">DELETE</span>
+            <span class="api-path">/api/${entity.route}/&lt;int:pk&gt;/</span>
+          </div>
+          <span class="text-muted small">Delete ${entity.name.slice(0,-1)} (Staff Only)</span>
+        </div>
+        <div class="api-body">
+          <p>Delete a ${entity.name.toLowerCase().slice(0,-1)} record by ID.</p>
+        </div>
+      </div>
+    `;
+    container.innerHTML += sectionHtml;
+  });
+
+  // Client-side API filter/search logic
+  function filterAPIs() {
+    const query = document.getElementById("apiSearch").value.toLowerCase();
+    const cards = document.querySelectorAll(".api-card");
+    cards.forEach(card => {
+      const searchMeta = card.getAttribute("data-search");
+      if (searchMeta && searchMeta.includes(query)) {
+        card.style.display = "";
+      } else {
+        card.style.display = "none";
+      }
+    });
+  }
+
+  // Copy to clipboard helpers
+  function copyText(elementId) {
+    const text = document.getElementById(elementId).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast();
+    });
+  }
+
+  // Handle active link highlights based on page scroll / clicking
+  document.addEventListener('DOMContentLoaded', function() {
+    const sidebarLinks = document.querySelectorAll('.doc-sidebar-link');
+    
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+  });
+
+  function copySnippet(button) {
+    const pre = button.nextElementSibling;
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      showToast();
+    });
+  }
+
+  function showToast() {
+    const toastEl = document.getElementById('copyToast');
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+  }
+
+  // Generate Postman Collection v2.1.0 JSON on-the-fly and download
+  function downloadPostmanCollection() {
+    const serverUrl = "{{ base_url }}";
+    
+    // Base Postman Collection metadata structure
+    const postman = {
+      info: {
+        name: "Car Sales Management API",
+        description: "Postman Collection automatically generated from the portal. It lets you test and invoke all endpoints. All modifications (POST, PUT, DELETE) require Staff permissions.",
+        schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+      },
+      variable: [
+        {
+          key: "baseUrl",
+          value: serverUrl,
+          type: "string"
+        },
+        {
+          key: "username",
+          value: "{{ request.user.username }}",
+          type: "string"
+        },
+        {
+          key: "password",
+          value: "YourPortalPassword",
+          type: "string"
+        }
+      ],
+      auth: {
+        type: "basic",
+        basic: [
+          {
+            key: "username",
+            value: "{{username}}",
+            type: "string"
+          },
+          {
+            key: "password",
+            value: "{{password}}",
+            type: "string"
+          }
+        ]
+      },
+      item: []
+    };
+
+    // 1. Add Reports Folder
+    const reportsFolder = {
+      name: "Reports & Analytics",
+      item: [
+        { name: "Employee Sales Report", route: "employee_sales" },
+        { name: "Store Sales Report", route: "store_sales" },
+        { name: "Store Vehicle Sales Report", route: "store_vehicle_sales" },
+        { name: "Customer Vehicle Sales Report", route: "customer_vehicle_sales" },
+        { name: "Customer Store Spending Report", route: "customer_store_spending" },
+        { name: "Budget vs Sales Report", route: "budget-vs-sales" },
+        { name: "Global Budget Statistics", route: "budgets/stats" }
+      ].map(api => ({
+        name: api.name,
+        request: {
+          method: "GET",
+          header: [],
+          url: {
+            raw: "{{baseUrl}}/api/" + api.route + "/",
+            host: ["{{baseUrl}}"],
+            path: ["api", ...api.route.split('/')]
+          }
+        }
+      }))
+    };
+    postman.item.push(reportsFolder);
+
+    // 2. Add Invoices Folder
+    const invoicesFolder = {
+      name: "Invoices API",
+      item: [
+        {
+          name: "List Invoices",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/invoices/?page=1&page_size=25&search=",
+              host: ["{{baseUrl}}"],
+              path: ["api", "invoices"],
+              query: [
+                { key: "page", value: "1" },
+                { key: "page_size", value: "25" },
+                { key: "search", value: "" }
+              ]
+            }
+          }
+        },
+        {
+          name: "Get Invoice Detail",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/invoices/1/",
+              host: ["{{baseUrl}}"],
+              path: ["api", "invoices", "1"]
+            }
+          }
+        },
+        {
+          name: "Create Invoice",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json", type: "text" }
+            ],
+            body: {
+              mode: "raw",
+              raw: JSON.stringify({
+                sell_id: 1,
+                invoice_date: "2026-07-15",
+                due_date: "2026-08-15",
+                payment_status: "Paid",
+                payment_method: "Cash",
+                discount_amount: 150.00,
+                notes: "Imported via Postman"
+              }, null, 2)
+            },
+            url: {
+              raw: "{{baseUrl}}/api/invoices/",
+              host: ["{{baseUrl}}"],
+              path: ["api", "invoices"]
+            }
+          }
+        },
+        {
+          name: "Update Invoice Detail",
+          request: {
+            method: "PUT",
+            header: [
+              { key: "Content-Type", value: "application/json", type: "text" }
+            ],
+            body: {
+              mode: "raw",
+              raw: JSON.stringify({
+                payment_status: "Paid"
+              }, null, 2)
+            },
+            url: {
+              raw: "{{baseUrl}}/api/invoices/1/",
+              host: ["{{baseUrl}}"],
+              path: ["api", "invoices", "1"]
+            }
+          }
+        },
+        {
+          name: "Delete Invoice",
+          request: {
+            method: "DELETE",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/invoices/1/",
+              host: ["{{baseUrl}}"],
+              path: ["api", "invoices", "1"]
+            }
+          }
+        }
+      ]
+    };
+    postman.item.push(invoicesFolder);
+
+    // 3. Add Core CRUD Entities Folder
+    const crudFolder = {
+      name: "Core CRUD Entities",
+      item: []
+    };
+
+    crudEntities.forEach(entity => {
+      const folder = {
+        name: entity.name,
+        item: [
+          {
+            name: "List " + entity.name,
+            request: {
+              method: "GET",
+              header: [],
+              url: {
+                raw: "{{baseUrl}}/api/" + entity.route + "/?page=1&page_size=25&search=",
+                host: ["{{baseUrl}}"],
+                path: ["api", entity.route],
+                query: [
+                  { key: "page", value: "1" },
+                  { key: "page_size", value: "25" },
+                  { key: "search", value: "" }
+                ]
+              }
+            }
+          },
+          {
+            name: "Get " + entity.name.slice(0,-1),
+            request: {
+              method: "GET",
+              header: [],
+              url: {
+                raw: "{{baseUrl}}/api/" + entity.route + "/1/",
+                host: ["{{baseUrl}}"],
+                path: ["api", entity.route, "1"]
+              }
+            }
+          },
+          {
+            name: "Create " + entity.name.slice(0,-1),
+            request: {
+              method: "POST",
+              header: [
+                { key: "Content-Type", value: "application/json", type: "text" }
+              ],
+              body: {
+                mode: "raw",
+                raw: JSON.stringify(entity.body, null, 2)
+              },
+              url: {
+                raw: "{{baseUrl}}/api/" + entity.route + "/",
+                host: ["{{baseUrl}}"],
+                path: ["api", entity.route]
+              }
+            }
+          },
+          {
+            name: "Update " + entity.name.slice(0,-1),
+            request: {
+              method: "PUT",
+              header: [
+                { key: "Content-Type", value: "application/json", type: "text" }
+              ],
+              body: {
+                mode: "raw",
+                raw: JSON.stringify(entity.body, null, 2)
+              },
+              url: {
+                raw: "{{baseUrl}}/api/" + entity.route + "/1/",
+                host: ["{{baseUrl}}"],
+                path: ["api", entity.route, "1"]
+              }
+            }
+          },
+          {
+            name: "Delete " + entity.name.slice(0,-1),
+            request: {
+              method: "DELETE",
+              header: [],
+              url: {
+                raw: "{{baseUrl}}/api/" + entity.route + "/1/",
+                host: ["{{baseUrl}}"],
+                path: ["api", entity.route, "1"]
+              }
+            }
+          }
+        ]
+      };
+      crudFolder.item.push(folder);
+    });
+    postman.item.push(crudFolder);
+
+    // Trigger local JSON file download
+    const filename = "Car_Sales_API_Postman_Collection.json";
+    const blob = new Blob([JSON.stringify(postman, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+{% endblock %}

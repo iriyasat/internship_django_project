@@ -269,6 +269,39 @@ class inventoryserializer:
     def delete(inventory_id):
         execute_cud_query(inventoryserializer.DB_NAME, "DELETE FROM inventory WHERE inventory_id = %s", [inventory_id])
 
+    @staticmethod
+    def create_from_request(data):
+        vehicle = data.get('vehicle')
+        store = data.get('store')
+        employee = data.get('employee')
+        status_val = data.get('status')
+        selling_info = data.get('selling_info') or None
+        if not vehicle or not store or not employee or status_val is None:
+            raise ValueError("Vehicle, store, employee, and status are required fields.")
+        new_id = inventoryserializer.create(vehicle, store, employee, status_val, selling_info)
+        return inventoryserializer.fetch_one(new_id)
+
+    @staticmethod
+    def update_from_request(inventory_id, data):
+        item = inventoryserializer.fetch_one(inventory_id)
+        if not item:
+            return None
+        vehicle = data.get('vehicle', item['vehicle'])
+        store = data.get('store', item['store'])
+        employee = data.get('employee', item['employee'])
+        status_val = data.get('status', item['status'])
+        selling_info = data.get('selling_info', item['selling_info'])
+        inventoryserializer.update(inventory_id, vehicle, store, employee, status_val, selling_info)
+        return inventoryserializer.fetch_one(inventory_id)
+
+    @staticmethod
+    def delete_by_id(inventory_id):
+        item = inventoryserializer.fetch_one(inventory_id)
+        if not item:
+            return False
+        inventoryserializer.delete(inventory_id)
+        return True
+
 class CountrySerializer:
     DB_NAME = 'default'
     @staticmethod
@@ -989,3 +1022,47 @@ class InvoiceSerializer:
     @staticmethod
     def delete(invoice_id):
         execute_cud_query(InvoiceSerializer.DB_NAME, "DELETE FROM invoice WHERE invoice_id = %s", [invoice_id])
+
+    @staticmethod
+    def create_from_request(data):
+        sell_id = data.get('sell_id')
+        invoice_date = data.get('invoice_date')
+        if not sell_id or not invoice_date:
+            raise ValueError('sell_id and invoice_date are required.')
+        existing = InvoiceSerializer.fetch_by_sell_id(sell_id)
+        if existing:
+            raise ValueError(f'An invoice (#{existing["invoice_id"]}) already exists for sale #{sell_id}.')
+        
+        new_id = InvoiceSerializer.create(
+            sell_id=sell_id,
+            invoice_date=invoice_date,
+            due_date=data.get('due_date') or None,
+            payment_status=data.get('payment_status', 'Paid'),
+            payment_method=data.get('payment_method', 'Cash'),
+            discount_amount=data.get('discount_amount', 0),
+            notes=data.get('notes') or None
+        )
+        return InvoiceSerializer.fetch_one(new_id)
+
+    @staticmethod
+    def update_from_request(invoice_id, data):
+        item = InvoiceSerializer.fetch_one(invoice_id)
+        if not item:
+            return None
+        invoice_date = data.get('invoice_date', item['invoice_date'])
+        due_date = data.get('due_date', item.get('due_date')) or None
+        payment_status = data.get('payment_status', item['payment_status'])
+        payment_method = data.get('payment_method', item['payment_method'])
+        discount_amount = data.get('discount_amount', item['discount_amount'])
+        notes = data.get('notes', item.get('notes')) or None
+        
+        InvoiceSerializer.update(invoice_id, invoice_date, due_date, payment_status, payment_method, discount_amount, notes)
+        return InvoiceSerializer.fetch_one(invoice_id)
+
+    @staticmethod
+    def delete_by_id(invoice_id):
+        item = InvoiceSerializer.fetch_one(invoice_id)
+        if not item:
+            return False
+        InvoiceSerializer.delete(invoice_id)
+        return True

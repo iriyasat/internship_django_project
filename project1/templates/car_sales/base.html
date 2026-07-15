@@ -97,6 +97,15 @@
             </li>
             {% endif %}
             <li>
+              <a class="dropdown-item d-flex align-items-center" href="{% url 'documentation' %}">
+                <i class="bi bi-file-earmark-code"></i>
+                <span>API Documentation</span>
+              </a>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
               <form action="{% url 'logout' %}" method="post" style="margin: 0; padding: 0;">
                 {% csrf_token %}
                 <button type="submit" class="dropdown-item d-flex align-items-center"
