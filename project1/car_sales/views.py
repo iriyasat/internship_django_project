@@ -972,5 +972,3 @@ def documentation_view(request):
         'active_tab': 'documentation',
         'base_url': base_url,
     })
-
-
