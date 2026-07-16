@@ -3,6 +3,8 @@ import random
 from rest_framework import serializers
 from .models import *
 from django.db import connections
+from django.db import transaction
+
 
 # ─── Query Helper Operations ───
 
@@ -245,7 +247,7 @@ class inventoryserializer:
         if limit is not None and limit >= 0:
             limit_clause = "LIMIT %s OFFSET %s"
             query_params.extend([limit, offset])
-        query += f" ORDER BY i.inventory_id ASC {limit_clause}"
+        query += f" ORDER BY i.inventory_id DESC {limit_clause}"
 
         with connections[inventoryserializer.DB_NAME].cursor() as cursor:
             cursor.execute(count_query, params)
@@ -436,7 +438,7 @@ class VehicleInfoSerializer:
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
         return execute_raw_sql_query(
             VehicleInfoSerializer.DB_NAME,
-            "SELECT vi.id, vi.vehicle_model, vi.make_id AS make, vi.mmr, vi.trim, vi.body, vi.transmission, vi.vin, vi.state, vi.condition, vi.odometer, vi.color, vi.interior, ii.make_name, vi.created_at, vi.updated_at FROM vehicle_info vi INNER JOIN industry_info ii ON vi.make_id = ii.make_id WHERE 1=1",
+            "SELECT vi.id, vi.vehicle_model, vi.make_id AS make, vi.mmr, vi.trim, vi.body, vi.transmission, vi.vin, vi.state, vi.condition, vi.odometer, vi.color, vi.interior, ii.make_name, vi.created_at, vi.updated_at FROM vehicle_info vi INNER JOIN industry_info ii ON vi.make_id = ii.make_id WHERE 1=1 ORDER BY vi.id DESC",
             "SELECT COUNT(*) FROM vehicle_info vi INNER JOIN industry_info ii ON vi.make_id = ii.make_id WHERE 1=1",
             'vi', {'make': 'make_id'}, ['vehicle_model', 'ii.make_name', 'vin', 'color'], limit, offset, search, None, None, None, None, filters
         )
@@ -493,7 +495,7 @@ class CustomerInfoSerializer:
         INNER JOIN city c ON ci.city_id = c.city_id
         INNER JOIN country co ON ci.country_id = co.country_id
         WHERE {where_str}
-        ORDER BY ci.customer_id ASC
+        ORDER BY ci.customer_id DESC
         {limit_clause}
         """
         count_query = f"SELECT COUNT(*) FROM customer_info ci INNER JOIN city c ON ci.city_id = c.city_id INNER JOIN country co ON ci.country_id = co.country_id WHERE {where_str}"
@@ -567,7 +569,7 @@ class SellingInfoSerializer:
         INNER JOIN employee e ON si.employee_id = e.employee_id
         INNER JOIN store s ON si.store_id = s.store_id
         WHERE {where_str}
-        ORDER BY si.sell_id ASC
+        ORDER BY si.sell_id DESC
         {limit_clause}
         """
         count_query = f"""
@@ -635,7 +637,7 @@ class SellingInfoSerializer:
         monthly_query = f"""
             SELECT DATE_FORMAT(si.selling_date, '%%Y-%%m-01') AS month, COUNT(si.sell_id) AS count, SUM(si.selling_price) AS revenue
             FROM selling_info si
-            WHERE {where_str} GROUP BY DATE_FORMAT(si.selling_date, '%%Y-%%m-01') ORDER BY month ASC
+            WHERE {where_str} GROUP BY DATE_FORMAT(si.selling_date, '%%Y-%%m-01') ORDER BY month DESC
         """
         with connections[SellingInfoSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(stats_query, params)
@@ -718,7 +720,7 @@ class EmployeeBudgetSerializer:
         INNER JOIN employee e ON eb.employee_id = e.employee_id
         INNER JOIN store s ON eb.store_id = s.store_id
         WHERE {where_str}
-        ORDER BY eb.id ASC
+        ORDER BY eb.id DESC
         {limit_clause}
         """
         count_query = f"SELECT COUNT(*) FROM employee_budget eb INNER JOIN employee e ON eb.employee_id = e.employee_id INNER JOIN store s ON eb.store_id = s.store_id WHERE {where_str}"
@@ -811,7 +813,7 @@ class EmployeeSerializer:
         INNER JOIN city ci ON e.city_id = ci.city_id
         INNER JOIN country co ON e.country_id = co.country_id
         WHERE {where_str}
-        ORDER BY e.employee_id ASC
+        ORDER BY e.employee_id DESC
         {limit_clause}
         """
         count_query = f"SELECT COUNT(*) FROM employee e INNER JOIN employee_role er ON e.employee_role = er.role_id INNER JOIN employee_status es ON e.status = es.status_id INNER JOIN store s ON e.store_id = s.store_id INNER JOIN city ci ON e.city_id = ci.city_id INNER JOIN country co ON e.country_id = co.country_id WHERE {where_str}"
@@ -864,7 +866,7 @@ class budgetvssalesserializer:
         LEFT JOIN store s on eb.store_id=s.store_id
         WHERE eb.budget_year = %s and eb.budget_month = %s AND si.selling_date BETWEEN %s AND %s 
         GROUP BY si.employee_id, e.first_name, e.last_name, s.store_id, s.store_name, eb.budget_amount
-        ORDER BY si.employee_id ASC
+        ORDER BY si.employee_id DESC
         """
         data = execute_raw_fetch_all(budgetvssalesserializer.DB_NAME, query, [year_val, month_val, dt_from, dt_to])
         for item in data:
@@ -1045,7 +1047,6 @@ class InvoiceSerializer:
             if not inventory_id or not customer or not employee or selling_price is None:
                 raise ValueError('To create an invoice from scratch, inventory_id, customer, employee, and selling_price are required.')
 
-            from django.db import transaction
             with transaction.atomic():
                 # Fetch inventory details
                 inv_item = inventoryserializer.fetch_one(inventory_id)
