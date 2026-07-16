@@ -392,7 +392,85 @@ h6,
   color: var(--text-title) !important;
 }
 
-
 .input-group-append {
   cursor: pointer;
+}
+
+/* ─── Custom Datatable Column Controls (DTCC) ─── */
+.card .table thead th,
+table.table thead th,
+th {
+  position: relative;
+  transition: background-color 0.2s ease;
+  white-space: nowrap !important;
+}
+
+th:hover {
+  background-color: var(--table-row-hover) !important;
+}
+
+.dtcc {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.dtcc-button {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  outline: none;
+  line-height: 1;
+}
+
+.dtcc-button:hover {
+  background-color: rgba(65, 84, 241, 0.1);
+  color: #4154f1;
+  transform: translateY(-1px);
+}
+
+.dtcc-button:active {
+  transform: translateY(0);
+}
+
+.dtcc-button-icon svg {
+  display: block;
+  transition: stroke 0.2s ease, transform 0.25s ease-in-out;
+}
+
+/* Active sorting state */
+.dtcc-button_order.dtcc-button_active {
+  background-color: #4154f1 !important;
+  color: #ffffff !important;
+}
+
+.dtcc-button_order.dtcc-button_active .dtcc-button-icon svg {
+  stroke: #ffffff;
+}
+
+.dtcc-button_order.dtcc-button_active.dtcc-button_desc svg {
+  transform: rotate(180deg);
+}
+
+/* Screen reader text (A11y support) */
+.dtcc-button-text,
+.dtcc-button-state,
+.dtcc-button-extra {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }

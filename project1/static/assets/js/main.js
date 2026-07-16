@@ -352,4 +352,173 @@
     }
   };
 
+  // ─── Datatable Column Controls (DTCC) & Column Sorting ───
+
+  function getCellValue(row, index) {
+    const cell = row.cells[index];
+    if (!cell) return '';
+    return (cell.innerText || cell.textContent).trim();
+  }
+
+  function cleanNumericValue(val) {
+    let clean = val.replace(/[\$,%]/g, '').trim();
+    if (clean.startsWith('(') && clean.endsWith(')')) {
+      clean = '-' + clean.substring(1, clean.length - 1);
+    }
+    return clean;
+  }
+
+  function parseValue(val) {
+    if (!val) return '';
+    const clean = cleanNumericValue(val);
+    const num = Number(clean);
+    if (clean !== '' && !isNaN(num)) {
+      return num;
+    }
+    if (val.length > 5 && (val.includes('-') || val.includes('/') || /[a-zA-Z]/.test(val))) {
+      const parsedDate = Date.parse(val);
+      if (!isNaN(parsedDate)) {
+        return parsedDate;
+      }
+    }
+    return val.toLowerCase();
+  }
+
+  function sortTableColumn(table, colIndex, asc) {
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length === 0) return;
+    if (rows.length === 1 && rows[0].querySelector('td[colspan]')) return;
+
+    rows.sort((rowA, rowB) => {
+      const valA = getCellValue(rowA, colIndex);
+      const valB = getCellValue(rowB, colIndex);
+
+      const isSpecialA = valA === '' || valA.toLowerCase() === 'n/a';
+      const isSpecialB = valB === '' || valB.toLowerCase() === 'n/a';
+      if (isSpecialA && !isSpecialB) return 1;
+      if (!isSpecialA && isSpecialB) return -1;
+      if (isSpecialA && isSpecialB) return 0;
+
+      const parsedA = parseValue(valA);
+      const parsedB = parseValue(valB);
+
+      if (typeof parsedA === 'number' && typeof parsedB === 'number') {
+        return asc ? parsedA - parsedB : parsedB - parsedA;
+      }
+
+      const strA = String(parsedA);
+      const strB = String(parsedB);
+      return asc 
+        ? strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' })
+        : strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+  }
+
+  function initSingleTable(table) {
+    if (table._dtccInitialized) return;
+    table._dtccInitialized = true;
+
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+
+    const headers = thead.querySelectorAll('tr:last-child th');
+    headers.forEach((th, colIndex) => {
+      const headerText = th.textContent.trim().toLowerCase();
+      if (headerText === 'actions' || headerText === 'action' || th.classList.contains('no-sort')) {
+        return;
+      }
+
+      if (th.querySelector('.dtcc')) return;
+
+      th.style.position = 'relative';
+      th.style.cursor = 'pointer';
+
+      const dtccSpan = document.createElement('span');
+      dtccSpan.className = 'dtcc';
+      dtccSpan.innerHTML = `
+        <button class="dtcc-button dtcc-button_order" type="button" aria-label="Toggle ordering" title="Sort Column">
+          <span class="dtcc-button-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 8 4-4 4 4"></path>
+              <path d="m11 16-4 4-4-4"></path>
+              <path d="M7 4v16"></path>
+              <path d="M15 8h6"></path>
+              <path d="M15 16h6"></path>
+              <path d="M13 12h8"></path>
+            </svg>
+          </span>
+          <span class="dtcc-button-text">Toggle ordering</span>
+          <span class="dtcc-button-state"></span>
+          <span class="dtcc-button-extra"></span>
+        </button>
+      `;
+
+      th.appendChild(dtccSpan);
+
+      let sortAsc = true;
+      const orderBtn = dtccSpan.querySelector('.dtcc-button_order');
+
+      function triggerSort(asc) {
+        sortTableColumn(table, colIndex, asc);
+        
+        thead.querySelectorAll('.dtcc-button_order').forEach(btn => {
+          btn.classList.remove('dtcc-button_active', 'dtcc-button_desc');
+        });
+
+        orderBtn.classList.add('dtcc-button_active');
+        if (!asc) {
+          orderBtn.classList.add('dtcc-button_desc');
+        }
+      }
+
+      orderBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerSort(sortAsc);
+        sortAsc = !sortAsc;
+      });
+
+      th.addEventListener('click', (e) => {
+        if (e.target.closest('button')) {
+          return;
+        }
+        orderBtn.click();
+      });
+    });
+  }
+
+  function initTableSorting() {
+    const tables = document.querySelectorAll('table.table:not(.datatable)');
+    tables.forEach(table => initSingleTable(table));
+  }
+
+  function observeDynamicTables() {
+    const main = document.getElementById('main') || document.body;
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          
+          if (node.matches && node.matches('table.table:not(.datatable)')) {
+            initSingleTable(node);
+          }
+          
+          if (node.querySelectorAll) {
+            const tables = node.querySelectorAll('table.table:not(.datatable)');
+            tables.forEach(table => initSingleTable(table));
+          }
+        });
+      });
+    });
+    observer.observe(main, { childList: true, subtree: true });
+  }
+
+  // Run initial setup
+  initTableSorting();
+  observeDynamicTables();
+
 })();

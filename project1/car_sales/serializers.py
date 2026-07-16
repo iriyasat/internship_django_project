@@ -988,12 +988,9 @@ class InvoiceSerializer:
             discount_amount = 0
             discount_pct = 0.00
 
-        import random
-        while True:
-            candidate = random.randint(1000000, 9999999)
-            if not execute_fetchone_query(InvoiceSerializer.DB_NAME, "SELECT 1 FROM invoice WHERE invoice_id = %s", [candidate]):
-                invoice_id = candidate
-                break
+        row_max = execute_fetchone_query(InvoiceSerializer.DB_NAME, "SELECT MAX(invoice_id) AS max_id FROM invoice")
+        max_id = row_max['max_id'] if (row_max and row_max['max_id'] is not None) else 3999
+        invoice_id = max_id + 1
 
         query = """
         INSERT INTO invoice (invoice_id, sell_id, customer_id, employee_id, store_id, invoice_date, due_date, payment_status, payment_method, mmr, discount_amount, discount_pct, notes, created_at, updated_at)
