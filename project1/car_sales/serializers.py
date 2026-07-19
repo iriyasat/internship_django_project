@@ -290,8 +290,7 @@ class inventoryserializer:
         """
         params = []
         if store_id is not None:
-            query += " AND i.store_id = %s"
-            params.append(store_id)
+            query += format_store_filter("i.store_id", store_id, params)
         query += format_employee_filter("i.employee_id", employee_id, params)
         if search:
             query += " AND (i.inventory_id LIKE %s OR vi.vehicle_model LIKE %s OR vi.vin LIKE %s OR ii.make_name LIKE %s OR s.store_name LIKE %s OR e.first_name LIKE %s OR e.last_name LIKE %s)"
@@ -518,8 +517,10 @@ class CustomerInfoSerializer:
         where_clauses = ["1=1"]
         params = []
         if store_id is not None:
-            where_clauses.append("EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.store_id = %s)")
-            params.append(store_id)
+            store_clause = format_store_filter("si.store_id", store_id, params)
+            where_clauses.append(
+                "EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id" + store_clause + ")"
+            )
         if employee_id is not None:
             if isinstance(employee_id, (list, tuple, set)):
                 if len(employee_id) == 1:
@@ -595,9 +596,7 @@ class SellingInfoSerializer:
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
         where_clauses = ["1=1"]
         params = []
-        if store_id is not None:
-            where_clauses.append("si.store_id = %s")
-            params.append(store_id)
+        add_store_clause(where_clauses, params, "si.store_id", store_id)
         add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
 
         field_map = {'customer': 'si.customer_id', 'vehicle': 'si.vehicle_id', 'employee': 'si.employee_id', 'store': 'si.store_id'}
@@ -672,9 +671,7 @@ class SellingInfoSerializer:
     def fetch_dashboard_stats(store_id=None, employee_id=None):
         where_clauses = ["1=1"]
         params = []
-        if store_id is not None:
-            where_clauses.append("si.store_id = %s")
-            params.append(store_id)
+        add_store_clause(where_clauses, params, "si.store_id", store_id)
         add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
         where_str = " AND ".join(where_clauses)
 
@@ -750,9 +747,7 @@ class EmployeeBudgetSerializer:
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
         where_clauses = ["1=1"]
         params = []
-        if store_id is not None:
-            where_clauses.append("eb.store_id = %s")
-            params.append(store_id)
+        add_store_clause(where_clauses, params, "eb.store_id", store_id)
         add_employee_clause(where_clauses, params, "eb.employee_id", employee_id)
 
         field_map = {'employee': 'eb.employee_id', 'store': 'eb.store_id', 'budget_year': 'eb.budget_year', 'budget_month': 'eb.budget_month'}
@@ -837,9 +832,7 @@ class EmployeeSerializer:
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
         where_clauses = ["1=1"]
         params = []
-        if store_id is not None:
-            where_clauses.append("e.store_id = %s")
-            params.append(store_id)
+        add_store_clause(where_clauses, params, "e.store_id", store_id)
         add_employee_clause(where_clauses, params, "e.employee_id", employee_id)
 
         field_map = {'employee_role': 'e.employee_role', 'status': 'e.status', 'store': 'e.store_id', 'city': 'e.city_id', 'country': 'e.country_id'}
@@ -943,9 +936,7 @@ class InvoiceSerializer:
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
         where_clauses = ['1=1']
         params = []
-        if store_id is not None:
-            where_clauses.append('si.store_id = %s')
-            params.append(store_id)
+        add_store_clause(where_clauses, params, 'si.store_id', store_id)
         add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
 
         field_map = {'payment_status': 'inv.payment_status', 'payment_method': 'inv.payment_method', 'sell_id': 'inv.sell_id'}

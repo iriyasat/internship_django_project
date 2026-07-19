@@ -38,13 +38,73 @@ def get_employee_profile(request):
 
 from .utils import get_user_filters, is_manager as check_is_manager
 
+
+def _in_scope(value, allowed):
+    """Return whether a scalar database value is included in an access filter."""
+    if allowed is None:
+        return True
+    if isinstance(allowed, (list, tuple, set)):
+        return value in allowed
+    return value == allowed
+
+
+def _has_scoped_access(request, store_id=None, employee_id=None):
+    """Single source of truth for showroom/country and own-record checks."""
+    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
+        return True
+    profile = get_employee_profile(request)
+    if not profile:
+        return False
+    allowed_stores, allowed_employees = get_user_filters(request, profile)
+    return _in_scope(store_id, allowed_stores) and _in_scope(employee_id, allowed_employees)
+
+
+def _payload_is_in_scope(request, model_name, data):
+    """Prevent a valid user from submitting another showroom's IDs in a write."""
+    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
+        return True
+    profile = get_employee_profile(request)
+    if not profile:
+        return False
+
+    store_id = data.get('store')
+    employee_id = data.get('employee')
+    if model_name == 'Employee':
+        store_id = data.get('store')
+        employee_id = data.get('employee_id')
+    elif model_name == 'Invoice':
+        employee_id = data.get('employee')
+        selling_info_id = data.get('selling_info') or data.get('sell_id')
+        if selling_info_id:
+            sale = SellingInfoSerializer.fetch_one(selling_info_id)
+            if not sale:
+                return False
+            store_id = sale['store']
+            employee_id = sale['employee']
+
+    if store_id not in (None, ''):
+        try:
+            if not _has_scoped_access(request, store_id=int(store_id)):
+                return False
+        except (TypeError, ValueError):
+            return False
+    if employee_id not in (None, ''):
+        try:
+            # Only own-data roles have an employee filter.  Store-level roles
+            # are allowed to work with any employee in their permitted showroom.
+            if not _has_scoped_access(request, employee_id=int(employee_id)):
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
+
 def check_analytical_access_and_get_params(request):
     if not request.user.is_authenticated:
         return None, None, None, Response(
             {"status": False, "message": "Authentication required."},
             status=status.HTTP_401_UNAUTHORIZED
         )
-    is_allowed = request.user.is_superuser or request.user.is_staff
+    is_allowed = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
     profile = get_employee_profile(request)
     if not is_allowed and profile:
         if check_is_manager(profile.employee_id):
@@ -70,7 +130,7 @@ def check_analytical_access_and_get_params(request):
 
 def check_analytical_page_access(request):
     profile = get_employee_profile(request)
-    is_allowed = request.user.is_superuser or request.user.is_staff
+    is_allowed = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
     if not is_allowed and profile:
         if check_is_manager(profile.employee_id):
             is_allowed = True
@@ -86,87 +146,40 @@ def render_analytical_page(request, template, active_tab):
 def check_record_permission(request, model_class, record):
     if not request.user.is_authenticated:
         return False
-    if request.user.is_superuser:
-        return True
-    profile = get_employee_profile(request)
-    store_id, employee_id = get_user_filters(request, profile)
-    if store_id is None and employee_id is None:
+    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
         return True
 
     model_name = model_class.__name__
 
     if model_name == 'Store':
-        r_store_id = record.get('store_id')
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store_id'))
 
     elif model_name == 'Employee':
-        r_employee_id = record.get('employee_id')
-        r_store_id = record.get('store')
-        if employee_id is not None:
-            if isinstance(employee_id, (list, tuple, set)):
-                if r_employee_id not in employee_id:
-                    return False
-            elif r_employee_id != employee_id:
-                return False
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee_id'))
 
     elif model_name == 'CustomerInfo':
-        customer_id = record.get('customer_id')
+        profile = get_employee_profile(request)
+        if not profile:
+            return False
+        store_id, employee_id = get_user_filters(request, profile)
+        sales = SellingInfo.objects.filter(customer_id=record.get('customer_id'))
+        if store_id is not None:
+            sales = sales.filter(store_id__in=store_id) if isinstance(store_id, (list, tuple, set)) else sales.filter(store_id=store_id)
         if employee_id is not None:
-            has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
-            if has_sales:
-                if isinstance(employee_id, (list, tuple, set)):
-                    if not SellingInfo.objects.filter(customer_id=customer_id, employee_id__in=employee_id).exists():
-                        return False
-                elif not SellingInfo.objects.filter(customer_id=customer_id, employee_id=employee_id).exists():
-                    return False
-        elif store_id is not None:
-            has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
-            if has_sales and not SellingInfo.objects.filter(customer_id=customer_id, store_id=store_id).exists():
-                return False
+            sales = sales.filter(employee_id__in=employee_id) if isinstance(employee_id, (list, tuple, set)) else sales.filter(employee_id=employee_id)
+        return sales.exists()
 
     elif model_name == 'SellingInfo':
-        r_employee_id = record.get('employee')
-        r_store_id = record.get('store')
-        if employee_id is not None:
-            if isinstance(employee_id, (list, tuple, set)):
-                if r_employee_id not in employee_id:
-                    return False
-            elif r_employee_id != employee_id:
-                return False
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
 
     elif model_name == 'Invoice':
-        r_employee_id = record.get('employee_id')
-        r_store_id = record.get('store_id')
-        if employee_id is not None:
-            if isinstance(employee_id, (list, tuple, set)):
-                if r_employee_id not in employee_id:
-                    return False
-            elif r_employee_id != employee_id:
-                return False
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store_id'), employee_id=record.get('employee_id'))
 
     elif model_name == 'Inventory':
-        r_store_id = record.get('store')
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
 
     elif model_name == 'EmployeeBudget':
-        r_employee_id = record.get('employee')
-        r_store_id = record.get('store')
-        if employee_id is not None:
-            if isinstance(employee_id, (list, tuple, set)):
-                if r_employee_id not in employee_id:
-                    return False
-            elif r_employee_id != employee_id:
-                return False
-        if store_id is not None and r_store_id != store_id:
-            return False
+        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
 
     return True
 
@@ -174,13 +187,13 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
     if not request.user.is_authenticated:
         return False, "Authentication required."
 
-    if request.user.is_superuser:
+    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
         return True, None
 
     profile = get_employee_profile(request)
     is_manager = False
     if profile:
-        is_manager = check_is_manager(profile.employee_id) or request.user.is_staff or request.user.is_superuser
+        is_manager = check_is_manager(profile.employee_id) or request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
 
     # Get user filters
     store_id, employee_id = get_user_filters(request, profile)
@@ -628,16 +641,11 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         if store_field or employee_field:
             profile = get_employee_profile(request)
             if profile and not request.user.is_superuser:
-                role = profile.employee_role.role_name if profile.employee_role else ""
-                if role not in ["Regional Sales Manager", "Customer Relations Officer"]:
-                    if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
-                        if store_field:
-                            store_id = profile.store.store_id
-                    else:
-                        if employee_field:
-                            employee_id = profile.employee_id
-                        elif store_field:
-                            store_id = profile.store.store_id
+                allowed_stores, allowed_employees = get_user_filters(request, profile)
+                if store_field:
+                    store_id = allowed_stores
+                if employee_field:
+                    employee_id = allowed_employees
         filters = {}
         for key, value in request.GET.items():
             if key in ['page', 'page_size', 'search']:

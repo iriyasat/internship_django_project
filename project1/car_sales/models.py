@@ -67,8 +67,47 @@ class Store(models.Model):
 class EmployeeRole(models.Model):
     role_id = models.AutoField(primary_key=True, verbose_name="Role ID")
     role_name = models.CharField(max_length=100, unique=True, verbose_name="Role Name")
+    
+    class AccessLevel(models.TextChoices):
+        COUNTRY = 'country', 'Country-level'
+        STORE = 'store', 'Store-level'
+        OWN = 'own', 'Own-data-only'
+
+    access_level = models.CharField(
+        max_length=50,
+        choices=AccessLevel.choices,
+        default=AccessLevel.OWN,
+        verbose_name="Access Level"
+    )
     created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def save(self, *args, **kwargs):
+        if self.role_name:
+            store_level_managers = [
+                "Branch Manager",
+                "Sales Manager",
+                "Showroom Manager",
+                "Fleet Sales Specialist",
+                "Senior Sales Executive",
+                "Finance & Insurance Officer",
+                "Customer Relations Officer",
+            ]
+            if self.role_name == "Regional Sales Manager":
+                if self.access_level == EmployeeRole.AccessLevel.OWN:
+                    self.access_level = EmployeeRole.AccessLevel.COUNTRY
+            elif self.role_name in store_level_managers:
+                if self.access_level == EmployeeRole.AccessLevel.OWN:
+                    self.access_level = EmployeeRole.AccessLevel.STORE
+            elif self.role_name in ["Sales Executive", "Pre-Owned Vehicle Specialist"]:
+                if self.access_level == EmployeeRole.AccessLevel.OWN:
+                    self.access_level = EmployeeRole.AccessLevel.OWN
+            else:
+                role_lower = self.role_name.lower()
+                if "manager" in role_lower or "admin" in role_lower:
+                    if self.access_level == EmployeeRole.AccessLevel.OWN:
+                        self.access_level = EmployeeRole.AccessLevel.STORE
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.role_name

@@ -20,6 +20,7 @@ def is_manager(employee_id):
     Checks if the employee is a manager. An employee is a manager if:
     1. They have any subordinates in the hierarchy.
     2. Or their role name contains 'manager' or 'admin'.
+    3. Or their role is explicitly marked as a manager in the database.
     """
     if not employee_id:
         return False
@@ -39,14 +40,18 @@ def is_manager(employee_id):
     except Exception:
         pass
         
-    # Check the employee's role name
+    # Check the employee's role name and db settings
     try:
         from .models import Employee
         employee = Employee.objects.select_related('employee_role').get(employee_id=employee_id)
-        role_name = employee.employee_role.role_name.lower()
-        return "manager" in role_name or "admin" in role_name
+        if employee.employee_role:
+            if employee.employee_role.access_level in ('country', 'store'):
+                return True
+            role_name = employee.employee_role.role_name.lower()
+            return "manager" in role_name or "admin" in role_name
     except Exception:
-        return False
+        pass
+    return False
 
 def get_country_store_ids(country_id):
     """
@@ -57,50 +62,44 @@ def get_country_store_ids(country_id):
 
 def get_user_filters(request, profile):
     """
-    Determines store_id and employee_id filters based on the role hierarchy.
-
-    Role access levels:
-    - Regional Sales Manager (L1): country-level → store_id = list of all stores in their country
-    - Branch Manager (L2):         store-level   → store_id = their store, employee_id = None
-    - Sales Manager (L3):          store-level   → store_id = their store, employee_id = None
-    - Showroom Manager (L4):       store-level   → store_id = their store, employee_id = None
-    - Fleet Sales Specialist (L4): store-level   → store_id = their store, employee_id = None
-    - Senior Sales Executive (L5): store-level   → store_id = their store, employee_id = None
-    - Finance & Insurance Officer (L5): store-level → store_id = their store, employee_id = None
-    - Customer Relations Officer (L5):  store-level → store_id = their store, employee_id = None
-    - Sales Executive (L6):        own data only → store_id = their store, employee_id = [self]
-    - Pre-Owned Vehicle Specialist (L7): own data only → store_id = their store, employee_id = [self]
+    Determines store_id and employee_id filters based on the role hierarchy dynamically.
     """
     store_id = None
     employee_id = None
 
-    if profile and not request.user.is_superuser:
-        role = profile.employee_role.role_name if profile.employee_role else ""
+    # Superusers and Django staff are the Country Head / administrator accounts.
+    # We do not let employee-based users who have in-memory is_staff=True bypass
+    # these filters, keeping them restricted to their dynamic role configuration.
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
 
-        # L1 — Regional Sales Manager: country-level access
-        if role == "Regional Sales Manager":
+    if profile and not is_admin:
+        role = profile.employee_role
+        if not role:
+            # If an employee has no role, restrict to empty scope
+            return [], []
+
+        access_level = role.access_level
+
+        # Country-level access
+        if access_level == 'country':
             country_store_ids = get_country_store_ids(profile.country_id)
-            # None means "no filter" (global). A list restricts to those stores.
             # If somehow no stores found, fall back to their own store.
             store_id = country_store_ids if country_store_ids else [profile.store.store_id]
             return store_id, None
 
-        # Roles with store-level access (can see all data within their assigned store)
-        store_level_roles = [
-            "Branch Manager",            # L2
-            "Sales Manager",             # L3
-            "Showroom Manager",          # L4
-            "Fleet Sales Specialist",    # L4
-            "Senior Sales Executive",    # L5
-            "Finance & Insurance Officer",  # L5
-            "Customer Relations Officer",   # L5 (previously global; now store-level)
-        ]
-        if role in store_level_roles:
+        # Store-level access
+        elif access_level == 'store':
             return profile.store.store_id, None
 
-        # Roles with own-data-only access (Sales Executive L6, Pre-Owned Vehicle Specialist L7)
-        # These can see only their own records within their store.
-        store_id = profile.store.store_id
-        employee_id = [profile.employee_id]
+        # Own-data-only access
+        elif access_level == 'own':
+            store_id = profile.store.store_id
+            employee_id = [profile.employee_id]
+            return store_id, employee_id
 
+        # Unknown access level
+        return [], []
+
+    if not is_admin:
+        return [], []
     return store_id, employee_id
