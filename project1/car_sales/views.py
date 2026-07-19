@@ -187,17 +187,16 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
     if not request.user.is_authenticated:
         return False, "Authentication required."
 
-    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if is_admin:
         return True, None
 
     profile = get_employee_profile(request)
-    is_manager = False
-    if profile:
-        is_manager = check_is_manager(profile.employee_id) or request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not profile:
+        return False, "Profile not found."
 
-    # Get user filters
+    is_manager = check_is_manager(profile.employee_id)
     store_id, employee_id = get_user_filters(request, profile)
-
     model_name = model_class.__name__
 
     if action == 'GET':
@@ -209,33 +208,24 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
         return True, None
 
     if action in ['POST', 'PUT']:
-        admin_models = ['Country', 'City', 'Store', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo', 'VehicleInfo', 'EmployeeBudget']
+        admin_models = ['Country', 'City', 'Store', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo', 'VehicleInfo']
         if model_name in admin_models:
-            if not is_manager:
-                return False, f"Permission denied. Only managers and administrators can modify {model_class._meta.verbose_name} data."
-            return True, None
+            return False, f"Permission denied. Only administrators can modify {model_class._meta.verbose_name} data."
 
         if model_name == 'Employee':
-            if is_manager:
-                if store_id is not None and data:
-                    emp_store = data.get('store')
-                    if emp_store and int(emp_store) != store_id:
+            if not is_manager:
+                return False, "Permission denied. Only managers and administrators can add/update employees."
+            if data:
+                emp_store = data.get('store')
+                if store_id is not None and emp_store is not None:
+                    if isinstance(store_id, (list, tuple, set)):
+                        if int(emp_store) not in store_id:
+                            return False, "Permission denied. You cannot modify/create an employee for a different store."
+                    elif int(emp_store) != store_id:
                         return False, "Permission denied. You cannot modify/create an employee for a different store."
-                return True, None
-            # Regular employees can only modify their own profile
-            if action == 'PUT' and pk is not None and profile and pk == profile.employee_id:
-                if data:
-                    if 'employee_role' in data and int(data['employee_role']) != profile.employee_role.role_id:
-                        return False, "Permission denied. You cannot change your own employee role."
-                    if 'status' in data and int(data['status']) != profile.status.status_id:
-                        return False, "Permission denied. You cannot change your own employee status."
-                    if 'store' in data and int(data['store']) != profile.store.store_id:
-                        return False, "Permission denied. You cannot change your own store."
-                return True, None
-            return False, "Permission denied. You can only modify your own employee profile."
+            return True, None
 
         if model_name == 'CustomerInfo':
-            # Any authenticated user can create or update customer info
             return True, None
 
         if model_name == 'SellingInfo':
@@ -248,8 +238,12 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
                             return False, "Permission denied. You can only record sales for yourself or your subordinates."
                     elif int(posted_employee) != employee_id:
                         return False, "Permission denied. You can only record sales for yourself."
-                if store_id is not None and posted_store is not None and int(posted_store) != store_id:
-                    return False, "Permission denied. You can only record sales for your store."
+                if store_id is not None and posted_store is not None:
+                    if isinstance(store_id, (list, tuple, set)):
+                        if int(posted_store) not in store_id:
+                            return False, "Permission denied. You can only record sales for your store."
+                    elif int(posted_store) != store_id:
+                        return False, "Permission denied. You can only record sales for your store."
             return True, None
 
         if model_name == 'Invoice':
@@ -266,16 +260,45 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
                                 return False, "Permission denied. You can only record sales for yourself or your subordinates."
                         elif int(posted_employee) != employee_id:
                             return False, "Permission denied. You can only record sales for yourself."
-                    if store_id is not None and inv_item['store'] != store_id:
-                        return False, "Permission denied. You can only sell vehicles from your assigned store."
+                    if store_id is not None:
+                        if isinstance(store_id, (list, tuple, set)):
+                            if inv_item['store'] not in store_id:
+                                return False, "Permission denied. You can only sell vehicles from your assigned store."
+                        elif inv_item['store'] != store_id:
+                            return False, "Permission denied. You can only sell vehicles from your assigned store."
             return True, None
 
         if model_name == 'Inventory':
-            # Creating inventory is restricted to managers
-            if action == 'POST':
-                if not is_manager:
-                    return False, "Permission denied. Only staff members can modify inventory data."
-            # PUT is allowed for all, but checked in view
+            if not is_manager:
+                return False, "Permission denied. Only managers can add or update inventory."
+            if data:
+                posted_store = data.get('store')
+                if store_id is not None and posted_store is not None:
+                    if isinstance(store_id, (list, tuple, set)):
+                        if int(posted_store) not in store_id:
+                            return False, "Permission denied. You cannot modify/create inventory for a different store."
+                    elif int(posted_store) != store_id:
+                        return False, "Permission denied. You cannot modify/create inventory for a different store."
+            return True, None
+
+        if model_name == 'EmployeeBudget':
+            if not is_manager:
+                return False, "Permission denied. Only managers can add or update budgets."
+            if data:
+                posted_store = data.get('store')
+                posted_employee = data.get('employee')
+                if store_id is not None and posted_store is not None:
+                    if isinstance(store_id, (list, tuple, set)):
+                        if int(posted_store) not in store_id:
+                            return False, "Permission denied. You can only set budget for your stores."
+                    elif int(posted_store) != store_id:
+                        return False, "Permission denied. You can only set budget for your store."
+                if employee_id is not None and posted_employee is not None:
+                    if isinstance(employee_id, (list, tuple, set)):
+                        if int(posted_employee) not in employee_id:
+                            return False, "Permission denied. You can only set budget for yourself or your subordinates."
+                    elif int(posted_employee) != employee_id:
+                        return False, "Permission denied. You can only set budget for yourself."
             return True, None
 
     return True, None
@@ -302,6 +325,11 @@ def index_view(request):
 @login_required
 def employee_view(request):
     profile = get_employee_profile(request)
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_manager = profile and profile.employee_role and profile.employee_role.access_level in ('country', 'store')
+    if not (is_admin or is_manager):
+        return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
+        
     store_id, _ = get_user_filters(request, profile)
     _, roles = EmployeeRoleSerializer.fetch(limit=-1)
     _, statuses = EmployeeStatusSerializer.fetch(limit=-1)
@@ -319,10 +347,16 @@ def employee_view(request):
 
 @login_required
 def country_view(request):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/country_view.html', {'active_tab': 'countries'})
 
 @login_required
 def city_view(request):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/city_view.html', {
         'active_tab': 'cities',
@@ -331,6 +365,11 @@ def city_view(request):
 
 @login_required
 def store_view(request):
+    profile = get_employee_profile(request)
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_manager = profile and profile.employee_role and profile.employee_role.access_level in ('country', 'store')
+    if not (is_admin or is_manager):
+        return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
     _, cities = CitySerializer.fetch(limit=-1)
     _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/store_view.html', {
@@ -341,14 +380,23 @@ def store_view(request):
 
 @login_required
 def role_view(request):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/role_view.html', {'active_tab': 'roles'})
 
 @login_required
 def status_view(request):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/status_view.html', {'active_tab': 'statuses'})
 
 @login_required
 def industry_view(request):
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/industry_view.html', {'active_tab': 'industry'})
 
 @login_required

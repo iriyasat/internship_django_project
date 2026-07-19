@@ -103,3 +103,37 @@ def get_user_filters(request, profile):
     if not is_admin:
         return [], []
     return store_id, employee_id
+
+def employee_context(request):
+    if not request.user.is_authenticated:
+        return {}
+        
+    from .views import get_employee_profile
+    profile = get_employee_profile(request)
+    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    
+    if is_admin:
+        return {
+            'employee_profile': None,
+            'access_level': 'global',
+            'is_manager': True,
+            'is_admin': True,
+        }
+        
+    if profile:
+        role = profile.employee_role
+        access_level = role.access_level if role else 'own'
+        is_manager = access_level in ('country', 'store')
+        return {
+            'employee_profile': profile,
+            'access_level': access_level,
+            'is_manager': is_manager,
+            'is_admin': False,
+        }
+        
+    return {
+        'employee_profile': None,
+        'access_level': 'own',
+        'is_manager': False,
+        'is_admin': False,
+    }

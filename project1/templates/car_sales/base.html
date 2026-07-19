@@ -152,13 +152,16 @@
 
       <li class="nav-heading">Car Sales Database</li>
 
+      {% if is_manager or is_admin %}
       <li class="nav-item">
         <a class="nav-link {% if active_tab == 'employees' %}{% else %}collapsed{% endif %}" href="/employees/">
           <i class="bi bi-people"></i>
           <span>Employees</span>
         </a>
       </li>
+      {% endif %}
 
+      {% if is_admin %}
       <li class="nav-item">
         <a class="nav-link {% if active_tab == 'countries' %}{% else %}collapsed{% endif %}" href="/countries/">
           <i class="bi bi-globe"></i>
@@ -172,14 +175,18 @@
           <span>Cities</span>
         </a>
       </li>
+      {% endif %}
 
+      {% if is_manager or is_admin %}
       <li class="nav-item">
         <a class="nav-link {% if active_tab == 'stores' %}{% else %}collapsed{% endif %}" href="/stores/">
           <i class="bi bi-shop"></i>
           <span>Stores</span>
         </a>
       </li>
+      {% endif %}
 
+      {% if is_admin %}
       <li class="nav-item">
         <a class="nav-link {% if active_tab == 'roles' %}{% else %}collapsed{% endif %}" href="/emproles/">
           <i class="bi bi-person-badge"></i>
@@ -200,6 +207,7 @@
           <span>Industry Info</span>
         </a>
       </li>
+      {% endif %}
 
       <li class="nav-item">
         <a class="nav-link {% if active_tab == 'vehicles' %}{% else %}collapsed{% endif %}" href="/vehicles/">
@@ -243,7 +251,7 @@
         </a>
       </li>
 
-      {% if request.user.is_staff or request.user.is_superuser %}
+      {% if is_manager or is_admin %}
       <li class="nav-item">
         <a class="nav-link {% if active_parent == 'api_pages' %}{% else %}collapsed{% endif %}"
           data-bs-target="#api-nav" data-bs-toggle="collapse" href="#">

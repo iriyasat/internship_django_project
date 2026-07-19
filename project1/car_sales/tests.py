@@ -456,10 +456,28 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
     """Test suite ensuring all HTML views and JSON API endpoints load correctly."""
 
     def test_frontend_pages_render_successfully(self):
-        """Verify that all main dashboard, listing, and report pages load (status 200)."""
+        """Verify that all main dashboard, listing, and report pages load (status 200) based on role permissions."""
+        # 1. Test junior employee (Sales Executive) permissions
         self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
-        urls = [
+        
+        # Allowed pages (should return 200)
+        junior_allowed_urls = [
             'home',
+            'vehicle',
+            'customer',
+            'selling',
+            'budget',
+        ]
+        for url_name in junior_allowed_urls:
+            url = reverse(url_name)
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 200,
+                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200 for junior."
+            )
+            
+        # Denied pages (should return 403)
+        junior_denied_urls = [
             'employee',
             'country',
             'city',
@@ -467,21 +485,54 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'emprole',
             'status',
             'industry',
+        ]
+        for url_name in junior_denied_urls:
+            url = reverse(url_name)
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 403,
+                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 403 for junior."
+            )
+        self.client.logout()
+
+        # 2. Test manager employee (Branch Manager) permissions
+        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+        
+        # Managers can view employees, stores, and dashboard, vehicles, customers, sales, budgets
+        manager_allowed_urls = [
+            'home',
+            'employee',
+            'store',
             'vehicle',
             'customer',
             'selling',
             'budget',
         ]
-        for url_name in urls:
+        for url_name in manager_allowed_urls:
             url = reverse(url_name)
             response = self.client.get(url)
             self.assertEqual(
                 response.status_code, 200,
-                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200."
+                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200 for manager."
             )
-
-        # Login as staff user for restricted API pages
-        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
+            
+        # Managers still cannot view country, city, emprole, status, industry (admin only)
+        manager_denied_urls = [
+            'country',
+            'city',
+            'emprole',
+            'status',
+            'industry',
+        ]
+        for url_name in manager_denied_urls:
+            url = reverse(url_name)
+            response = self.client.get(url)
+            self.assertEqual(
+                response.status_code, 403,
+                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 403 for manager."
+            )
+            
+        # Login as manager/staff user for restricted API pages (reports)
         restricted_urls = [
             'employee_sales_page_view',
             'store_sales_page_view',
@@ -496,6 +547,7 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
                 response.status_code, 200,
                 f"Restricted page reverse('{url_name}') returned status code {response.status_code} instead of 200."
             )
+        self.client.logout()
 
     def test_employee_sales_api_endpoints(self):
         """Verify that the employee sales API returns 200 for valid ranges and 400 for bad ranges."""
