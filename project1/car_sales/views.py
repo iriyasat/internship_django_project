@@ -36,17 +36,7 @@ def get_employee_profile(request):
             return None
     return None
 
-def get_user_filters(request, profile):
-    store_id = None
-    employee_id = None
-    if profile and not request.user.is_superuser:
-        role = profile.employee_role.role_name if profile.employee_role else ""
-        if role in ["Branch Manager", "Showroom Manager", "Sales Manager", "Finance & Insurance Officer"]:
-            store_id = profile.store.store_id
-        elif role not in ["Regional Sales Manager", "Customer Relations Officer"]:
-            employee_id = profile.employee_id
-            store_id = profile.store.store_id
-    return store_id, employee_id
+from .utils import get_user_filters, is_manager as check_is_manager
 
 def check_analytical_access_and_get_params(request):
     if not request.user.is_authenticated:
@@ -56,9 +46,8 @@ def check_analytical_access_and_get_params(request):
         )
     is_allowed = request.user.is_superuser or request.user.is_staff
     profile = get_employee_profile(request)
-    if not is_allowed and profile and profile.employee_role:
-        role = profile.employee_role.role_name.lower()
-        if "manager" in role or "admin" in role:
+    if not is_allowed and profile:
+        if check_is_manager(profile.employee_id):
             is_allowed = True
     if not is_allowed:
         return None, None, None, Response(
@@ -82,11 +71,11 @@ def check_analytical_access_and_get_params(request):
 def check_analytical_page_access(request):
     profile = get_employee_profile(request)
     is_allowed = request.user.is_superuser or request.user.is_staff
-    if not is_allowed and profile and profile.employee_role:
-        role = profile.employee_role.role_name.lower()
-        if "manager" in role or "admin" in role:
+    if not is_allowed and profile:
+        if check_is_manager(profile.employee_id):
             is_allowed = True
     return is_allowed
+
 
 def render_analytical_page(request, template, active_tab):
     if not check_analytical_page_access(request):
@@ -114,8 +103,12 @@ def check_record_permission(request, model_class, record):
     elif model_name == 'Employee':
         r_employee_id = record.get('employee_id')
         r_store_id = record.get('store')
-        if employee_id is not None and r_employee_id != employee_id:
-            return False
+        if employee_id is not None:
+            if isinstance(employee_id, (list, tuple, set)):
+                if r_employee_id not in employee_id:
+                    return False
+            elif r_employee_id != employee_id:
+                return False
         if store_id is not None and r_store_id != store_id:
             return False
 
@@ -123,8 +116,12 @@ def check_record_permission(request, model_class, record):
         customer_id = record.get('customer_id')
         if employee_id is not None:
             has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
-            if has_sales and not SellingInfo.objects.filter(customer_id=customer_id, employee_id=employee_id).exists():
-                return False
+            if has_sales:
+                if isinstance(employee_id, (list, tuple, set)):
+                    if not SellingInfo.objects.filter(customer_id=customer_id, employee_id__in=employee_id).exists():
+                        return False
+                elif not SellingInfo.objects.filter(customer_id=customer_id, employee_id=employee_id).exists():
+                    return False
         elif store_id is not None:
             has_sales = SellingInfo.objects.filter(customer_id=customer_id).exists()
             if has_sales and not SellingInfo.objects.filter(customer_id=customer_id, store_id=store_id).exists():
@@ -133,16 +130,24 @@ def check_record_permission(request, model_class, record):
     elif model_name == 'SellingInfo':
         r_employee_id = record.get('employee')
         r_store_id = record.get('store')
-        if employee_id is not None and r_employee_id != employee_id:
-            return False
+        if employee_id is not None:
+            if isinstance(employee_id, (list, tuple, set)):
+                if r_employee_id not in employee_id:
+                    return False
+            elif r_employee_id != employee_id:
+                return False
         if store_id is not None and r_store_id != store_id:
             return False
 
     elif model_name == 'Invoice':
         r_employee_id = record.get('employee_id')
         r_store_id = record.get('store_id')
-        if employee_id is not None and r_employee_id != employee_id:
-            return False
+        if employee_id is not None:
+            if isinstance(employee_id, (list, tuple, set)):
+                if r_employee_id not in employee_id:
+                    return False
+            elif r_employee_id != employee_id:
+                return False
         if store_id is not None and r_store_id != store_id:
             return False
 
@@ -154,8 +159,12 @@ def check_record_permission(request, model_class, record):
     elif model_name == 'EmployeeBudget':
         r_employee_id = record.get('employee')
         r_store_id = record.get('store')
-        if employee_id is not None and r_employee_id != employee_id:
-            return False
+        if employee_id is not None:
+            if isinstance(employee_id, (list, tuple, set)):
+                if r_employee_id not in employee_id:
+                    return False
+            elif r_employee_id != employee_id:
+                return False
         if store_id is not None and r_store_id != store_id:
             return False
 
@@ -169,8 +178,9 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
         return True, None
 
     profile = get_employee_profile(request)
-    role_name = (profile.employee_role.role_name.lower() if profile and profile.employee_role else "").strip()
-    is_manager = "manager" in role_name or "admin" in role_name or request.user.is_staff or role_name == "regional sales manager"
+    is_manager = False
+    if profile:
+        is_manager = check_is_manager(profile.employee_id) or request.user.is_staff or request.user.is_superuser
 
     # Get user filters
     store_id, employee_id = get_user_filters(request, profile)
@@ -219,8 +229,12 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
             if data:
                 posted_employee = data.get('employee')
                 posted_store = data.get('store')
-                if employee_id is not None and posted_employee is not None and int(posted_employee) != employee_id:
-                    return False, "Permission denied. You can only record sales for yourself."
+                if employee_id is not None and posted_employee is not None:
+                    if isinstance(employee_id, (list, tuple, set)):
+                        if int(posted_employee) not in employee_id:
+                            return False, "Permission denied. You can only record sales for yourself or your subordinates."
+                    elif int(posted_employee) != employee_id:
+                        return False, "Permission denied. You can only record sales for yourself."
                 if store_id is not None and posted_store is not None and int(posted_store) != store_id:
                     return False, "Permission denied. You can only record sales for your store."
             return True, None
@@ -233,8 +247,12 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
                     inv_item = inventoryserializer.fetch_one(posted_inventory)
                     if not inv_item:
                         return False, "Invalid inventory item referenced."
-                    if employee_id is not None and posted_employee is not None and int(posted_employee) != employee_id:
-                        return False, "Permission denied. You can only record sales for yourself."
+                    if employee_id is not None and posted_employee is not None:
+                        if isinstance(employee_id, (list, tuple, set)):
+                            if int(posted_employee) not in employee_id:
+                                return False, "Permission denied. You can only record sales for yourself or your subordinates."
+                        elif int(posted_employee) != employee_id:
+                            return False, "Permission denied. You can only record sales for yourself."
                     if store_id is not None and inv_item['store'] != store_id:
                         return False, "Permission denied. You can only sell vehicles from your assigned store."
             return True, None
@@ -821,9 +839,8 @@ def logout_view(request):
 
 class EmployeeBackend(BaseBackend):
     def _create_in_memory_user(self, employee, uid):
-        role_name = employee.employee_role.role_name.lower() if employee.employee_role else ""
-        is_manager = "manager" in role_name or "admin" in role_name
-        user = User(id=uid, username=f"emp_{employee.employee_id}", first_name=employee.first_name, last_name=employee.last_name, is_staff=is_manager, is_superuser=False, is_active=True, password=employee.password)
+        is_manager_user = check_is_manager(employee.employee_id)
+        user = User(id=uid, username=f"emp_{employee.employee_id}", first_name=employee.first_name, last_name=employee.last_name, is_staff=is_manager_user, is_superuser=False, is_active=True, password=employee.password)
         user.save = types.MethodType(lambda self, *args, **kwargs: None, user)
         user.delete = types.MethodType(lambda self, *args, **kwargs: (0, {}), user)
         return user

@@ -343,3 +343,120 @@ class Invoice(models.Model):
     class Meta:
         db_table = 'invoice'
         verbose_name_plural = 'invoices'
+
+
+class EmployeeHierarchy(models.Model):
+    employee = models.OneToOneField(
+        Employee,
+        on_delete=models.CASCADE,
+        db_column='employee_id',
+        primary_key=True,
+        related_name='hierarchy',
+        verbose_name="Employee"
+    )
+    role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.CASCADE,
+        db_column='role_id',
+        related_name='role_hierarchies',
+        verbose_name="Role"
+    )
+    supervisor = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor_id',
+        related_name='supervisor_hierarchies',
+        verbose_name="Supervisor"
+    )
+    supervisor_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor_role_id',
+        related_name='supervisor_role_hierarchies',
+        verbose_name="Supervisor Role"
+    )
+    supervisor2 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor2_id',
+        related_name='supervisor2_hierarchies',
+        verbose_name="Supervisor 2"
+    )
+    supervisor2_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor2_role_id',
+        related_name='supervisor2_role_hierarchies',
+        verbose_name="Supervisor 2 Role"
+    )
+    supervisor3 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor3_id',
+        related_name='supervisor3_hierarchies',
+        verbose_name="Supervisor 3"
+    )
+    supervisor3_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor3_role_id',
+        related_name='supervisor3_role_hierarchies',
+        verbose_name="Supervisor 3 Role"
+    )
+    supervisor4 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor4_id',
+        related_name='supervisor4_hierarchies',
+        verbose_name="Supervisor 4"
+    )
+    supervisor4_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor4_role_id',
+        related_name='supervisor4_role_hierarchies',
+        verbose_name="Supervisor 4 Role"
+    )
+    supervisor5 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor5_id',
+        related_name='supervisor5_hierarchies',
+        verbose_name="Supervisor 5"
+    )
+    supervisor5_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor5_role_id',
+        related_name='supervisor5_role_hierarchies',
+        verbose_name="Supervisor 5 Role"
+    )
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def __str__(self):
+        return f"Hierarchy for {self.employee} ({self.role})"
+
+    class Meta:
+        db_table = 'employee_hierarchy'
+        verbose_name_plural = 'employee hierarchies'

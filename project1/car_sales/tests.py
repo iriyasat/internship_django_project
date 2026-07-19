@@ -745,7 +745,7 @@ class RoleHierarchyPermissionTestCase(CarSalesBaseTestCase):
 
     def setUp(self):
         super().setUp()
-        from .models import CustomerInfo, SellingInfo, IndustryInfo, VehicleInfo
+        from .models import CustomerInfo, SellingInfo, IndustryInfo, VehicleInfo, EmployeeHierarchy
         # Ensure we have active status
         self.status_in_service = EmployeeStatus.objects.get(status="In Service")
         
@@ -780,6 +780,22 @@ class RoleHierarchyPermissionTestCase(CarSalesBaseTestCase):
             mmr=20000,
             vin="ROLEVIN1234567890"
         )[0]
+        
+        # Set up EmployeeHierarchy for tests
+        EmployeeHierarchy.objects.create(
+            employee=self.manager_employee,
+            role=self.manager_role
+        )
+        EmployeeHierarchy.objects.create(
+            employee=self.test_employee,
+            role=self.role,
+            supervisor=self.manager_employee,
+            supervisor_role=self.manager_role
+        )
+        EmployeeHierarchy.objects.create(
+            employee=self.other_employee,
+            role=self.role
+        )
         
     def test_sales_executive_crud_permissions(self):
         """Sales Executives can create customers and sales, but only for themselves/their store."""

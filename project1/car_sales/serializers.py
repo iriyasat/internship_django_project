@@ -39,6 +39,74 @@ def execute_cud_query(db_name, query, params=None):
         cursor.execute(query, params or [])
         return cursor.lastrowid
 
+def format_employee_filter(field_name, employee_id, params):
+    if employee_id is None:
+        return ""
+    if isinstance(employee_id, (list, tuple, set)):
+        if len(employee_id) == 1:
+            params.append(list(employee_id)[0])
+            return f" AND {field_name} = %s"
+        elif len(employee_id) > 1:
+            placeholders = ", ".join(["%s"] * len(employee_id))
+            params.extend(employee_id)
+            return f" AND {field_name} IN ({placeholders})"
+        else:
+            return " AND 1=0"
+    else:
+        params.append(employee_id)
+        return f" AND {field_name} = %s"
+
+def add_employee_clause(where_clauses, params, field_name, employee_id):
+    if employee_id is None:
+        return
+    if isinstance(employee_id, (list, tuple, set)):
+        if len(employee_id) == 1:
+            where_clauses.append(f"{field_name} = %s")
+            params.append(list(employee_id)[0])
+        elif len(employee_id) > 1:
+            placeholders = ", ".join(["%s"] * len(employee_id))
+            where_clauses.append(f"{field_name} IN ({placeholders})")
+            params.extend(employee_id)
+        else:
+            where_clauses.append("1=0")
+    else:
+        where_clauses.append(f"{field_name} = %s")
+        params.append(employee_id)
+
+def format_store_filter(field_name, store_id, params):
+    if store_id is None:
+        return ""
+    if isinstance(store_id, (list, tuple, set)):
+        if len(store_id) == 1:
+            params.append(list(store_id)[0])
+            return f" AND {field_name} = %s"
+        elif len(store_id) > 1:
+            placeholders = ", ".join(["%s"] * len(store_id))
+            params.extend(store_id)
+            return f" AND {field_name} IN ({placeholders})"
+        else:
+            return " AND 1=0"
+    else:
+        params.append(store_id)
+        return f" AND {field_name} = %s"
+
+def add_store_clause(where_clauses, params, field_name, store_id):
+    if store_id is None:
+        return
+    if isinstance(store_id, (list, tuple, set)):
+        if len(store_id) == 1:
+            where_clauses.append(f"{field_name} = %s")
+            params.append(list(store_id)[0])
+        elif len(store_id) > 1:
+            placeholders = ", ".join(["%s"] * len(store_id))
+            where_clauses.append(f"{field_name} IN ({placeholders})")
+            params.extend(store_id)
+        else:
+            where_clauses.append("1=0")
+    else:
+        where_clauses.append(f"{field_name} = %s")
+        params.append(store_id)
+
 def execute_raw_sql_query(db_name, select_base, count_base, table_alias, field_map, search_fields, limit, offset, search, store_id, employee_id, store_col, employee_col, filters):
     query = select_base
     count_query = count_base
@@ -46,11 +114,21 @@ def execute_raw_sql_query(db_name, select_base, count_base, table_alias, field_m
     params = []
     
     if store_id is not None and store_col:
-        where_clauses.append(f"{store_col} = %s")
-        params.append(store_id)
+        add_store_clause(where_clauses, params, store_col, store_id)
     if employee_id is not None and employee_col:
-        where_clauses.append(f"{employee_col} = %s")
-        params.append(employee_id)
+        if isinstance(employee_id, (list, tuple, set)):
+            if len(employee_id) == 1:
+                where_clauses.append(f"{employee_col} = %s")
+                params.append(list(employee_id)[0])
+            elif len(employee_id) > 1:
+                placeholders = ", ".join(["%s"] * len(employee_id))
+                where_clauses.append(f"{employee_col} IN ({placeholders})")
+                params.extend(employee_id)
+            else:
+                where_clauses.append("1=0")
+        else:
+            where_clauses.append(f"{employee_col} = %s")
+            params.append(employee_id)
         
     for key, val in filters.items():
         if val is not None and val != '':
@@ -115,12 +193,8 @@ class employeesalesserializers:
         WHERE si.selling_date BETWEEN %s AND %s
         """
         params = [dt_from, dt_to]
-        if store_id is not None:
-            query += " AND si.store_id = %s"
-            params.append(store_id)
-        if employee_id is not None:
-            query += " AND si.employee_id = %s"
-            params.append(employee_id)
+        query += format_store_filter("si.store_id", store_id, params)
+        query += format_employee_filter("si.employee_id", employee_id, params)
         return execute_raw_fetch_all(employeesalesserializers.DB_NAME, query, params)
 
 class storesalesserializer:
@@ -138,12 +212,8 @@ class storesalesserializer:
         WHERE si.selling_date BETWEEN %s AND %s
         """
         params = [dt_from, dt_to]
-        if store_id is not None:
-            query += " AND si.store_id = %s"
-            params.append(store_id)
-        if employee_id is not None:
-            query += " AND si.employee_id = %s"
-            params.append(employee_id)
+        query += format_store_filter("si.store_id", store_id, params)
+        query += format_employee_filter("si.employee_id", employee_id, params)
         return execute_raw_fetch_all(storesalesserializer.DB_NAME, query, params)
 
 class storevehiclesalesserializer:
@@ -161,12 +231,8 @@ class storevehiclesalesserializer:
         WHERE si.selling_date BETWEEN %s AND %s
         """
         params = [dt_from, dt_to]
-        if store_id is not None:
-            query += " AND si.store_id = %s"
-            params.append(store_id)
-        if employee_id is not None:
-            query += " AND si.employee_id = %s"
-            params.append(employee_id)
+        query += format_store_filter("si.store_id", store_id, params)
+        query += format_employee_filter("si.employee_id", employee_id, params)
         query += " GROUP BY s.store_id, e.employee_id, vi.id, ii.make_id, vi.mmr ORDER BY total_selling_price DESC"
         return execute_raw_fetch_all(storevehiclesalesserializer.DB_NAME, query, params)
 
@@ -185,12 +251,8 @@ class customervehiclesalesserializer:
         WHERE si.selling_date BETWEEN %s AND %s
         """
         params = [dt_from, dt_to]
-        if store_id is not None:
-            query += " AND si.store_id = %s"
-            params.append(store_id)
-        if employee_id is not None:
-            query += " AND si.employee_id = %s"
-            params.append(employee_id)
+        query += format_store_filter("si.store_id", store_id, params)
+        query += format_employee_filter("si.employee_id", employee_id, params)
         query += " ORDER BY si.selling_date DESC"
         return execute_raw_fetch_all(customervehiclesalesserializer.DB_NAME, query, params)
 
@@ -206,12 +268,8 @@ class customerstorespendingserializer:
         WHERE si.selling_date BETWEEN %s AND %s
         """
         params = [dt_from, dt_to]
-        if store_id is not None:
-            query += " AND si.store_id = %s"
-            params.append(store_id)
-        if employee_id is not None:
-            query += " AND si.employee_id = %s"
-            params.append(employee_id)
+        query += format_store_filter("si.store_id", store_id, params)
+        query += format_employee_filter("si.employee_id", employee_id, params)
         query += " GROUP BY ci.customer_id, s.store_id ORDER BY total_spent DESC"
         return execute_raw_fetch_all(customerstorespendingserializer.DB_NAME, query, params)
 
@@ -234,9 +292,7 @@ class inventoryserializer:
         if store_id is not None:
             query += " AND i.store_id = %s"
             params.append(store_id)
-        if employee_id is not None:
-            query += " AND i.employee_id = %s"
-            params.append(employee_id)
+        query += format_employee_filter("i.employee_id", employee_id, params)
         if search:
             query += " AND (i.inventory_id LIKE %s OR vi.vehicle_model LIKE %s OR vi.vin LIKE %s OR ii.make_name LIKE %s OR s.store_name LIKE %s OR e.first_name LIKE %s OR e.last_name LIKE %s)"
             params.extend([f"%{search}%"] * 7)
@@ -465,8 +521,19 @@ class CustomerInfoSerializer:
             where_clauses.append("EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.store_id = %s)")
             params.append(store_id)
         if employee_id is not None:
-            where_clauses.append("EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.employee_id = %s)")
-            params.append(employee_id)
+            if isinstance(employee_id, (list, tuple, set)):
+                if len(employee_id) == 1:
+                    where_clauses.append("EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.employee_id = %s)")
+                    params.append(list(employee_id)[0])
+                elif len(employee_id) > 1:
+                    placeholders = ", ".join(["%s"] * len(employee_id))
+                    where_clauses.append(f"EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.employee_id IN ({placeholders}))")
+                    params.extend(employee_id)
+                else:
+                    where_clauses.append("1=0")
+            else:
+                where_clauses.append("EXISTS (SELECT 1 FROM selling_info si WHERE si.customer_id = ci.customer_id AND si.employee_id = %s)")
+                params.append(employee_id)
 
         field_map = {'city': 'ci.city_id', 'country': 'ci.country_id'}
         for key, val in filters.items():
@@ -531,9 +598,7 @@ class SellingInfoSerializer:
         if store_id is not None:
             where_clauses.append("si.store_id = %s")
             params.append(store_id)
-        if employee_id is not None:
-            where_clauses.append("si.employee_id = %s")
-            params.append(employee_id)
+        add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
 
         field_map = {'customer': 'si.customer_id', 'vehicle': 'si.vehicle_id', 'employee': 'si.employee_id', 'store': 'si.store_id'}
         for key, val in filters.items():
@@ -610,9 +675,7 @@ class SellingInfoSerializer:
         if store_id is not None:
             where_clauses.append("si.store_id = %s")
             params.append(store_id)
-        if employee_id is not None:
-            where_clauses.append("si.employee_id = %s")
-            params.append(employee_id)
+        add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
         where_str = " AND ".join(where_clauses)
 
         stats_query = f"SELECT COUNT(si.sell_id), SUM(si.selling_price) FROM selling_info si WHERE {where_str}"
@@ -690,9 +753,7 @@ class EmployeeBudgetSerializer:
         if store_id is not None:
             where_clauses.append("eb.store_id = %s")
             params.append(store_id)
-        if employee_id is not None:
-            where_clauses.append("eb.employee_id = %s")
-            params.append(employee_id)
+        add_employee_clause(where_clauses, params, "eb.employee_id", employee_id)
 
         field_map = {'employee': 'eb.employee_id', 'store': 'eb.store_id', 'budget_year': 'eb.budget_year', 'budget_month': 'eb.budget_month'}
         for key, val in filters.items():
@@ -779,9 +840,7 @@ class EmployeeSerializer:
         if store_id is not None:
             where_clauses.append("e.store_id = %s")
             params.append(store_id)
-        if employee_id is not None:
-            where_clauses.append("e.employee_id = %s")
-            params.append(employee_id)
+        add_employee_clause(where_clauses, params, "e.employee_id", employee_id)
 
         field_map = {'employee_role': 'e.employee_role', 'status': 'e.status', 'store': 'e.store_id', 'city': 'e.city_id', 'country': 'e.country_id'}
         for key, val in filters.items():
@@ -887,9 +946,7 @@ class InvoiceSerializer:
         if store_id is not None:
             where_clauses.append('si.store_id = %s')
             params.append(store_id)
-        if employee_id is not None:
-            where_clauses.append('si.employee_id = %s')
-            params.append(employee_id)
+        add_employee_clause(where_clauses, params, "si.employee_id", employee_id)
 
         field_map = {'payment_status': 'inv.payment_status', 'payment_method': 'inv.payment_method', 'sell_id': 'inv.sell_id'}
         for key, val in filters.items():

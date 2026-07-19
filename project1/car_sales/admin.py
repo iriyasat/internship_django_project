@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
-    SellingInfo, EmployeeBudget, Inventory, Invoice
+    SellingInfo, EmployeeBudget, Inventory, Invoice,
+    EmployeeHierarchy
 )
 
 @admin.register(Country)
@@ -93,4 +94,12 @@ class InvoiceAdmin(admin.ModelAdmin):
     search_fields = ('invoice_id', 'selling_info__sell_id', 'selling_info__customer__firstname', 'selling_info__customer__lastname')
     autocomplete_fields = ('selling_info',)
     list_select_related = ('selling_info__customer', 'selling_info__vehicle__make', 'selling_info__store')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(EmployeeHierarchy)
+class EmployeeHierarchyAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'role', 'supervisor', 'supervisor_role')
+    search_fields = ('employee__first_name', 'employee__last_name')
+    list_select_related = ('employee', 'role', 'supervisor', 'supervisor_role')
     readonly_fields = ('created_at', 'updated_at')
