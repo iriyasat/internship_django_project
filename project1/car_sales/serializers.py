@@ -676,7 +676,12 @@ class SellingInfoSerializer:
         where_str = " AND ".join(where_clauses)
 
         stats_query = f"SELECT COUNT(si.sell_id), SUM(si.selling_price) FROM selling_info si WHERE {where_str}"
-        cust_query = f"SELECT COUNT(DISTINCT si.customer_id) FROM selling_info si WHERE {where_str}"
+        if store_id is not None or employee_id is not None:
+            cust_query = f"SELECT COUNT(DISTINCT si.customer_id) FROM selling_info si WHERE {where_str}"
+            cust_params = params
+        else:
+            cust_query = "SELECT COUNT(*) FROM customer_info"
+            cust_params = []
         recent_query = f"""
             SELECT si.sell_id, CONCAT(ci.firstname, ' ', ci.lastname) AS customer_name, CONCAT(ii.make_name, ' ', vi.vehicle_model) AS vehicle_name,
                    CONCAT(e.first_name, ' ', e.last_name) AS employee_name, si.selling_price, si.selling_date
@@ -705,7 +710,7 @@ class SellingInfoSerializer:
             sales_count = row[0] or 0
             total_revenue = float(row[1] or 0)
 
-            cursor.execute(cust_query, params)
+            cursor.execute(cust_query, cust_params)
             customers_count = cursor.fetchone()[0] or 0
 
             cursor.execute(recent_query, params)

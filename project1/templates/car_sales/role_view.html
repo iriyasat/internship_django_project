@@ -22,7 +22,7 @@
     <!-- Summary Cards and Charts -->
     <div class="row mb-4">
       <!-- Total Roles Card -->
-      <div class="col-xxl-4 col-md-6 mb-3">
+      <div class="col-xxl-12 col-12 mb-3">
         <div class="card info-card sales-card">
           <div class="card-body">
             <h5 class="card-title">Total <span>| Roles</span></h5>
@@ -33,42 +33,6 @@
               <div class="ps-3">
                 <h6 id="card-total-count">0</h6>
                 <span class="text-muted small pt-2 ps-1">all registered roles</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Page Roles Card -->
-      <div class="col-xxl-4 col-md-6 mb-3">
-        <div class="card info-card revenue-card">
-          <div class="card-body">
-            <h5 class="card-title">Page Count <span>| Roles</span></h5>
-            <div class="d-flex align-items-center">
-              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                <i class="bi bi-pin-map"></i>
-              </div>
-              <div class="ps-3">
-                <h6 id="card-page-count">0</h6>
-                <span class="text-muted small pt-2 ps-1">on current page</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Latest Role Card -->
-      <div class="col-xxl-4 col-md-12 mb-3">
-        <div class="card info-card customers-card">
-          <div class="card-body">
-            <h5 class="card-title">Latest <span>| Role</span></h5>
-            <div class="d-flex align-items-center">
-              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #ffecdf; color: #ff771d;">
-                <i class="bi bi-person-plus" style="color: #ff771d;"></i>
-              </div>
-              <div class="ps-3">
-                <h6 id="card-latest-role">N/A</h6>
-                <span class="text-muted small pt-2 ps-1">recently added</span>
               </div>
             </div>
           </div>
@@ -310,8 +274,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updatePageStats(records, totalCount) {
-    document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
-    document.getElementById('card-page-count').textContent = records.length.toLocaleString();
+    const totalElem = document.getElementById('card-total-count');
+    if (totalElem) totalElem.textContent = totalCount.toLocaleString();
+    const pageElem = document.getElementById('card-page-count');
+    if (pageElem) pageElem.textContent = records.length.toLocaleString();
     
     let latestName = 'N/A';
     if (records.length > 0) {
@@ -323,7 +289,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     }
-    document.getElementById('card-latest-role').textContent = latestName;
+    const latestElem = document.getElementById('card-latest-role');
+    if (latestElem) latestElem.textContent = latestName;
   }
 
   // State Variables

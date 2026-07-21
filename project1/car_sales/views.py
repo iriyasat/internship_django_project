@@ -679,7 +679,8 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
             return Response({"status": False, "message": "Record not found."}, status=status.HTTP_404_NOT_FOUND)
         try:
             page = int(request.GET.get('page', 1))
-            page_size = int(request.GET.get('page_size', 25))
+            page_size_param = request.GET.get('page_size') or request.GET.get('limit')
+            page_size = int(page_size_param) if page_size_param is not None else 25
         except ValueError:
             page, page_size = 1, 25
         limit = None if page_size < 0 else page_size

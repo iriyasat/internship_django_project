@@ -22,7 +22,7 @@
     <!-- Summary Cards and Charts -->
     <div class="row mb-4">
       <!-- Total Cities Card -->
-      <div class="col-xxl-4 col-md-6 mb-3">
+      <div class="col-xxl-6 col-md-6 mb-3">
         <div class="card info-card sales-card">
           <div class="card-body">
             <h5 class="card-title">Total <span>| Cities</span></h5>
@@ -39,26 +39,8 @@
         </div>
       </div>
 
-      <!-- Page Cities Card -->
-      <div class="col-xxl-4 col-md-6 mb-3">
-        <div class="card info-card revenue-card">
-          <div class="card-body">
-            <h5 class="card-title">Page Count <span>| Cities</span></h5>
-            <div class="d-flex align-items-center">
-              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                <i class="bi bi-pin-map"></i>
-              </div>
-              <div class="ps-3">
-                <h6 id="card-page-count">0</h6>
-                <span class="text-muted small pt-2 ps-1">on current page</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Unique Countries Card -->
-      <div class="col-xxl-4 col-md-12 mb-3">
+      <div class="col-xxl-6 col-md-6 mb-3">
         <div class="card info-card customers-card">
           <div class="card-body">
             <h5 class="card-title">Countries <span>| Page</span></h5>
@@ -76,7 +58,32 @@
       </div>
     </div>
 
-    <!-- Charts container -->
+    <!-- Country & Store Summary Table Card -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body pt-3">
+          <h5 class="card-title py-0 my-0 mb-3">Country & Store Breakdown <span>| Live Query</span></h5>
+          <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0" id="country-store-table">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th scope="col"><i class="bi bi-globe me-1"></i> Country</th>
+                  <th scope="col" class="text-end"><i class="bi bi-shop me-1"></i> Total Store</th>
+                </tr>
+              </thead>
+              <tbody id="country-store-tbody">
+                <tr>
+                  <td colspan="2" class="text-center text-muted py-3">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Loading summary data...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="col-12 mb-4">
       <div class="row">
         <!-- Google Geo Chart -->
@@ -283,6 +290,58 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
+  function fetchCountryStoreSummary() {
+    const tbody = document.getElementById('country-store-tbody');
+    if (!tbody) return;
+
+    Promise.all([
+      fetch('/api/countries/?page_size=-1').then(r => r.json()),
+      fetch('/api/stores/?page_size=-1').then(r => r.json())
+    ])
+    .then(([countriesRes, storesRes]) => {
+      if (!countriesRes.status || !Array.isArray(countriesRes.data)) {
+        throw new Error('Failed to load countries');
+      }
+
+      const storeCounts = {};
+      if (storesRes.status && Array.isArray(storesRes.data)) {
+        storesRes.data.forEach(store => {
+          const cName = store.country_name || 'N/A';
+          storeCounts[cName] = (storeCounts[cName] || 0) + 1;
+        });
+      }
+
+      tbody.innerHTML = '';
+
+      const summaryList = countriesRes.data.map(c => ({
+        country_name: c.country_name,
+        total_stores: storeCounts[c.country_name] || 0
+      }));
+
+      summaryList.sort((a, b) => b.total_stores - a.total_stores || a.country_name.localeCompare(b.country_name));
+
+      if (summaryList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No summary data found.</td></tr>';
+        return;
+      }
+
+      summaryList.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(item.country_name || 'N/A')}</strong></td>
+          <td class="text-end"><span class="badge bg-primary rounded-pill fs-6 px-3 py-1">${item.total_stores.toLocaleString()}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(err => {
+      console.error('Error fetching country store summary:', err);
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="2" class="text-center text-danger py-3">Failed to load summary: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    });
+  }
+
   let resizeHandler = function() {};
 
   function drawCharts() {
@@ -355,8 +414,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updatePageStats(records, totalCount) {
-    document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
-    document.getElementById('card-page-count').textContent = records.length.toLocaleString();
+    const totalElem = document.getElementById('card-total-count');
+    if (totalElem) totalElem.textContent = totalCount.toLocaleString();
+    const pageElem = document.getElementById('card-page-count');
+    if (pageElem) pageElem.textContent = records.length.toLocaleString();
     
     const countryMap = {};
     records.forEach(rec => {
@@ -364,7 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
       countryMap[countryName] = (countryMap[countryName] || 0) + 1;
     });
     const countries = Object.keys(countryMap);
-    document.getElementById('card-page-countries').textContent = countries.length.toLocaleString();
+    const countriesElem = document.getElementById('card-page-countries');
+    if (countriesElem) countriesElem.textContent = countries.length.toLocaleString();
   }
 
   // State Variables
@@ -511,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (res.status && Array.isArray(res.data)) {
           renderTable(res.data, res.total);
           fetchChartData();
+          fetchCountryStoreSummary();
         } else {
           showError(res.message || 'Failed to fetch city records.');
           loadingSpinner.style.display = 'none';

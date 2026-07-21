@@ -22,7 +22,7 @@
       <!-- Summary Cards and Charts -->
   <div class="row mb-4">
     <!-- Total Employees Card -->
-    <div class="col-xxl-4 col-md-6 mb-3">
+    <div class="col-xxl-6 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
           <h5 class="card-title">Total <span>| Employees</span></h5>
@@ -39,26 +39,8 @@
       </div>
     </div>
 
-    <!-- Active Employees Card -->
-    <div class="col-xxl-4 col-md-6 mb-3">
-      <div class="card info-card revenue-card">
-        <div class="card-body">
-          <h5 class="card-title">Active Staff <span>| Page</span></h5>
-          <div class="d-flex align-items-center">
-            <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-              <i class="bi bi-person-check"></i>
-            </div>
-            <div class="ps-3">
-              <h6 id="card-page-active">0</h6>
-              <span class="text-muted small pt-2 ps-1">active status</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Unique Stores Card -->
-    <div class="col-xxl-4 col-md-12 mb-3">
+    <div class="col-xxl-6 col-md-6 mb-3">
       <div class="card info-card customers-card">
         <div class="card-body">
           <h5 class="card-title">Stores <span>| Page</span></h5>
@@ -301,7 +283,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updatePageStats(records, totalCount) {
-    document.getElementById('card-total-count').textContent = totalCount.toLocaleString();
+    const totalElem = document.getElementById('card-total-count');
+    if (totalElem) totalElem.textContent = totalCount.toLocaleString();
 
     let activeCount = 0;
     const storeMap = {};
@@ -310,10 +293,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const storeName = rec.store_name || 'N/A';
       storeMap[storeName] = (storeMap[storeName] || 0) + 1;
     });
-    document.getElementById('card-page-active').textContent = activeCount.toLocaleString();
+    const activeElem = document.getElementById('card-page-active');
+    if (activeElem) activeElem.textContent = activeCount.toLocaleString();
 
     const stores = Object.keys(storeMap);
-    document.getElementById('card-page-stores').textContent = stores.length.toLocaleString();
+    const storesElem = document.getElementById('card-page-stores');
+    if (storesElem) storesElem.textContent = stores.length.toLocaleString();
   }
 
   // State Variables
