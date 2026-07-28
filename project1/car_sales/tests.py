@@ -9,7 +9,7 @@ from django.urls import reverse
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
-    SellingInfo, EmployeeBudget
+    SellingInfo, EmployeeBudget, EmployeeLevel, EmployeeHierarchy
 )
 
 class CarSalesBaseTestCase(TestCase):
@@ -136,6 +136,18 @@ class CarSalesBaseTestCase(TestCase):
         cls.manager_employee.city = cls.city
         cls.manager_employee.country = cls.country
         cls.manager_employee.save()
+
+        # Create EmployeeLevel records and EmployeeHierarchy entries so is_manager() works
+        cls.level_9, _ = EmployeeLevel.objects.get_or_create(level=9, defaults={'notes': 'Reports to Senior Sales Executive / Sales Manager'})
+        cls.level_6, _ = EmployeeLevel.objects.get_or_create(level=6, defaults={'notes': 'Reports to Senior Branch Manager (role 5)'})
+        EmployeeHierarchy.objects.get_or_create(
+            employee=cls.test_employee,
+            defaults={'role': cls.role, 'level': cls.level_9, 'status': cls.test_employee.status}
+        )
+        EmployeeHierarchy.objects.get_or_create(
+            employee=cls.manager_employee,
+            defaults={'role': cls.manager_role, 'level': cls.level_6, 'status': cls.manager_employee.status}
+        )
 
     def setUp(self):
         super().setUp()
@@ -659,13 +671,33 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'status': 1 # Sold
         }
         detail_url_new = reverse('inventory_api_detail', kwargs={'pk': new_item_id})
+        
+        # Level 6 (Branch Manager) can PUT but NOT delete
         response = self.client.put(detail_url_new, put_data, content_type='application/json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Inventory.objects.get(pk=new_item_id).status, 1)
 
+        # Level 6 cannot delete — restricted to Level 1-4 only
+        response = self.client.delete(detail_url_new)
+        self.assertEqual(response.status_code, 403)
+
+        # Elevate to Level 4 (Fleet Sales Specialist) to perform authorised delete
+        self.client.logout()
+        level_4, _ = EmployeeLevel.objects.get_or_create(level=4, defaults={'notes': 'Reports to Customer Relations Officer (role 8)'})
+        fleet_role, _ = EmployeeRole.objects.get_or_create(role_id=7, defaults={'role_name': 'Fleet Sales Specialist'})
+        boss_employee = Employee.objects.create(
+            first_name="Boss", last_name="Delete", date_of_joining=datetime.date(2020, 1, 1),
+            employee_addr="1 Boss St", employee_role=fleet_role, status=self.status_active,
+            store=self.store, city=self.city, country=self.country, password="CAr$@lse2014"
+        )
+        EmployeeHierarchy.objects.create(
+            employee=boss_employee, role=fleet_role, level=level_4, status=self.status_active
+        )
+        self.client.login(username=str(boss_employee.employee_id), password="CAr$@lse2014")
         response = self.client.delete(detail_url_new)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Inventory.objects.filter(pk=new_item_id).exists())
+
 
 
 

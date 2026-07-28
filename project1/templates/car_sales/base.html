@@ -305,8 +305,7 @@
   </aside><!-- End Sidebar-->
 
   <main id="main" class="main">
-    <!--
-    {% if request.user.is_authenticated and not request.user.is_staff %}
+    {% if request.user.is_authenticated and not request.user.is_staff and not is_manager %}
     <div class="alert alert-info alert-dismissible fade show d-flex align-items-center gap-2 border-0 shadow-sm mb-4" role="alert" style="background: #e0e7ff; color: #3730a3; border-radius: 12px;">
       <i class="bi bi-info-circle-fill fs-5"></i>
       <div>
@@ -314,7 +313,7 @@
       </div>
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-    {% endif %}--> 
+    {% endif %} 
 
     {% block content %}
     {% endblock %}
