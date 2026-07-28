@@ -67,53 +67,26 @@ class Store(models.Model):
 class EmployeeRole(models.Model):
     role_id = models.AutoField(primary_key=True, verbose_name="Role ID")
     role_name = models.CharField(max_length=100, unique=True, verbose_name="Role Name")
-    
-    class AccessLevel(models.TextChoices):
-        COUNTRY = 'country', 'Country-level'
-        STORE = 'store', 'Store-level'
-        OWN = 'own', 'Own-data-only'
-
-    access_level = models.CharField(
-        max_length=50,
-        choices=AccessLevel.choices,
-        default=AccessLevel.OWN,
-        verbose_name="Access Level"
-    )
     created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
-
-    def save(self, *args, **kwargs):
-        if self.role_name:
-            store_level_managers = [
-                "Branch Manager",
-                "Sales Manager",
-                "Showroom Manager",
-                "Fleet Sales Specialist",
-                "Senior Sales Executive",
-                "Finance & Insurance Officer",
-                "Customer Relations Officer",
-            ]
-            if self.role_name == "Regional Sales Manager":
-                if self.access_level == EmployeeRole.AccessLevel.OWN:
-                    self.access_level = EmployeeRole.AccessLevel.COUNTRY
-            elif self.role_name in store_level_managers:
-                if self.access_level == EmployeeRole.AccessLevel.OWN:
-                    self.access_level = EmployeeRole.AccessLevel.STORE
-            elif self.role_name in ["Sales Executive", "Pre-Owned Vehicle Specialist"]:
-                if self.access_level == EmployeeRole.AccessLevel.OWN:
-                    self.access_level = EmployeeRole.AccessLevel.OWN
-            else:
-                role_lower = self.role_name.lower()
-                if "manager" in role_lower or "admin" in role_lower:
-                    if self.access_level == EmployeeRole.AccessLevel.OWN:
-                        self.access_level = EmployeeRole.AccessLevel.STORE
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.role_name
 
     class Meta:
         db_table = 'employee_role'
+
+
+class EmployeeLevel(models.Model):
+    level = models.IntegerField(primary_key=True, verbose_name="Level")
+    notes = models.TextField(null=True, blank=True, verbose_name="Notes")
+
+    def __str__(self):
+        return f"Level {self.level}"
+
+    class Meta:
+        db_table = 'employee_level'
+        verbose_name_plural = 'employee levels'
 
 
 class EmployeeStatus(models.Model):
@@ -400,6 +373,20 @@ class EmployeeHierarchy(models.Model):
         related_name='role_hierarchies',
         verbose_name="Role"
     )
+    level = models.ForeignKey(
+        EmployeeLevel,
+        on_delete=models.CASCADE,
+        db_column='level',
+        related_name='hierarchies',
+        verbose_name="Level"
+    )
+    status = models.ForeignKey(
+        EmployeeStatus,
+        on_delete=models.CASCADE,
+        db_column='status_id',
+        related_name='status_hierarchies',
+        verbose_name="Employee Status"
+    )
     supervisor = models.ForeignKey(
         Employee,
         on_delete=models.SET_NULL,
@@ -490,8 +477,60 @@ class EmployeeHierarchy(models.Model):
         related_name='supervisor5_role_hierarchies',
         verbose_name="Supervisor 5 Role"
     )
-    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
+    supervisor6 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor6_id',
+        related_name='supervisor6_hierarchies',
+        verbose_name="Supervisor 6"
+    )
+    supervisor6_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor6_role_id',
+        related_name='supervisor6_role_hierarchies',
+        verbose_name="Supervisor 6 Role"
+    )
+    supervisor7 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor7_id',
+        related_name='supervisor7_hierarchies',
+        verbose_name="Supervisor 7"
+    )
+    supervisor7_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor7_role_id',
+        related_name='supervisor7_role_hierarchies',
+        verbose_name="Supervisor 7 Role"
+    )
+    supervisor8 = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor8_id',
+        related_name='supervisor8_hierarchies',
+        verbose_name="Supervisor 8"
+    )
+    supervisor8_role = models.ForeignKey(
+        EmployeeRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='supervisor8_role_id',
+        related_name='supervisor8_role_hierarchies',
+        verbose_name="Supervisor 8 Role"
+    )
 
     def __str__(self):
         return f"Hierarchy for {self.employee} ({self.role})"

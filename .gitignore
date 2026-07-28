@@ -10,6 +10,7 @@ project1/dataset/car_sales_final.1.sql
 project1/dataset/car_sales_backup.sql
 project1/car_sales/temporary_file/serializers.py
 project1/car_sales/temporary_file/views.py
+project1/dataset/car_sales_ecom.zip
 
 
 

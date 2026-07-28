@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def populate_role_hierarchy(apps, schema_editor):
+def populate_role_access_levels(apps, schema_editor):
     EmployeeRole = apps.get_model('car_sales', 'EmployeeRole')
     
     # Store-level manager roles
@@ -41,7 +41,7 @@ def populate_role_hierarchy(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('car_sales', '0007_employeehierarchy'),
+        ('car_sales', '0006_alter_invoice_invoice_id'),
     ]
 
     operations = [
@@ -55,5 +55,5 @@ class Migration(migrations.Migration):
             name='is_manager',
             field=models.BooleanField(default=False, verbose_name='Is Manager'),
         ),
-        migrations.RunPython(populate_role_hierarchy, reverse_code=migrations.RunPython.noop),
+        migrations.RunPython(populate_role_access_levels, reverse_code=migrations.RunPython.noop),
     ]

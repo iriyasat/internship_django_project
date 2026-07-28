@@ -3,7 +3,7 @@ from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
     Employee, IndustryInfo, VehicleInfo, CustomerInfo,
     SellingInfo, EmployeeBudget, Inventory, Invoice,
-    EmployeeHierarchy
+    EmployeeHierarchy, EmployeeLevel
 )
 
 @admin.register(Country)
@@ -31,6 +31,12 @@ class StoreAdmin(admin.ModelAdmin):
 class EmployeeRoleAdmin(admin.ModelAdmin):
     list_display = ('role_id', 'role_name')
     search_fields = ('role_name',)
+
+
+@admin.register(EmployeeLevel)
+class EmployeeLevelAdmin(admin.ModelAdmin):
+    list_display = ('level', 'notes')
+    search_fields = ('level', 'notes')
 
 @admin.register(EmployeeStatus)
 class EmployeeStatusAdmin(admin.ModelAdmin):
@@ -99,7 +105,7 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeHierarchy)
 class EmployeeHierarchyAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'role', 'supervisor', 'supervisor_role')
-    search_fields = ('employee__first_name', 'employee__last_name')
-    list_select_related = ('employee', 'role', 'supervisor', 'supervisor_role')
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('employee', 'role', 'level', 'status', 'supervisor')
+    list_filter = ('role', 'level', 'status')
+    search_fields = ('employee__first_name', 'employee__last_name', 'supervisor__first_name', 'supervisor__last_name')
+    list_select_related = ('employee', 'role', 'status', 'supervisor')

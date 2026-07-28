@@ -422,15 +422,82 @@ class EmployeeRoleSerializer:
     DB_NAME = 'default'
     @staticmethod
     def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
+        select_base = (
+            "SELECT "
+            "er.role_id, "
+            "er.role_name, "
+            "COALESCE("
+            "  (SELECT eh.level FROM employee_hierarchy eh WHERE eh.role_id = er.role_id LIMIT 1),"
+            "  CASE er.role_id"
+            "    WHEN 10 THEN 1 WHEN 9 THEN 2 WHEN 8 THEN 3 WHEN 7 THEN 4 WHEN 6 THEN 5 "
+            "    WHEN 5 THEN 6 WHEN 4 THEN 7 WHEN 3 THEN 8 WHEN 1 THEN 9 WHEN 2 THEN 9 "
+            "    ELSE NULL"
+            "  END"
+            ") AS level, "
+            "COALESCE("
+            "  (SELECT el.notes FROM employee_level el WHERE el.level = (SELECT eh.level FROM employee_hierarchy eh WHERE eh.role_id = er.role_id LIMIT 1)),"
+            "  CASE er.role_id"
+            "    WHEN 10 THEN 'Top — No supervisor'"
+            "    WHEN 9 THEN 'Reports to Pre-Owned Vehicle Specialist (role 10)'"
+            "    WHEN 8 THEN 'Reports to Showroom Manager (role 9)'"
+            "    WHEN 7 THEN 'Reports to Customer Relations Officer (role 8)'"
+            "    WHEN 6 THEN 'Reports to Fleet Sales Specialist (role 7)'"
+            "    WHEN 5 THEN 'Reports to Finance & Insurance Officer (role 6)'"
+            "    WHEN 4 THEN 'Reports to Branch Manager (role 5)'"
+            "    WHEN 3 THEN 'Reports to Regional Sales Manager (role 4)'"
+            "    WHEN 1 THEN 'Reports to Sales Manager (role 3)'"
+            "    WHEN 2 THEN 'Reports to Sales Manager (role 3)'"
+            "    ELSE NULL"
+            "  END"
+            ") AS notes, "
+            "(SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count "
+            "FROM employee_role er "
+            "WHERE 1=1 ORDER BY er.role_id DESC"
+        )
+        count_base = "SELECT COUNT(*) FROM employee_role er WHERE 1=1"
+        
         return execute_raw_sql_query(
             EmployeeRoleSerializer.DB_NAME,
-            "SELECT er.role_id, er.role_name, er.created_at, er.updated_at, (SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count FROM employee_role er WHERE 1=1",
-            "SELECT COUNT(*) FROM employee_role er WHERE 1=1",
+            select_base,
+            count_base,
             'er', {}, ['role_name'], limit, offset, search, None, None, None, None, filters
         )
+
     @staticmethod
     def fetch_one(role_id):
-        return execute_fetchone_query(EmployeeRoleSerializer.DB_NAME, "SELECT er.role_id, er.role_name, er.created_at, er.updated_at, (SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count FROM employee_role er WHERE er.role_id = %s", [role_id])
+        query = (
+            "SELECT "
+            "er.role_id, "
+            "er.role_name, "
+            "COALESCE("
+            "  (SELECT eh.level FROM employee_hierarchy eh WHERE eh.role_id = er.role_id LIMIT 1),"
+            "  CASE er.role_id"
+            "    WHEN 10 THEN 1 WHEN 9 THEN 2 WHEN 8 THEN 3 WHEN 7 THEN 4 WHEN 6 THEN 5 "
+            "    WHEN 5 THEN 6 WHEN 4 THEN 7 WHEN 3 THEN 8 WHEN 1 THEN 9 WHEN 2 THEN 9 "
+            "    ELSE NULL"
+            "  END"
+            ") AS level, "
+            "COALESCE("
+            "  (SELECT el.notes FROM employee_level el WHERE el.level = (SELECT eh.level FROM employee_hierarchy eh WHERE eh.role_id = er.role_id LIMIT 1)),"
+            "  CASE er.role_id"
+            "    WHEN 10 THEN 'Top — No supervisor'"
+            "    WHEN 9 THEN 'Reports to Pre-Owned Vehicle Specialist (role 10)'"
+            "    WHEN 8 THEN 'Reports to Showroom Manager (role 9)'"
+            "    WHEN 7 THEN 'Reports to Customer Relations Officer (role 8)'"
+            "    WHEN 6 THEN 'Reports to Fleet Sales Specialist (role 7)'"
+            "    WHEN 5 THEN 'Reports to Finance & Insurance Officer (role 6)'"
+            "    WHEN 4 THEN 'Reports to Branch Manager (role 5)'"
+            "    WHEN 3 THEN 'Reports to Regional Sales Manager (role 4)'"
+            "    WHEN 1 THEN 'Reports to Sales Manager (role 3)'"
+            "    WHEN 2 THEN 'Reports to Sales Manager (role 3)'"
+            "    ELSE NULL"
+            "  END"
+            ") AS notes, "
+            "(SELECT COUNT(*) FROM employee e WHERE e.employee_role = er.role_id) AS employee_count "
+            "FROM employee_role er "
+            "WHERE er.role_id = %s"
+        )
+        return execute_fetchone_query(EmployeeRoleSerializer.DB_NAME, query, [role_id])
     @staticmethod
     def create(role_name):
         return execute_cud_query(EmployeeRoleSerializer.DB_NAME, "INSERT INTO employee_role (role_name, created_at, updated_at) VALUES (%s, NOW(), NOW())", [role_name])
@@ -440,6 +507,105 @@ class EmployeeRoleSerializer:
     @staticmethod
     def delete(role_id):
         execute_cud_query(EmployeeRoleSerializer.DB_NAME, "DELETE FROM employee_role WHERE role_id = %s", [role_id])
+
+
+class EmployeeHierarchySerializer:
+    DB_NAME = 'default'
+    @staticmethod
+    def fetch(limit=25, offset=0, search='', store_id=None, employee_id=None, **filters):
+        select_base = (
+            "SELECT "
+            "eh.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "er.role_name AS role_name, "
+            "eh.level AS level, "
+            "es.status AS status_name, "
+            "CONCAT(s1.first_name, ' ', s1.last_name) AS supervisor_name "
+            "FROM employee_hierarchy eh "
+            "JOIN employee e ON eh.employee_id = e.employee_id "
+            "JOIN employee_role er ON eh.role_id = er.role_id "
+            "JOIN employee_status es ON eh.status_id = es.status_id "
+            "LEFT JOIN employee s1 ON eh.supervisor_id = s1.employee_id "
+            "WHERE 1=1 "
+            "ORDER BY eh.employee_id DESC"
+        )
+        count_base = (
+            "SELECT COUNT(*) "
+            "FROM employee_hierarchy eh "
+            "JOIN employee e ON eh.employee_id = e.employee_id "
+            "JOIN employee_role er ON eh.role_id = er.role_id "
+            "JOIN employee_status es ON eh.status_id = es.status_id "
+            "LEFT JOIN employee s1 ON eh.supervisor_id = s1.employee_id "
+            "WHERE 1=1"
+        )
+        
+        field_map = {
+            'employee_name': "CONCAT(e.first_name, ' ', e.last_name)",
+            'role_name': 'er.role_name',
+            'status_name': 'es.status',
+            'supervisor_name': "CONCAT(s1.first_name, ' ', s1.last_name)",
+        }
+        
+        search_fields = ['employee_name', 'role_name', 'supervisor_name']
+        
+        return execute_raw_sql_query(
+            EmployeeHierarchySerializer.DB_NAME,
+            select_base,
+            count_base,
+            'eh',
+            field_map,
+            search_fields,
+            limit,
+            offset,
+            search,
+            store_id,
+            employee_id,
+            'e.store_id',
+            'eh.employee_id',
+            filters
+        )
+
+    @staticmethod
+    def fetch_one(employee_id):
+        query = (
+            "SELECT "
+            "eh.employee_id, "
+            "CONCAT(e.first_name, ' ', e.last_name) AS employee_name, "
+            "er.role_name AS role_name, "
+            "eh.level AS level, "
+            "es.status AS status_name, "
+            "eh.supervisor_id, CONCAT(s1.first_name, ' ', s1.last_name) AS supervisor_name, sr1.role_name AS supervisor_role_name, "
+            "eh.supervisor2_id, CONCAT(s2.first_name, ' ', s2.last_name) AS supervisor2_name, sr2.role_name AS supervisor2_role_name, "
+            "eh.supervisor3_id, CONCAT(s3.first_name, ' ', s3.last_name) AS supervisor3_name, sr3.role_name AS supervisor3_role_name, "
+            "eh.supervisor4_id, CONCAT(s4.first_name, ' ', s4.last_name) AS supervisor4_name, sr4.role_name AS supervisor4_role_name, "
+            "eh.supervisor5_id, CONCAT(s5.first_name, ' ', s5.last_name) AS supervisor5_name, sr5.role_name AS supervisor5_role_name, "
+            "eh.supervisor6_id, CONCAT(s6.first_name, ' ', s6.last_name) AS supervisor6_name, sr6.role_name AS supervisor6_role_name, "
+            "eh.supervisor7_id, CONCAT(s7.first_name, ' ', s7.last_name) AS supervisor7_name, sr7.role_name AS supervisor7_role_name, "
+            "eh.supervisor8_id, CONCAT(s8.first_name, ' ', s8.last_name) AS supervisor8_name, sr8.role_name AS supervisor8_role_name "
+            "FROM employee_hierarchy eh "
+            "JOIN employee e ON eh.employee_id = e.employee_id "
+            "JOIN employee_role er ON eh.role_id = er.role_id "
+            "JOIN employee_status es ON eh.status_id = es.status_id "
+            "LEFT JOIN employee s1 ON eh.supervisor_id = s1.employee_id "
+            "LEFT JOIN employee_role sr1 ON eh.supervisor_role_id = sr1.role_id "
+            "LEFT JOIN employee s2 ON eh.supervisor2_id = s2.employee_id "
+            "LEFT JOIN employee_role sr2 ON eh.supervisor2_role_id = sr2.role_id "
+            "LEFT JOIN employee s3 ON eh.supervisor3_id = s3.employee_id "
+            "LEFT JOIN employee_role sr3 ON eh.supervisor3_role_id = sr3.role_id "
+            "LEFT JOIN employee s4 ON eh.supervisor4_id = s4.employee_id "
+            "LEFT JOIN employee_role sr4 ON eh.supervisor4_role_id = sr4.role_id "
+            "LEFT JOIN employee s5 ON eh.supervisor5_id = s5.employee_id "
+            "LEFT JOIN employee_role sr5 ON eh.supervisor5_role_id = sr5.role_id "
+            "LEFT JOIN employee s6 ON eh.supervisor6_id = s6.employee_id "
+            "LEFT JOIN employee_role sr6 ON eh.supervisor6_role_id = sr6.role_id "
+            "LEFT JOIN employee s7 ON eh.supervisor7_id = s7.employee_id "
+            "LEFT JOIN employee_role sr7 ON eh.supervisor7_role_id = sr7.role_id "
+            "LEFT JOIN employee s8 ON eh.supervisor8_id = s8.employee_id "
+            "LEFT JOIN employee_role sr8 ON eh.supervisor8_role_id = sr8.role_id "
+            "WHERE eh.employee_id = %s"
+        )
+        return execute_fetchone_query(EmployeeHierarchySerializer.DB_NAME, query, [employee_id])
+
 
 class EmployeeStatusSerializer:
     DB_NAME = 'default'

@@ -467,6 +467,13 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'customer',
             'selling',
             'budget',
+            'employee',
+            'country',
+            'city',
+            'store',
+            'emprole',
+            'status',
+            'industry',
         ]
         for url_name in junior_allowed_urls:
             url = reverse(url_name)
@@ -476,29 +483,12 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
                 f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200 for junior."
             )
             
-        # Denied pages (should return 403)
-        junior_denied_urls = [
-            'employee',
-            'country',
-            'city',
-            'store',
-            'emprole',
-            'status',
-            'industry',
-        ]
-        for url_name in junior_denied_urls:
-            url = reverse(url_name)
-            response = self.client.get(url)
-            self.assertEqual(
-                response.status_code, 403,
-                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 403 for junior."
-            )
         self.client.logout()
 
         # 2. Test manager employee (Branch Manager) permissions
         self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         
-        # Managers can view employees, stores, and dashboard, vehicles, customers, sales, budgets
+        # Managers can view all pages now
         manager_allowed_urls = [
             'home',
             'employee',
@@ -507,6 +497,11 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             'customer',
             'selling',
             'budget',
+            'country',
+            'city',
+            'emprole',
+            'status',
+            'industry',
         ]
         for url_name in manager_allowed_urls:
             url = reverse(url_name)
@@ -514,22 +509,6 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             self.assertEqual(
                 response.status_code, 200,
                 f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200 for manager."
-            )
-            
-        # Managers still cannot view country, city, emprole, status, industry (admin only)
-        manager_denied_urls = [
-            'country',
-            'city',
-            'emprole',
-            'status',
-            'industry',
-        ]
-        for url_name in manager_denied_urls:
-            url = reverse(url_name)
-            response = self.client.get(url)
-            self.assertEqual(
-                response.status_code, 403,
-                f"Page reverse('{url_name}') returned status code {response.status_code} instead of 403 for manager."
             )
             
         # Login as manager/staff user for restricted API pages (reports)
@@ -688,11 +667,7 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Inventory.objects.filter(pk=new_item_id).exists())
 
-        self.client.logout()
-        self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
-        
-        response = self.client.post(list_url, post_data, content_type='application/json')
-        self.assertEqual(response.status_code, 403)
+
 
 
 class CustomAuthTestCase(CarSalesBaseTestCase):
@@ -788,143 +763,3 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
         user_exists = User.objects.filter(username='register_user').exists()
         self.assertTrue(user_exists)
 
-
-class RoleHierarchyPermissionTestCase(CarSalesBaseTestCase):
-    """
-    Test suite verifying the detailed role hierarchy, access controls,
-    and CRUD permissions across Sales Executives, Branch Managers, and Admins.
-    """
-
-    def setUp(self):
-        super().setUp()
-        from .models import CustomerInfo, SellingInfo, IndustryInfo, VehicleInfo, EmployeeHierarchy
-        # Ensure we have active status
-        self.status_in_service = EmployeeStatus.objects.get(status="In Service")
-        
-        # Create a second store and some employees for cross-store restriction tests
-        self.other_city = City.objects.create(city_name="Other City", country=self.country)
-        self.other_store = Store.objects.create(
-            store_name="Other Store",
-            store_code="ST99",
-            city=self.other_city,
-            country=self.country,
-            address="99 Other St"
-        )
-        
-        self.other_employee = Employee.objects.create(
-            first_name="John",
-            last_name="Smith",
-            date_of_joining=datetime.date(2021, 1, 1),
-            employee_addr="456 Other Rd",
-            employee_role=self.role, # Sales Executive
-            status=self.status_in_service,
-            store=self.other_store,
-            city=self.other_city,
-            country=self.country,
-            password="CAr$@lse2014"
-        )
-
-        # Create industry & vehicle
-        self.make = IndustryInfo.objects.get_or_create(make_name="RoleTestMake")[0]
-        self.vehicle = VehicleInfo.objects.get_or_create(
-            vehicle_model="RoleTestModel",
-            make=self.make,
-            mmr=20000,
-            vin="ROLEVIN1234567890"
-        )[0]
-        
-        # Set up EmployeeHierarchy for tests
-        EmployeeHierarchy.objects.create(
-            employee=self.manager_employee,
-            role=self.manager_role
-        )
-        EmployeeHierarchy.objects.create(
-            employee=self.test_employee,
-            role=self.role,
-            supervisor=self.manager_employee,
-            supervisor_role=self.manager_role
-        )
-        EmployeeHierarchy.objects.create(
-            employee=self.other_employee,
-            role=self.role
-        )
-        
-    def test_sales_executive_crud_permissions(self):
-        """Sales Executives can create customers and sales, but only for themselves/their store."""
-        self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
-
-        # 1. Can create customer info
-        customer_data = {
-            "firstname": "Role",
-            "lastname": "Customer",
-            "customer_status": "Active",
-            "customer_address": "123 Main St",
-            "city": self.city.city_id,
-            "country": self.country.country_id
-        }
-        response = self.client.post(reverse('customer_api'), customer_data, content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-        customer_id = response.json()['data']['customer_id']
-
-        # 2. Can create a sale for themselves and their store
-        sale_data = {
-            "customer": customer_id,
-            "vehicle": self.vehicle.id,
-            "employee": self.test_employee.employee_id,
-            "store": self.store.store_id,
-            "selling_price": 21000,
-            "selling_date": "2026-07-15"
-        }
-        response = self.client.post(reverse('sales_api'), sale_data, content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-        sale_id = response.json()['data']['sell_id']
-
-        # 3. Cannot create a sale for another employee/store
-        bad_sale_data = {
-            "customer": customer_id,
-            "vehicle": self.vehicle.id,
-            "employee": self.other_employee.employee_id,
-            "store": self.other_store.store_id,
-            "selling_price": 21000,
-            "selling_date": "2026-07-15"
-        }
-        response = self.client.post(reverse('sales_api'), bad_sale_data, content_type='application/json')
-        self.assertEqual(response.status_code, 403)
-
-        # 4. Cannot delete the sale they just created (deletes restricted to managers/admins)
-        response = self.client.delete(reverse('sales_api_detail', kwargs={'pk': sale_id}))
-        self.assertEqual(response.status_code, 403)
-
-        self.client.logout()
-
-    def test_branch_manager_hierarchy_restrictions(self):
-        """Branch Managers can view and manage sales in their store, but not in other stores."""
-        # Log in as Branch Manager for self.store
-        self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
-
-        # 1. Create a customer and sale for store 1 (manager's store)
-        customer = CustomerInfo.objects.create(
-            firstname="Cust", lastname="Store1", customer_status="Active", customer_address="Add", city=self.city, country=self.country
-        )
-        sale_store1 = SellingInfo.objects.create(
-            customer=customer, vehicle=self.vehicle, employee=self.test_employee, store=self.store, selling_price=22000, selling_date=datetime.date(2026, 7, 15)
-        )
-
-        # 2. Create a sale for the other store
-        sale_store2 = SellingInfo.objects.create(
-            customer=customer, vehicle=self.vehicle, employee=self.other_employee, store=self.other_store, selling_price=23000, selling_date=datetime.date(2026, 7, 15)
-        )
-
-        # 3. Manager can view their store's sale
-        response = self.client.get(reverse('sales_api_detail', kwargs={'pk': sale_store1.sell_id}))
-        self.assertEqual(response.status_code, 200)
-
-        # 4. Manager cannot view the other store's sale
-        response = self.client.get(reverse('sales_api_detail', kwargs={'pk': sale_store2.sell_id}))
-        self.assertEqual(response.status_code, 403)
-
-        # 5. Manager cannot delete the other store's sale
-        response = self.client.delete(reverse('sales_api_detail', kwargs={'pk': sale_store2.sell_id}))
-        self.assertEqual(response.status_code, 403)
-
-        self.client.logout()

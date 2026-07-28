@@ -1,0 +1,467 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Employee Reporting Hierarchy - Car Sales{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+  <h1>Employee Hierarchy</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">Employee Hierarchy</li>
+    </ol>
+  </nav>
+</div>
+
+<section class="section dashboard">
+  <div class="row">
+    <!-- Action Alerts -->
+    <div class="col-12" id="alert-container"></div>
+
+    <!-- Summary Card -->
+    <div class="row mb-4">
+      <div class="col-12 mb-3">
+        <div class="card info-card sales-card">
+          <div class="card-body">
+            <h5 class="card-title">Total <span>| Hierarchies</span></h5>
+            <div class="d-flex align-items-center">
+              <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background: #e0e7ff; color: #3730a3;">
+                <i class="bi bi-diagram-3"></i>
+              </div>
+              <div class="ps-3">
+                <h6 id="card-total-count">0</h6>
+                <span class="text-muted small pt-2 ps-1">all employees in hierarchy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hierarchy Directory Card -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body pt-3">
+          <h5 class="card-title">
+            Employee Directory <span>| Live Query & Hierarchy Chains</span>
+          </h5>
+
+          <!-- Search and Table Controls -->
+          <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-6 d-flex align-items-center gap-2">
+              <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
+              <select class="form-select form-select-sm" id="page-size-select" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span class="small text-muted">records per page</span>
+            </div>
+            <div class="col-md-6 text-md-end">
+              <div class="d-flex justify-content-md-end align-items-center gap-2">
+                <div class="input-group input-group-sm ms-md-auto" style="max-width: 300px;">
+                  <button class="input-group-text" type="button" id="search-btn" style="cursor: pointer;"><i class="bi bi-search"></i></button>
+                  <input type="text" class="form-control" id="search-input" placeholder="Search employees, roles, supervisors...">
+                </div>
+                <button id="download-pdf-btn" class="btn btn-outline-danger btn-sm text-nowrap">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading Spinner -->
+          <div id="loading-spinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading hierarchy data...</p>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="table-responsive" id="table-wrapper" style="display: none;">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Employee ID</th>
+                  <th scope="col">Employee Name</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Direct Supervisor</th>
+                  <th scope="col" class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="data-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
+            <div class="small text-muted" id="pagination-info">
+              Showing 0 to 0 of 0 entries
+            </div>
+            <nav aria-label="Table navigation">
+              <ul class="pagination pagination-sm mb-0" id="pagination-list">
+                <!-- Populated via Javascript -->
+              </ul>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Detail/Chain Modal -->
+<div class="modal fade" id="chainModal" tabindex="-1" aria-labelledby="chainModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+      <div class="modal-header bg-primary text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+        <h5 class="modal-title fw-bold" id="chainModalLabel"><i class="bi bi-diagram-3-fill me-2"></i>Reporting Path Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="modal-content-details">
+          <!-- Dynamically populated details and timeline -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentPage = 1;
+  let pageSize = 25;
+  let searchQuery = '';
+  let currentRecords = [];
+
+  let paginationList;
+  let paginationControls;
+  let paginationInfo;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    paginationList = document.getElementById('pagination-list');
+    paginationControls = document.getElementById('pagination-controls');
+    paginationInfo = document.getElementById('pagination-info');
+
+    fetchData();
+
+    // Event Listeners
+    document.getElementById('page-size-select').addEventListener('change', (e) => {
+      pageSize = parseInt(e.target.value);
+      currentPage = 1;
+      fetchData();
+    });
+
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+
+    let searchTimeout = null;
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchQuery = this.value.trim();
+          currentPage = 1;
+          fetchData();
+        }, 300);
+      });
+
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          clearTimeout(searchTimeout);
+          searchQuery = this.value.trim();
+          currentPage = 1;
+          fetchData();
+        }
+      });
+    }
+
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        clearTimeout(searchTimeout);
+        searchQuery = searchInput.value.trim();
+        currentPage = 1;
+        fetchData();
+      });
+    }
+
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
+    if (downloadPdfBtn) {
+      downloadPdfBtn.addEventListener('click', downloadPDF);
+    }
+  });
+
+  function showAlert(message, type = 'success') {
+    const alertContainer = document.getElementById('alert-container');
+    alertContainer.innerHTML = `
+      <div class="alert alert-${type} alert-dismissible fade show shadow-sm border-0" role="alert" style="border-radius: 10px;">
+        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}-fill me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    setTimeout(() => {
+      const alert = bootstrap.Alert.getInstance(alertContainer.querySelector('.alert'));
+      if (alert) alert.close();
+    }, 5000);
+  }
+
+  function showLoading(show) {
+    document.getElementById('loading-spinner').style.display = show ? 'block' : 'none';
+    document.getElementById('table-wrapper').style.display = show ? 'none' : 'block';
+    document.getElementById('pagination-controls').style.display = show ? 'none' : 'flex';
+  }
+
+  function fetchData() {
+    showLoading(true);
+    const url = `/api/hierarchy/?page=${currentPage}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`;
+    
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status) {
+          currentRecords = data.data;
+          populateTable(data.data);
+          updatePagination(data.total);
+          document.getElementById('card-total-count').textContent = data.total.toLocaleString();
+        } else {
+          showAlert(data.message || 'Error loading hierarchy data.', 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching hierarchy data:', error);
+        showAlert('Network error. Failed to load hierarchy data.', 'danger');
+      })
+      .finally(() => {
+        showLoading(false);
+      });
+  }
+
+  function populateTable(records) {
+    const tableBody = document.getElementById('data-table-body');
+    tableBody.innerHTML = '';
+
+    if (records.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            <i class="bi bi-folder2-open d-block fs-2 mb-2"></i>
+            No hierarchy records found matching your search.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    records.forEach(row => {
+      const tr = document.createElement('tr');
+      
+      const badgeColor = row.status_name === 'In Service' ? 'bg-success' : (row.status_name === 'On Leave' ? 'bg-warning text-dark' : 'bg-danger');
+      
+      tr.innerHTML = `
+        <td class="fw-bold">#${row.employee_id}</td>
+        <td>${row.employee_name}</td>
+        <td>${row.role_name}</td>
+        <td><span class="badge bg-secondary">Level ${row.level}</span></td>
+        <td><span class="badge ${badgeColor}">${row.status_name}</span></td>
+        <td>${row.supervisor_name || '<em class="text-muted">Top — None</em>'}</td>
+        <td class="text-end">
+          <button class="btn btn-outline-primary btn-sm px-3" onclick="showReportingChain(${row.employee_id})" style="border-radius: 8px;">
+            <i class="bi bi-tree me-1"></i> Path
+          </button>
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  let lastTotalCount = 0;
+
+  function updatePagination(totalCount) {
+    lastTotalCount = totalCount;
+    window.updatePaginationHelper(
+      paginationList,
+      paginationControls,
+      paginationInfo,
+      totalCount,
+      currentPage,
+      pageSize,
+      (pageNum) => {
+        currentPage = pageNum;
+        fetchData();
+      }
+    );
+  }
+
+  // Live responsive pagination on resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (lastTotalCount) {
+        updatePagination(lastTotalCount);
+      }
+    }, 100);
+  });
+
+  function showReportingChain(empId) {
+    const url = `/api/hierarchy/${empId}/`;
+    
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status) {
+          renderChain(data.data);
+          const modal = new bootstrap.Modal(document.getElementById('chainModal'));
+          modal.show();
+        } else {
+          showAlert('Failed to fetch reporting path details.', 'danger');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showAlert('Network error. Failed to load reporting path.', 'danger');
+      });
+  }
+
+  function renderChain(data) {
+    const detailsContainer = document.getElementById('modal-content-details');
+    
+    let html = `
+      <div class="mb-4 d-flex align-items-center justify-content-between p-3 border-0 bg-light rounded-4">
+        <div>
+          <h5 class="fw-bold text-dark mb-0">${data.employee_name}</h5>
+          <span class="small text-muted">${data.role_name} (Level ${data.level})</span>
+        </div>
+        <div>
+          <span class="badge ${data.status_name === 'In Service' ? 'bg-success' : (data.status_name === 'On Leave' ? 'bg-warning text-dark' : 'bg-danger')} py-2 px-3 fs-7" style="border-radius: 20px;">
+            ${data.status_name}
+          </span>
+        </div>
+      </div>
+      <h6 class="fw-bold text-muted text-uppercase mb-3 px-1"><i class="bi bi-arrow-down-up me-2"></i>Direct Reports & Reporting Path Chain</h6>
+      <div class="position-relative timeline-container ps-4 py-2">
+    `;
+
+    // Collect all active supervisors in order
+    const path = [];
+    
+    // Add target employee first as base
+    path.push({
+      name: data.employee_name,
+      role: data.role_name,
+      level: data.level,
+      isTarget: true
+    });
+
+    for (let i = 1; i <= 8; i++) {
+      const suffix = i === 1 ? '' : i;
+      const supId = data[`supervisor${suffix}_id`];
+      const supName = data[`supervisor${suffix}_name`];
+      const supRole = data[`supervisor${suffix}_role_name`];
+      
+      if (supId) {
+        path.push({
+          name: supName,
+          role: supRole,
+          level: data.level - i,
+          isTarget: false
+        });
+      }
+    }
+
+    // Render as a vertical timeline list
+    path.forEach((step, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === path.length - 1;
+      const stepColor = step.isTarget ? 'border-primary bg-primary text-white' : 'border-secondary bg-white text-dark';
+      const indicatorColor = step.isTarget ? '#0d6efd' : '#6c757d';
+      
+      html += `
+        <div class="mb-4 position-relative d-flex align-items-start gap-3">
+          <!-- Timeline line -->
+          ${!isLast ? `<div class="position-absolute" style="left: -19px; top: 24px; bottom: -28px; width: 2px; background-color: #dee2e6;"></div>` : ''}
+          <!-- Timeline dot -->
+          <div class="d-flex align-items-center justify-content-center rounded-circle border border-3 ${stepColor}" 
+               style="position: absolute; left: -28px; top: 2px; width: 20px; height: 20px; z-index: 2;">
+          </div>
+          <div class="card shadow-sm border-0 w-100 p-3 bg-white" style="border-left: 4px solid ${indicatorColor}; border-radius: 12px;">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="fw-bold text-dark mb-0 ${step.isTarget ? 'text-primary' : ''}">${step.name}</h6>
+                <span class="small text-muted">${step.role || 'Supervisor Role'}</span>
+              </div>
+              <div>
+                <span class="badge bg-secondary-light text-secondary-dark font-monospace" style="background-color: #f3f4f6; color: #4b5563;">
+                  Level ${step.level}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    if (path.length === 1) {
+      html += `
+        <div class="mb-4 position-relative d-flex align-items-start gap-3">
+          <div class="d-flex align-items-center justify-content-center rounded-circle border border-3 border-success bg-white" 
+               style="position: absolute; left: -28px; top: 2px; width: 20px; height: 20px; z-index: 2;">
+          </div>
+          <div class="card shadow-sm border-0 w-100 p-3 bg-light" style="border-left: 4px solid #198754; border-radius: 12px;">
+            <h6 class="fw-bold text-success mb-0">Top Level Node</h6>
+            <span class="small text-muted">This employee reports directly to nobody.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    html += `</div>`;
+    detailsContainer.innerHTML = html;
+  }
+
+  function downloadPDF() {
+    if (currentRecords.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Employee Hierarchy Report", 40, 45);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 65);
+
+    const headers = [["Employee ID", "Employee Name", "Role", "Level", "Status", "Direct Supervisor"]];
+    const rows = currentRecords.map(rec => [
+      rec.employee_id || 'N/A',
+      rec.employee_name || 'N/A',
+      rec.role_name || 'N/A',
+      `Level ${rec.level}` || 'N/A',
+      rec.status_name || 'N/A',
+      rec.supervisor_name || 'None'
+    ]);
+
+    doc.autoTable({
+      startY: 85,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: [13, 110, 253] },
+      styles: { fontSize: 8 }
+    });
+
+    doc.save(`hierarchy_report.pdf`);
+  }
+</script>
+{% endblock %}

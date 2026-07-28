@@ -1,5 +1,6 @@
 from django.urls import path, include
 from .views import *
+from .auth import login_view, register_view, logout_view
 
 urlpatterns = [
     path('login/', login_view, name='login'),
@@ -12,6 +13,7 @@ urlpatterns = [
     path('cities/', city_view, name='city'),
     path('stores/', store_view, name='store'),
     path('emproles/', role_view, name='emprole'),
+    path('hierarchy/', hierarchy_view, name='hierarchy'),
     path('statuses/', status_view, name='status'),
     path('industry/', industry_view, name='industry'),
     path('vehicles/', vehicle_view, name='vehicle'),
@@ -51,6 +53,7 @@ api_routes = [
     ('cities', city_api, 'city_api'),
     ('stores', store_api, 'store_api'),
     ('emproles', role_api, 'role_api'),
+    ('hierarchy', hierarchy_api, 'hierarchy_api'),
     ('statuses', status_api, 'status_api'),
     ('industry', industry_api, 'industry_api'),
     ('vehicles', vehicle_api, 'vehicle_api'),

@@ -102,8 +102,8 @@
                 <tr>
                   <th>Role ID</th>
                   <th>Role Name</th>
-                  <th>Created At</th>
-                  <th>Updated At</th>
+                  <th>Level</th>
+                  <th>Notes</th>
                   {% if request.user.is_staff %}
                   <th>Actions</th>
                   {% endif %}
@@ -477,8 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
       row.innerHTML = `
         <td><span class="badge bg-dark">${item.role_id}</span></td>
         <td><strong>${escapeHtml(item.role_name || 'N/A')}</strong></td>
-        <td><small class="text-muted text-nowrap">${escapeHtml(item.created_at || 'N/A')}</small></td>
-        <td><small class="text-muted text-nowrap">${escapeHtml(item.updated_at || 'N/A')}</small></td>
+        <td><span class="badge bg-secondary">Level ${item.level || 'N/A'}</span></td>
+        <td><small class="text-muted">${escapeHtml(item.notes || 'N/A')}</small></td>
         ${actionsColumn}
       `;
 
@@ -599,12 +599,12 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.setTextColor(108, 117, 125);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 65);
 
-    const headers = [["Role ID", "Role Name", "Created At", "Updated At"]];
+    const headers = [["Role ID", "Role Name", "Level", "Notes"]];
     const rows = currentRecords.map(rec => [
       rec.role_id || 'N/A',
       rec.role_name || 'N/A',
-      rec.created_at || 'N/A',
-      rec.updated_at || 'N/A'
+      `Level ${rec.level}` || 'N/A',
+      rec.notes || 'N/A'
     ]);
 
     doc.autoTable({

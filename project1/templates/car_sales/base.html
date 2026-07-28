@@ -195,6 +195,13 @@
       </li>
 
       <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'hierarchy' %}{% else %}collapsed{% endif %}" href="/hierarchy/">
+          <i class="bi bi-diagram-3"></i>
+          <span>Employee Hierarchy</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link {% if active_tab == 'statuses' %}{% else %}collapsed{% endif %}" href="/statuses/">
           <i class="bi bi-info-circle"></i>
           <span>Statuses</span>
@@ -298,6 +305,7 @@
   </aside><!-- End Sidebar-->
 
   <main id="main" class="main">
+    <!--
     {% if request.user.is_authenticated and not request.user.is_staff %}
     <div class="alert alert-info alert-dismissible fade show d-flex align-items-center gap-2 border-0 shadow-sm mb-4" role="alert" style="background: #e0e7ff; color: #3730a3; border-radius: 12px;">
       <i class="bi bi-info-circle-fill fs-5"></i>
@@ -306,7 +314,7 @@
       </div>
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-    {% endif %}
+    {% endif %}--> 
 
     {% block content %}
     {% endblock %}

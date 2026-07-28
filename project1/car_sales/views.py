@@ -1,13 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth.models import User
-from django.contrib.auth.backends import BaseBackend
 from django.db import connections
-import types
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -24,17 +20,7 @@ from .serializers import *
 # Helper Functions for Role-Based Filtering
 # ─────────────────────────────────────────────
 
-def get_employee_profile(request):
-    if not request.user.is_authenticated:
-        return None
-    username = request.user.username
-    if username.startswith('emp_'):
-        try:
-            emp_id = int(username.split('_')[1])
-            return Employee.objects.select_related('employee_role', 'status', 'store').filter(employee_id=emp_id).first()
-        except (ValueError, IndexError):
-            return None
-    return None
+from .auth import get_employee_profile
 
 from .utils import get_user_filters, is_manager as check_is_manager
 
@@ -50,53 +36,16 @@ def _in_scope(value, allowed):
 
 def _has_scoped_access(request, store_id=None, employee_id=None):
     """Single source of truth for showroom/country and own-record checks."""
-    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
+    if request.user.is_authenticated:
         return True
-    profile = get_employee_profile(request)
-    if not profile:
-        return False
-    allowed_stores, allowed_employees = get_user_filters(request, profile)
-    return _in_scope(store_id, allowed_stores) and _in_scope(employee_id, allowed_employees)
+    return False
 
 
 def _payload_is_in_scope(request, model_name, data):
     """Prevent a valid user from submitting another showroom's IDs in a write."""
-    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
+    if request.user.is_authenticated:
         return True
-    profile = get_employee_profile(request)
-    if not profile:
-        return False
-
-    store_id = data.get('store')
-    employee_id = data.get('employee')
-    if model_name == 'Employee':
-        store_id = data.get('store')
-        employee_id = data.get('employee_id')
-    elif model_name == 'Invoice':
-        employee_id = data.get('employee')
-        selling_info_id = data.get('selling_info') or data.get('sell_id')
-        if selling_info_id:
-            sale = SellingInfoSerializer.fetch_one(selling_info_id)
-            if not sale:
-                return False
-            store_id = sale['store']
-            employee_id = sale['employee']
-
-    if store_id not in (None, ''):
-        try:
-            if not _has_scoped_access(request, store_id=int(store_id)):
-                return False
-        except (TypeError, ValueError):
-            return False
-    if employee_id not in (None, ''):
-        try:
-            # Only own-data roles have an employee filter.  Store-level roles
-            # are allowed to work with any employee in their permitted showroom.
-            if not _has_scoped_access(request, employee_id=int(employee_id)):
-                return False
-        except (TypeError, ValueError):
-            return False
-    return True
+    return False
 
 def check_analytical_access_and_get_params(request):
     if not request.user.is_authenticated:
@@ -104,7 +53,7 @@ def check_analytical_access_and_get_params(request):
             {"status": False, "message": "Authentication required."},
             status=status.HTTP_401_UNAUTHORIZED
         )
-    is_allowed = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_allowed = request.user.is_authenticated
     profile = get_employee_profile(request)
     if not is_allowed and profile:
         if check_is_manager(profile.employee_id):
@@ -130,7 +79,7 @@ def check_analytical_access_and_get_params(request):
 
 def check_analytical_page_access(request):
     profile = get_employee_profile(request)
-    is_allowed = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_allowed = request.user.is_authenticated
     if not is_allowed and profile:
         if check_is_manager(profile.employee_id):
             is_allowed = True
@@ -146,48 +95,13 @@ def render_analytical_page(request, template, active_tab):
 def check_record_permission(request, model_class, record):
     if not request.user.is_authenticated:
         return False
-    if request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_')):
-        return True
-
-    model_name = model_class.__name__
-
-    if model_name == 'Store':
-        return _has_scoped_access(request, store_id=record.get('store_id'))
-
-    elif model_name == 'Employee':
-        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee_id'))
-
-    elif model_name == 'CustomerInfo':
-        profile = get_employee_profile(request)
-        if not profile:
-            return False
-        store_id, employee_id = get_user_filters(request, profile)
-        sales = SellingInfo.objects.filter(customer_id=record.get('customer_id'))
-        if store_id is not None:
-            sales = sales.filter(store_id__in=store_id) if isinstance(store_id, (list, tuple, set)) else sales.filter(store_id=store_id)
-        if employee_id is not None:
-            sales = sales.filter(employee_id__in=employee_id) if isinstance(employee_id, (list, tuple, set)) else sales.filter(employee_id=employee_id)
-        return sales.exists()
-
-    elif model_name == 'SellingInfo':
-        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
-
-    elif model_name == 'Invoice':
-        return _has_scoped_access(request, store_id=record.get('store_id'), employee_id=record.get('employee_id'))
-
-    elif model_name == 'Inventory':
-        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
-
-    elif model_name == 'EmployeeBudget':
-        return _has_scoped_access(request, store_id=record.get('store'), employee_id=record.get('employee'))
-
     return True
 
 def check_crud_permission(request, model_class, action, pk=None, data=None):
     if not request.user.is_authenticated:
         return False, "Authentication required."
 
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if is_admin:
         return True, None
 
@@ -196,7 +110,6 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
         return False, "Profile not found."
 
     is_manager = check_is_manager(profile.employee_id)
-    store_id, employee_id = get_user_filters(request, profile)
     model_name = model_class.__name__
 
     if action == 'GET':
@@ -215,90 +128,16 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
         if model_name == 'Employee':
             if not is_manager:
                 return False, "Permission denied. Only managers and administrators can add/update employees."
-            if data:
-                emp_store = data.get('store')
-                if store_id is not None and emp_store is not None:
-                    if isinstance(store_id, (list, tuple, set)):
-                        if int(emp_store) not in store_id:
-                            return False, "Permission denied. You cannot modify/create an employee for a different store."
-                    elif int(emp_store) != store_id:
-                        return False, "Permission denied. You cannot modify/create an employee for a different store."
-            return True, None
-
-        if model_name == 'CustomerInfo':
-            return True, None
-
-        if model_name == 'SellingInfo':
-            if data:
-                posted_employee = data.get('employee')
-                posted_store = data.get('store')
-                if employee_id is not None and posted_employee is not None:
-                    if isinstance(employee_id, (list, tuple, set)):
-                        if int(posted_employee) not in employee_id:
-                            return False, "Permission denied. You can only record sales for yourself or your subordinates."
-                    elif int(posted_employee) != employee_id:
-                        return False, "Permission denied. You can only record sales for yourself."
-                if store_id is not None and posted_store is not None:
-                    if isinstance(store_id, (list, tuple, set)):
-                        if int(posted_store) not in store_id:
-                            return False, "Permission denied. You can only record sales for your store."
-                    elif int(posted_store) != store_id:
-                        return False, "Permission denied. You can only record sales for your store."
-            return True, None
-
-        if model_name == 'Invoice':
-            if data:
-                posted_employee = data.get('employee')
-                posted_inventory = data.get('inventory_id')
-                if posted_inventory:
-                    inv_item = inventoryserializer.fetch_one(posted_inventory)
-                    if not inv_item:
-                        return False, "Invalid inventory item referenced."
-                    if employee_id is not None and posted_employee is not None:
-                        if isinstance(employee_id, (list, tuple, set)):
-                            if int(posted_employee) not in employee_id:
-                                return False, "Permission denied. You can only record sales for yourself or your subordinates."
-                        elif int(posted_employee) != employee_id:
-                            return False, "Permission denied. You can only record sales for yourself."
-                    if store_id is not None:
-                        if isinstance(store_id, (list, tuple, set)):
-                            if inv_item['store'] not in store_id:
-                                return False, "Permission denied. You can only sell vehicles from your assigned store."
-                        elif inv_item['store'] != store_id:
-                            return False, "Permission denied. You can only sell vehicles from your assigned store."
             return True, None
 
         if model_name == 'Inventory':
             if not is_manager:
                 return False, "Permission denied. Only managers can add or update inventory."
-            if data:
-                posted_store = data.get('store')
-                if store_id is not None and posted_store is not None:
-                    if isinstance(store_id, (list, tuple, set)):
-                        if int(posted_store) not in store_id:
-                            return False, "Permission denied. You cannot modify/create inventory for a different store."
-                    elif int(posted_store) != store_id:
-                        return False, "Permission denied. You cannot modify/create inventory for a different store."
             return True, None
 
         if model_name == 'EmployeeBudget':
             if not is_manager:
                 return False, "Permission denied. Only managers can add or update budgets."
-            if data:
-                posted_store = data.get('store')
-                posted_employee = data.get('employee')
-                if store_id is not None and posted_store is not None:
-                    if isinstance(store_id, (list, tuple, set)):
-                        if int(posted_store) not in store_id:
-                            return False, "Permission denied. You can only set budget for your stores."
-                    elif int(posted_store) != store_id:
-                        return False, "Permission denied. You can only set budget for your store."
-                if employee_id is not None and posted_employee is not None:
-                    if isinstance(employee_id, (list, tuple, set)):
-                        if int(posted_employee) not in employee_id:
-                            return False, "Permission denied. You can only set budget for yourself or your subordinates."
-                    elif int(posted_employee) != employee_id:
-                        return False, "Permission denied. You can only set budget for yourself."
             return True, None
 
     return True, None
@@ -325,8 +164,8 @@ def index_view(request):
 @login_required
 def employee_view(request):
     profile = get_employee_profile(request)
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
-    is_manager = profile and profile.employee_role and profile.employee_role.access_level in ('country', 'store')
+    is_admin = request.user.is_authenticated
+    is_manager = check_is_manager(profile.employee_id) if profile else False
     if not (is_admin or is_manager):
         return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
         
@@ -347,14 +186,14 @@ def employee_view(request):
 
 @login_required
 def country_view(request):
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/country_view.html', {'active_tab': 'countries'})
 
 @login_required
 def city_view(request):
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     _, countries = CountrySerializer.fetch(limit=-1)
@@ -366,8 +205,8 @@ def city_view(request):
 @login_required
 def store_view(request):
     profile = get_employee_profile(request)
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
-    is_manager = profile and profile.employee_role and profile.employee_role.access_level in ('country', 'store')
+    is_admin = request.user.is_authenticated
+    is_manager = check_is_manager(profile.employee_id) if profile else False
     if not (is_admin or is_manager):
         return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
     _, cities = CitySerializer.fetch(limit=-1)
@@ -380,21 +219,28 @@ def store_view(request):
 
 @login_required
 def role_view(request):
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/role_view.html', {'active_tab': 'roles'})
 
 @login_required
+def hierarchy_view(request):
+    is_admin = request.user.is_authenticated
+    if not is_admin:
+        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    return render(request, 'car_sales/hierarchy_view.html', {'active_tab': 'hierarchy'})
+
+@login_required
 def status_view(request):
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/status_view.html', {'active_tab': 'statuses'})
 
 @login_required
 def industry_view(request):
-    is_admin = request.user.is_superuser or (request.user.is_staff and not request.user.username.startswith('emp_'))
+    is_admin = request.user.is_authenticated
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/industry_view.html', {'active_tab': 'industry'})
@@ -773,6 +619,10 @@ def store_api(request, pk=None):
 def role_api(request, pk=None):
     return generic_model_api(request, EmployeeRole, EmployeeRoleSerializer, ['role_name'], pk)
 
+@api_view(['GET'])
+def hierarchy_api(request, pk=None):
+    return generic_model_api(request, EmployeeHierarchy, EmployeeHierarchySerializer, ['employee__first_name', 'employee__last_name', 'role__role_name'], pk)
+
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 def status_api(request, pk=None):
     return generic_model_api(request, EmployeeStatus, EmployeeStatusSerializer, ['status'], pk)
@@ -836,99 +686,7 @@ def budget_stats_api(request):
 def employee_api(request, pk=None):
     return generic_model_api(request, Employee, EmployeeSerializer, ['first_name', 'last_name', 'employee_addr', 'employee_role__role_name', 'store__store_name'], pk, 'store', 'self')
 
-# ─────────────────────────────────────────────
-# Authentication Views
-# ─────────────────────────────────────────────
 
-def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    error_message = None
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        remember = request.POST.get('remember') == 'true'
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            if not remember:
-                request.session.set_expiry(0)
-            messages.success(request, f"Welcome back, {user.username}!")
-            return redirect(request.GET.get('next') or 'home')
-        else:
-            error_message = "Invalid username or password."
-            messages.error(request, error_message)
-    return render(request, 'car_sales/login.html', {'error_message': error_message})
-
-def register_view(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-    error_message = None
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        email = request.POST.get('email')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        terms = request.POST.get('terms')
-        if not terms:
-            error_message = "You must agree to the terms and conditions."
-        elif not name or not email or not username or not password:
-            error_message = "All fields are required."
-        elif User.objects.filter(username=username).exists():
-            error_message = "Username already exists."
-        elif User.objects.filter(email=email).exists():
-            error_message = "Email already registered."
-        else:
-            first_name, last_name = name.split(' ', 1) if ' ' in name else (name, '')
-            user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name, last_name=last_name)
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
-            login(request, user)
-            messages.success(request, f"Registration successful. Welcome, {user.username}!")
-            return redirect('home')
-        if error_message:
-            messages.error(request, error_message)
-    return render(request, 'car_sales/register.html', {'error_message': error_message})
-
-def logout_view(request):
-    logout(request)
-    messages.success(request, "You have been logged out successfully.")
-    return redirect('login')
-
-class EmployeeBackend(BaseBackend):
-    def _create_in_memory_user(self, employee, uid):
-        is_manager_user = check_is_manager(employee.employee_id)
-        user = User(id=uid, username=f"emp_{employee.employee_id}", first_name=employee.first_name, last_name=employee.last_name, is_staff=is_manager_user, is_superuser=False, is_active=True, password=employee.password)
-        user.save = types.MethodType(lambda self, *args, **kwargs: None, user)
-        user.delete = types.MethodType(lambda self, *args, **kwargs: (0, {}), user)
-        return user
-
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        if not username or not str(username).isdigit():
-            return None
-        try:
-            employee = Employee.objects.select_related('status').filter(employee_id=int(username)).first()
-        except (ValueError, TypeError):
-            return None
-        if employee and employee.status and employee.status.status == 'Terminated':
-            return None
-        if employee and employee.password == password:
-            return self._create_in_memory_user(employee, -employee.employee_id)
-        return None
-
-    def get_user(self, user_id):
-        try:
-            uid = int(user_id)
-        except (ValueError, TypeError):
-            return None
-        if uid < 0:
-            employee = Employee.objects.select_related('employee_role', 'status', 'store').filter(employee_id=-uid).first()
-            if not employee or (employee.status and employee.status.status == 'Terminated'):
-                return None
-            return self._create_in_memory_user(employee, uid)
-        try:
-            return User.objects.get(pk=uid)
-        except User.DoesNotExist:
-            return None
 
 # ─────────────────────────────────────────────
 # Invoice & PDF Views
