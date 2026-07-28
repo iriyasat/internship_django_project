@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let searchQuery = '';
   let currentRecords = [];
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
+  const canModifySale = {% if can_delete or request.user.is_superuser %}true{% else %}false{% endif %};
 
   // Parse URL query parameter for search
   const urlParams = new URLSearchParams(window.location.search);
@@ -488,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePageStats(currentRecords, totalCount);
 
     if (data.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="${isStaff ? 9 : 8}" class="text-center text-muted py-4">No sales records found.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="${canModifySale ? 9 : 8}" class="text-center text-muted py-4">No sales records found.</td></tr>`;
       tableWrapper.style.display = 'block';
       return;
     }
@@ -499,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
       row.style.transition = 'opacity 0.25s ease-in-out';
 
       let actionsColumn = '';
-      if (isStaff) {
+      if (canModifySale) {
         actionsColumn = `
           <td class="text-nowrap">
             <button class="btn btn-warning btn-sm edit-btn me-1" data-id="${item.sell_id}"><i class="bi bi-pencil"></i></button>
@@ -524,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => row.style.opacity = '1', 50);
     });
 
-    if (isStaff) {
+    if (canModifySale) {
       document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const id = this.getAttribute('data-id');

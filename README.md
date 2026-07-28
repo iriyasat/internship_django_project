@@ -53,11 +53,16 @@ python manage.py runserver
 
 ## 🏛️ System Architecture & Key Modules
 
-### 1. Role-Based Access Control (RBAC)
-- **Access Level Scoping**:
-  - **Country Level (`country`)**: Full management & reporting scope across all stores in the assigned country.
-  - **Store Level (`store`)**: Restricted access to sales, employees, and inventory within the assigned store branch.
-  - **Own Data Only (`own`)**: Sales reps access only their own individual sales records and targets.
+### 1. 9-Level Role-Based Access Control (RBAC)
+- **Hierarchy & Data Scoping**:
+  - **Levels 1–5 (Global Access)**: Senior Management / Executives with global access across all stores and locations.
+  - **Level 7 (Regional Access)**: Regional Sales Managers with access scoped to all store branches under their supervision.
+  - **Levels 6 & 8 (Store Level)**: Branch Managers and Team Leads with access scoped strictly to their assigned store branch.
+  - **Level 9 (Personal Scope)**: Sales Executives with access scoped exclusively to their individual sales records and targets.
+- **CRUD Operations Permissions**:
+  - **Creation (`POST`)**: Sales, Invoices, and Inventory creation are available to all authenticated employees (including Level 9). Master administrative entities (Countries, Cities, Roles, Statuses) require Administrator permissions.
+  - **Updating (`PUT`)**: Inventory updates require Manager status (Levels 1–8). Sales, Invoice, and Store record updates are restricted to Senior Management (Levels 1–4). Level 9 users cannot edit existing sales or invoice records.
+  - **Deletion (`DELETE`)**: Strictly restricted to Senior Management (Levels 1–4).
 - **Custom Authentication Backend (`EmployeeBackend`)**: Authenticates employees directly via numeric `employee_id` with in-memory Django user wrapping and automatic manager privilege computation.
 
 ### 2. High-Performance Raw SQL Analytics Engine

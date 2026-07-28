@@ -795,3 +795,142 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
         user_exists = User.objects.filter(username='register_user').exists()
         self.assertTrue(user_exists)
 
+
+class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
+    """
+    Comprehensive test case verifying login, authentication, and CRUD permission
+    enforcement for all employee hierarchy levels (Level 1 through Level 9).
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.login_url = reverse('login')
+        self.logout_url = reverse('logout')
+
+    def test_all_hierarchy_levels_login_and_access(self):
+        """Verify that employees at every level (1–9) can log in and receive correct RBAC access."""
+        # Define roles and levels 1 to 9
+        roles_config = [
+            (1, "Global Chief Executive"),
+            (2, "Vice President"),
+            (3, "Country Manager"),
+            (4, "Fleet Sales Specialist"),
+            (5, "Regional Sales Director"),
+            (6, "Branch Manager"),
+            (7, "Assistant Store Manager"),
+            (8, "Customer Relations Officer"),
+            (9, "Sales Executive"),
+        ]
+
+        for lvl_num, role_title in roles_config:
+            # 1. Prepare Level, Role & Employee
+            level_obj, _ = EmployeeLevel.objects.get_or_create(level=lvl_num, defaults={'notes': f'Test Level {lvl_num}'})
+            role_obj, _ = EmployeeRole.objects.get_or_create(role_name=role_title)
+
+            emp = Employee.objects.create(
+                first_name=f"UserLvl{lvl_num}",
+                last_name="Tester",
+                date_of_joining=datetime.date(2020, 1, 1),
+                employee_addr=f"{lvl_num} Test Street",
+                employee_role=role_obj,
+                status=self.status_active,
+                store=self.store,
+                city=self.city,
+                country=self.country,
+                password="CAr$@lse2014"
+            )
+            EmployeeHierarchy.objects.create(
+                employee=emp,
+                role=role_obj,
+                level=level_obj,
+                status=self.status_active
+            )
+
+            # 2. Test Login
+            login_resp = self.client.post(self.login_url, {
+                'username': str(emp.employee_id),
+                'password': 'CAr$@lse2014'
+            })
+            self.assertRedirects(
+                login_resp, reverse('home'),
+                msg_prefix=f"Level {lvl_num} ({role_title}) failed to log in successfully."
+            )
+
+            # 3. Test Home Dashboard Access & Context Flags
+            home_resp = self.client.get(reverse('home'))
+            self.assertEqual(home_resp.status_code, 200, f"Level {lvl_num} home dashboard returned status {home_resp.status_code}")
+            
+            ctx_profile = home_resp.context.get('employee_profile')
+            self.assertIsNotNone(ctx_profile, f"Level {lvl_num} employee profile missing in context.")
+            self.assertEqual(ctx_profile.employee_id, emp.employee_id)
+
+            # 4. Verify CRUD permissions for Inventory (Level 9 can POST, only Level 1-8 can PUT, Level 1-4 can DELETE)
+            inv_api_url = reverse('inventory_api')
+            
+            # GET Inventory list (all logged-in levels allowed)
+            get_resp = self.client.get(inv_api_url)
+            self.assertEqual(get_resp.status_code, 200, f"Level {lvl_num} GET inventory returned {get_resp.status_code}")
+
+            # 5. Test Logout
+            logout_resp = self.client.post(self.logout_url)
+            self.assertRedirects(logout_resp, self.login_url)
+
+    def test_inventory_permission_matrix_across_levels(self):
+        """Test specific CRUD operations (POST, PUT, DELETE) on Inventory across key levels."""
+        from .models import VehicleInfo, Inventory
+        make = IndustryInfo.objects.create(make_name="MatrixMake")
+        vehicle = VehicleInfo.objects.create(vehicle_model="MatrixModel", make=make, mmr=18000, vin="MATRIXVIN12345678")
+
+        # Create test users: Level 9 (Sales Exec), Level 6 (Manager), Level 2 (VP/Senior Management)
+        l9_level, _ = EmployeeLevel.objects.get_or_create(level=9)
+        l6_level, _ = EmployeeLevel.objects.get_or_create(level=6)
+        l2_level, _ = EmployeeLevel.objects.get_or_create(level=2)
+
+        emp_l9 = Employee.objects.create(first_name="L9", last_name="Exec", date_of_joining=datetime.date(2020,1,1), employee_addr="St", employee_role=self.role, status=self.status_active, store=self.store, city=self.city, country=self.country, password="CAr$@lse2014")
+        EmployeeHierarchy.objects.create(employee=emp_l9, role=self.role, level=l9_level, status=self.status_active)
+
+        emp_l6 = Employee.objects.create(first_name="L6", last_name="Mgr", date_of_joining=datetime.date(2020,1,1), employee_addr="St", employee_role=self.manager_role, status=self.status_active, store=self.store, city=self.city, country=self.country, password="CAr$@lse2014")
+        EmployeeHierarchy.objects.create(employee=emp_l6, role=self.manager_role, level=l6_level, status=self.status_active)
+
+        emp_l2 = Employee.objects.create(first_name="L2", last_name="VP", date_of_joining=datetime.date(2020,1,1), employee_addr="St", employee_role=self.manager_role, status=self.status_active, store=self.store, city=self.city, country=self.country, password="CAr$@lse2014")
+        EmployeeHierarchy.objects.create(employee=emp_l2, role=self.manager_role, level=l2_level, status=self.status_active)
+
+        inv_url = reverse('inventory_api')
+
+        # --- Test Level 9 ---
+        self.client.login(username=str(emp_l9.employee_id), password="CAr$@lse2014")
+        # Level 9 can POST (Create)
+        post_resp = self.client.post(inv_url, {'vehicle': vehicle.id, 'store': self.store.store_id, 'employee': emp_l9.employee_id, 'status': 4}, content_type='application/json')
+        self.assertEqual(post_resp.status_code, 201, "Level 9 failed to create inventory.")
+        inv_id = post_resp.json()['data']['inventory_id']
+        inv_detail_url = reverse('inventory_api_detail', kwargs={'pk': inv_id})
+
+        # Level 9 CANNOT PUT (Edit)
+        put_resp = self.client.put(inv_detail_url, {'status': 1}, content_type='application/json')
+        self.assertEqual(put_resp.status_code, 403, "Level 9 was incorrectly allowed to edit inventory.")
+        
+        # Level 9 CANNOT DELETE
+        del_resp = self.client.delete(inv_detail_url)
+        self.assertEqual(del_resp.status_code, 403, "Level 9 was incorrectly allowed to delete inventory.")
+        self.client.logout()
+
+        # --- Test Level 6 ---
+        self.client.login(username=str(emp_l6.employee_id), password="CAr$@lse2014")
+        # Level 6 CAN PUT (Edit)
+        put_resp = self.client.put(inv_detail_url, {'status': 1}, content_type='application/json')
+        self.assertEqual(put_resp.status_code, 200, "Level 6 failed to edit inventory.")
+
+        # Level 6 CANNOT DELETE
+        del_resp = self.client.delete(inv_detail_url)
+        self.assertEqual(del_resp.status_code, 403, "Level 6 was incorrectly allowed to delete inventory.")
+        self.client.logout()
+
+        # --- Test Level 2 ---
+        self.client.login(username=str(emp_l2.employee_id), password="CAr$@lse2014")
+        # Level 2 CAN DELETE
+        del_resp = self.client.delete(inv_detail_url)
+        self.assertEqual(del_resp.status_code, 200, "Level 2 failed to delete inventory.")
+        self.assertFalse(Inventory.objects.filter(pk=inv_id).exists())
+        self.client.logout()
+
+

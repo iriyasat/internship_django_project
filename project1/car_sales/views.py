@@ -25,6 +25,9 @@ from .auth import get_employee_profile
 from .utils import get_user_filters, is_manager as check_is_manager, get_employee_level as _get_employee_level, can_delete
 
 
+from .permissions import LEVEL_CRUD_DISPATCH, LEVEL_RECORD_DISPATCH
+
+
 def _in_scope(value, allowed):
     """Return whether a scalar database value is included in an access filter."""
     if allowed is None:
@@ -93,7 +96,7 @@ def render_analytical_page(request, template, active_tab):
     return render(request, template, {'active_parent': 'api_pages', 'active_tab': active_tab})
 
 def check_record_permission(request, model_class, record):
-    """Row-level visibility check — called for single-record GET and before PUT/DELETE."""
+    """Row-level visibility check — dispatches to dedicated level handler in permissions.py."""
     if not request.user.is_authenticated:
         return False
     if request.user.is_superuser:
@@ -105,106 +108,36 @@ def check_record_permission(request, model_class, record):
 
     model_name = model_class.__name__
     level = _get_employee_level(profile.employee_id)
+    if not level:
+        return True
 
-    # Level 9: personal scope only
-    if level == 9:
-        if model_name == 'SellingInfo':
-            return record.get('employee') == profile.employee_id
-        if model_name == 'CustomerInfo':
-            from .models import SellingInfo
-            customer_id = record.get('customer_id') or record.get('customer')
-            return SellingInfo.objects.filter(customer_id=customer_id, employee_id=profile.employee_id).exists()
-        if model_name in ('EmployeeBudget', 'Invoice'):
-            return record.get('employee') == profile.employee_id
-
-    # Levels 6 and 8: own store only
-    if level in (6, 8):
-        from .utils import get_employee_store_id
-        own_store = get_employee_store_id(profile.employee_id)
-        store_val = record.get('store') or record.get('store_id')
-        if store_val is not None and own_store is not None:
-            return int(store_val) == int(own_store)
-
-    # Level 7: stores under them
-    if level == 7:
-        from .utils import get_regional_manager_store_ids
-        allowed_stores = get_regional_manager_store_ids(profile.employee_id)
-        store_val = record.get('store') or record.get('store_id')
-        if store_val is not None and allowed_stores:
-            return int(store_val) in [int(s) for s in allowed_stores]
-
+    handler = LEVEL_RECORD_DISPATCH.get(level)
+    if handler:
+        return handler(model_name, record, profile)
     return True
 
 
 def check_crud_permission(request, model_class, action, pk=None, data=None):
-    """Action-level permission check — called before every API mutation."""
+    """Action-level permission check — dispatches to dedicated level handler in permissions.py."""
     if not request.user.is_authenticated:
         return False, "Authentication required."
 
     if request.user.is_superuser:
         return True, None
 
+    if action == 'GET':
+        return True, None
+
     profile = get_employee_profile(request)
     if not profile:
         return False, "Profile not found."
 
-    is_manager = check_is_manager(profile.employee_id)
     level = _get_employee_level(profile.employee_id)
     model_name = model_class.__name__
 
-    # Admin-only models (only superuser can mutate these)
-    admin_only_models = ['Country', 'City', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo']
-    if model_name in admin_only_models and action in ('POST', 'PUT', 'DELETE'):
-        return False, f"Permission denied. Only administrators can modify {model_class._meta.verbose_name} data."
-
-    if action == 'GET':
-        return True, None
-
-    if action == 'DELETE':
-        # Only Levels 1–4 (top bosses) can delete
-        if not can_delete(level):
-            return False, f"Permission denied. Only senior management (Level 1–4) can delete {model_class._meta.verbose_name} records."
-        return True, None
-
-    if action in ('POST', 'PUT'):
-        if model_name == 'Employee':
-            if not is_manager:
-                return False, "Permission denied. Only managers can add/update employees."
-            return True, None
-
-        if model_name == 'Store':
-            # Only Level 1–4 can create/edit stores
-            if not can_delete(level):  # reuse top-boss check
-                return False, "Permission denied. Only senior management can modify store records."
-            return True, None
-
-        if model_name == 'Inventory':
-            if not is_manager:
-                return False, "Permission denied. Only managers can add or update inventory."
-            return True, None
-
-        if model_name == 'EmployeeBudget':
-            if not is_manager:
-                return False, "Permission denied. Only managers can add or update budgets."
-            return True, None
-
-        if model_name == 'SellingInfo':
-            if action == 'PUT':
-                # Level 9 cannot edit sales; only Levels 1–4 can modify existing sales
-                if level == 9:
-                    return False, "Permission denied. Sales Executives cannot edit sales records."
-                if not can_delete(level):
-                    return False, "Permission denied. Only senior management (Level 1–4) can edit existing sales records."
-            return True, None
-
-        if model_name == 'Invoice':
-            if action == 'PUT':
-                # Once created, only top bosses (Levels 1–4) can modify invoices
-                if not can_delete(level):
-                    return False, "Permission denied. Once created, invoices can only be modified by senior management (Level 1–4)."
-            return True, None
-
-    return True, None
+    from .permissions import check_level_5_8_crud_permission
+    handler = LEVEL_CRUD_DISPATCH.get(level, check_level_5_8_crud_permission)
+    return handler(model_name, action, data)
 
 
 # ─────────────────────────────────────────────

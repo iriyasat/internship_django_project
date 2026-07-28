@@ -99,7 +99,7 @@
         <div class="card-body pt-3">
           <h5 class="card-title">
             Invoice Registry <span>| Live Query &amp; CRUD Interface</span>
-            {% if request.user.is_staff %}
+            {% if request.user.is_authenticated %}
             <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
               <i class="bi bi-plus-circle me-1"></i> Create Invoice
             </button>
@@ -196,7 +196,7 @@
 </section>
 
 <!-- CRUD Modal -->
-{% if request.user.is_staff %}
+{% if request.user.is_authenticated %}
 <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -394,6 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
   const isSuperuser = {% if request.user.is_superuser %}true{% else %}false{% endif %};
+  const canModifyInvoice = {% if can_delete or request.user.is_superuser %}true{% else %}false{% endif %};
   const currentEmployeeId = {{ current_employee_id|default:"null" }};
 
   let bootstrapModal = null;
@@ -518,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <button onclick="downloadSingleInvoicePDF(${r.invoice_id})" class="btn btn-sm btn-outline-danger me-1" title="Download PDF">
             <i class="bi bi-file-earmark-pdf"></i>
           </button>
-          ${isStaff ? `
+          ${canModifyInvoice ? `
           <button class="btn btn-sm btn-outline-primary me-1 edit-btn" data-id="${r.invoice_id}" title="Edit">
             <i class="bi bi-pencil"></i>
           </button>
@@ -530,8 +531,7 @@ document.addEventListener('DOMContentLoaded', function () {
       tableBody.appendChild(tr);
     });
 
-
-    if (isStaff) {
+    if (canModifyInvoice) {
       tableBody.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', () => openEditModal(btn.dataset.id));
       });

@@ -226,10 +226,12 @@
           </div>
           <div class="col-md-6 mb-3">
             <div class="card bg-light border-0 p-3 h-100">
-              <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-shield-check"></i> Permissions Matrix</h5>
-              <ul class="list-unstyled mb-0" style="font-size: 0.9rem;">
-                <li class="mb-1 text-success"><i class="bi bi-check-circle-fill me-2"></i><strong>GET (Read)</strong>: Available to all logged-in users.</li>
-                <li class="mb-1 text-danger"><i class="bi bi-x-circle-fill me-2"></i><strong>POST, PUT, DELETE (Write)</strong>: Restricted to Staff/Superuser accounts.</li>
+              <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-shield-check"></i> 9-Level RBAC Permissions Matrix</h5>
+              <ul class="list-unstyled mb-0" style="font-size: 0.85rem;">
+                <li class="mb-1 text-primary"><i class="bi bi-eye-fill me-2"></i><strong>GET (Read Scoping)</strong>: Level 9 (Personal), Levels 6 & 8 (Own Store), Level 7 (Regional), Levels 1–5 (Global).</li>
+                <li class="mb-1 text-success"><i class="bi bi-plus-circle-fill me-2"></i><strong>POST (Create)</strong>: Sales, Invoices, and Inventory open to all authenticated employees. System Master data requires Admin.</li>
+                <li class="mb-1 text-warning"><i class="bi bi-pencil-fill me-2"></i><strong>PUT (Update)</strong>: Inventory updates restricted to Managers (Levels 1–8). Sales, Invoice & Store edits restricted to Senior Management (Levels 1–4). Level 9 cannot edit existing sales/invoices.</li>
+                <li class="mb-1 text-danger"><i class="bi bi-x-circle-fill me-2"></i><strong>DELETE (Remove)</strong>: Restricted strictly to Senior Management (Levels 1–4).</li>
               </ul>
             </div>
           </div>
@@ -514,6 +516,12 @@
       route: "employees",
       description: "Manage system employees, positions, and portal credentials.",
       body: { first_name: "Sebastian", last_name: "Vettel", date_of_joining: "2026-07-15", employee_addr: "Heppenheim 5", employee_role: 1, status: 1, store: 1, city: 1, country: 1, password: "VettelPassword123" }
+    },
+    {
+      name: "Inventory",
+      route: "inventory",
+      description: "Manage showroom vehicle inventory state machine (Available [4], Sold [1], Pre-order [2], Unavailable [0]). Creation is available to all employees; updates require Manager status.",
+      body: { vehicle: 1, store: 1, employee: 1, status: 4, selling_info: null }
     }
   ];
 
