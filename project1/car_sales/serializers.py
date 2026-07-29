@@ -868,7 +868,7 @@ class SellingInfoSerializer:
         monthly_query = f"""
             SELECT DATE_FORMAT(si.selling_date, '%%Y-%%m-01') AS month, COUNT(si.sell_id) AS count, SUM(si.selling_price) AS revenue
             FROM selling_info si
-            WHERE {where_str} GROUP BY DATE_FORMAT(si.selling_date, '%%Y-%%m-01') ORDER BY month DESC
+            WHERE {where_str} GROUP BY DATE_FORMAT(si.selling_date, '%%Y-%%m-01') ORDER BY month ASC
         """
         with connections[SellingInfoSerializer.DB_NAME].cursor() as cursor:
             cursor.execute(stats_query, params)
