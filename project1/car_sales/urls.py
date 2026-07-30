@@ -17,6 +17,7 @@ urlpatterns = [
     path('statuses/', status_view, name='status'),
     path('industry/', industry_view, name='industry'),
     path('vehicles/', vehicle_view, name='vehicle'),
+    path('inventory/', inventory_api_page_view, name='inventory'),
     path('customers/', customer_view, name='customer'),
     path('sales/', selling_view, name='selling'),
     path('budgets/', budget_view, name='budget'),
