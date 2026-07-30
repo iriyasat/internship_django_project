@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
-    Employee, IndustryInfo, VehicleInfo, CustomerInfo,
+    Employee, IndustryInfo, VehicleInfo, Customer, CustomerInfo,
     SellingInfo, EmployeeBudget, Inventory, Invoice,
     EmployeeHierarchy, EmployeeLevel
 )
@@ -62,9 +62,14 @@ class VehicleInfoAdmin(admin.ModelAdmin):
     search_fields = ('vehicle_model', 'vin')
     list_select_related = ('make',)
 
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('customer_id', 'email', 'phone', 'created_at', 'updated_at')
+    search_fields = ('email', 'phone')
+
 @admin.register(CustomerInfo)
 class CustomerInfoAdmin(admin.ModelAdmin):
-    list_display = ('customer_id', 'firstname', 'lastname', 'customer_status', 'city', 'country')
+    list_display = ('customer', 'firstname', 'lastname', 'customer_status', 'city', 'country')
     list_filter = ('customer_status', 'country', 'city')
     search_fields = ('firstname', 'lastname', 'customer_address')
     list_select_related = ('city', 'country')

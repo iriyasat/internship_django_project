@@ -167,14 +167,38 @@ class VehicleInfo(models.Model):
         ]
 
 
-class CustomerInfo(models.Model):
+class Customer(models.Model):
     customer_id = models.AutoField(primary_key=True, verbose_name="Customer ID")
+    email = models.EmailField(max_length=254, unique=True, verbose_name="Email")
+    password = models.CharField(max_length=255, verbose_name="Password")
+    phone = models.CharField(max_length=20, null=True, blank=True, verbose_name="Phone")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
+
+    def __str__(self):
+        return f"Customer #{self.customer_id} ({self.email})"
+
+    class Meta:
+        db_table = 'customer'
+        verbose_name_plural = 'customers'
+
+
+class CustomerInfo(models.Model):
+    customer = models.OneToOneField(
+        Customer,
+        on_delete=models.CASCADE,
+        db_column='customer_id',
+        primary_key=True,
+        related_name='info',
+        verbose_name="Customer"
+    )
     firstname = models.CharField(max_length=100, verbose_name="First Name")
     lastname = models.CharField(max_length=100, verbose_name="Last Name")
     customer_status = models.CharField(max_length=50, verbose_name="Customer Status")
     customer_address = models.CharField(max_length=255, verbose_name="Customer Address")
     city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='city_id', related_name='customers', verbose_name="City")
     country = models.ForeignKey(Country, on_delete=models.CASCADE, db_column='country_id', related_name='customers', verbose_name="Country")
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True, verbose_name="Profile Picture")
     created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Updated At")
 
@@ -188,7 +212,7 @@ class CustomerInfo(models.Model):
 
 class SellingInfo(models.Model):
     sell_id = models.AutoField(primary_key=True, verbose_name="Sell ID")
-    customer = models.ForeignKey(CustomerInfo, on_delete=models.CASCADE, db_column='customer_id', related_name='sales', verbose_name="Customer")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, db_column='customer_id', related_name='sales', verbose_name="Customer")
     vehicle = models.ForeignKey(VehicleInfo, on_delete=models.CASCADE, db_column='vehicle_id', related_name='sales', verbose_name="Vehicle")
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, db_column='employee_id', related_name='sales', verbose_name="Employee")
     store = models.ForeignKey(Store, on_delete=models.CASCADE, db_column='store_id', related_name='sales', verbose_name="Store")
@@ -288,7 +312,7 @@ class Invoice(models.Model):
         verbose_name="Selling Info"
     )
     customer = models.ForeignKey(
-        CustomerInfo,
+        Customer,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

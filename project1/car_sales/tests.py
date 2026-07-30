@@ -8,7 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from .models import (
     Country, City, Store, EmployeeRole, EmployeeStatus,
-    Employee, IndustryInfo, VehicleInfo, CustomerInfo,
+    Employee, IndustryInfo, VehicleInfo, Customer, CustomerInfo,
     SellingInfo, EmployeeBudget, EmployeeLevel, EmployeeHierarchy
 )
 
@@ -267,8 +267,10 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
 
         # Test CustomerInfo sheet verification
         c_row = df_customer.iloc[0]
+        c_id = int(c_row['customer_id'])
+        c_parent, _ = Customer.objects.get_or_create(customer_id=c_id, defaults={'email': f'customer{c_id}@example.com', 'password': 'password123'})
         customer, _ = CustomerInfo.objects.get_or_create(
-            customer_id=int(c_row['customer_id']),
+            customer=c_parent,
             defaults={
                 'firstname': str(c_row['firstname']),
                 'lastname': str(c_row['lastname']),
@@ -279,7 +281,7 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
             }
         )
         # Verify
-        db_customer = CustomerInfo.objects.get(customer_id=customer.customer_id)
+        db_customer = CustomerInfo.objects.get(customer=c_parent)
         self.assertEqual(db_customer.firstname, str(c_row['firstname']))
         self.assertEqual(db_customer.lastname, str(c_row['lastname']))
         self.assertEqual(db_customer.customer_status, str(c_row['customer_status']))
@@ -289,7 +291,7 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
         sale, _ = SellingInfo.objects.get_or_create(
             sell_id=int(s_row['sell_id']),
             defaults={
-                'customer': customer,
+                'customer': c_parent,
                 'vehicle': vehicle,
                 'employee': self.test_employee,
                 'store': self.store,
@@ -364,8 +366,14 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
 
         # Create Customer
         c_row = df_customer.iloc[0]
-        cls.customer, _ = CustomerInfo.objects.get_or_create(
-            customer_id=int(c_row['customer_id']),
+        c_id = int(c_row['customer_id'])
+        cls.customer_parent, _ = Customer.objects.get_or_create(
+            customer_id=c_id,
+            defaults={'email': f'testcustomer{c_id}@example.com', 'password': 'password123'}
+        )
+        cls.customer = cls.customer_parent
+        cls.customer_info, _ = CustomerInfo.objects.get_or_create(
+            customer=cls.customer_parent,
             defaults={
                 'firstname': str(c_row['firstname']),
                 'lastname': str(c_row['lastname']),
@@ -384,7 +392,7 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
         self.assertEqual(self.role.role_name, "Sales Executive")
         self.assertEqual(self.employee.first_name, "Robert")
         self.assertEqual(self.vehicle.vehicle_model, "F-250 Super Duty")
-        self.assertEqual(self.customer.firstname, "Robert")
+        self.assertEqual(self.customer_info.firstname, "Robert")
         self.assertEqual(self.make.make_name, "Acura")
 
     def test_unique_constraints(self):
