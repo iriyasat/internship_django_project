@@ -122,16 +122,72 @@
           <input type="hidden" id="edit-inventory-id" name="inventory_id">
           
           <div class="row g-3">
-            <!-- Vehicle Selection -->
+            <!-- Vehicle Selection & Inline Creation -->
             <div class="col-md-12">
-              <label for="id_vehicle" class="form-label fw-bold small text-muted">Vehicle</label>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="id_vehicle" class="form-label fw-bold small text-muted mb-0">Vehicle <span class="text-danger">*</span></label>
+                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" id="btn-add-new-vehicle">+ New Vehicle</button>
+              </div>
               <select class="form-select form-select-sm" id="id_vehicle" required>
                 <option value="" disabled selected>-- Select Vehicle --</option>
                 {% for v in vehicles %}
-                <option value="{{ v.id }}">{{ v.make.make_name }} {{ v.vehicle_model }} (VIN: {{ v.vin }}, MMR: ${{ v.mmr|intcomma }})</option>
+                <option value="{{ v.id }}">{{ v.make_name }} {{ v.vehicle_model }} (VIN: {{ v.vin }}, MMR: ${{ v.mmr|intcomma }})</option>
                 {% endfor %}
               </select>
               <div class="invalid-feedback">Please select a vehicle.</div>
+            </div>
+
+            <!-- Dynamic New Vehicle Form inline section -->
+            <div class="col-12" id="new-vehicle-section" style="display: none;">
+              <div class="card p-3 mb-2 bg-light border shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-car-front-fill me-1"></i>Create New Vehicle</h6>
+                  <button type="button" class="btn-close btn-sm" id="cancel-new-vehicle" aria-label="Close"></button>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label for="new_veh_make_input" class="form-label small fw-bold mb-1">Make <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_make_input" placeholder="Type to search or add make..." list="make-datalist" autocomplete="off">
+                    <datalist id="make-datalist">
+                      {% for make in makes %}
+                      <option data-id="{{ make.make_id }}" value="{{ make.make_name }}"></option>
+                      {% endfor %}
+                    </datalist>
+                    <div class="form-text text-muted mt-0" style="font-size: 0.725rem;">Search existing make or type a new one to add automatically.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_model" class="form-label small fw-bold mb-1">Vehicle Model <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_model" placeholder="e.g. Civic">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_vin" class="form-label small fw-bold mb-1">VIN <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_vin" placeholder="17-char VIN" maxlength="20">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_mmr" class="form-label small fw-bold mb-1">MMR ($) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm" id="new_veh_mmr" placeholder="e.g. 15000">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_transmission" class="form-label small fw-bold mb-1">Transmission</label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_transmission" placeholder="e.g. Automatic">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_color" class="form-label small fw-bold mb-1">Color</label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_color" placeholder="e.g. Black">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_odometer" class="form-label small fw-bold mb-1">Odometer (mi)</label>
+                    <input type="number" class="form-control form-control-sm" id="new_veh_odometer" placeholder="e.g. 45000">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="new_veh_body" class="form-label small fw-bold mb-1">Body Style</label>
+                    <input type="text" class="form-control form-control-sm" id="new_veh_body" placeholder="e.g. Sedan">
+                  </div>
+                  <div class="col-12 mt-2 text-end">
+                    <button type="button" class="btn btn-primary btn-sm px-3" id="save-new-vehicle-btn">Save & Select</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Store Selection -->
@@ -282,6 +338,165 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchData();
   });
 
+  // ─── Inline New Vehicle Handling ────────────────
+  const btnAddNewVehicle = document.getElementById('btn-add-new-vehicle');
+  const cancelNewVehicle = document.getElementById('cancel-new-vehicle');
+  const newVehicleSection = document.getElementById('new-vehicle-section');
+  const saveNewVehicleBtn = document.getElementById('save-new-vehicle-btn');
+
+  if (btnAddNewVehicle) {
+    btnAddNewVehicle.addEventListener('click', () => {
+      if (newVehicleSection) newVehicleSection.style.display = 'block';
+    });
+  }
+
+  if (cancelNewVehicle) {
+    cancelNewVehicle.addEventListener('click', () => {
+      if (newVehicleSection) newVehicleSection.style.display = 'none';
+      clearNewVehicleFields();
+    });
+  }
+
+  function clearNewVehicleFields() {
+    ['new_veh_make_input', 'new_veh_model', 'new_veh_vin', 'new_veh_mmr', 'new_veh_transmission', 'new_veh_color', 'new_veh_odometer', 'new_veh_body'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  function getOrCreateMakeId(makeInputVal, csrftoken) {
+    const datalistOptions = document.querySelectorAll('#make-datalist option');
+    let matchedMakeId = null;
+    let matchedMakeName = makeInputVal;
+
+    datalistOptions.forEach(opt => {
+      if (opt.value.trim().toLowerCase() === makeInputVal.toLowerCase()) {
+        matchedMakeId = parseInt(opt.getAttribute('data-id'));
+        matchedMakeName = opt.value.trim();
+      }
+    });
+
+    if (matchedMakeId) {
+      return Promise.resolve({ id: matchedMakeId, name: matchedMakeName });
+    }
+
+    // Make does not exist -> Create new Make via POST /api/industry/
+    return fetch('/api/industry/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken
+      },
+      body: JSON.stringify({ make_name: makeInputVal })
+    })
+    .then(res => {
+      if (!res.ok) {
+        return res.json().then(errData => {
+          throw new Error(errData.message || 'Failed to create new Make.');
+        });
+      }
+      return res.json();
+    })
+    .then(res => {
+      if (res.status && res.data) {
+        const newMakeId = res.data.make_id;
+        const newMakeName = res.data.make_name;
+
+        // Add to #make-datalist for future autocomplete
+        const datalist = document.getElementById('make-datalist');
+        if (datalist) {
+          const opt = document.createElement('option');
+          opt.setAttribute('data-id', newMakeId);
+          opt.value = newMakeName;
+          datalist.appendChild(opt);
+        }
+
+        return { id: newMakeId, name: newMakeName };
+      } else {
+        throw new Error(res.message || 'Failed to create new Make.');
+      }
+    });
+  }
+
+  if (saveNewVehicleBtn) {
+    saveNewVehicleBtn.addEventListener('click', () => {
+      const makeInputVal = document.getElementById('new_veh_make_input')?.value.trim();
+      const modelVal = document.getElementById('new_veh_model')?.value.trim();
+      const vinVal = document.getElementById('new_veh_vin')?.value.trim();
+      const mmrVal = document.getElementById('new_veh_mmr')?.value.trim();
+      const transVal = document.getElementById('new_veh_transmission')?.value.trim();
+      const colorVal = document.getElementById('new_veh_color')?.value.trim();
+      const odoVal = document.getElementById('new_veh_odometer')?.value.trim();
+      const bodyVal = document.getElementById('new_veh_body')?.value.trim();
+
+      if (!makeInputVal || !modelVal || !vinVal || !mmrVal) {
+        alert('Please fill in all required fields (Make, Model, VIN, MMR).');
+        return;
+      }
+
+      const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+      saveNewVehicleBtn.disabled = true;
+      saveNewVehicleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+      getOrCreateMakeId(makeInputVal, csrftoken)
+        .then(makeInfo => {
+          const payload = {
+            make: makeInfo.id,
+            vehicle_model: modelVal,
+            vin: vinVal,
+            mmr: parseInt(mmrVal),
+            transmission: transVal || null,
+            color: colorVal || null,
+            odometer: odoVal ? parseInt(odoVal) : null,
+            body: bodyVal || null
+          };
+
+          return fetch('/api/vehicles/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(payload)
+          }).then(res => {
+            if (!res.ok) {
+              return res.json().then(errData => {
+                throw new Error(errData.message || 'Failed to create vehicle.');
+              });
+            }
+            return res.json();
+          }).then(res => {
+            return { vehicleRes: res, makeName: makeInfo.name };
+          });
+        })
+        .then(({ vehicleRes, makeName }) => {
+          saveNewVehicleBtn.disabled = false;
+          saveNewVehicleBtn.innerHTML = 'Save & Select';
+
+          if (vehicleRes.status && vehicleRes.data) {
+            const v = vehicleRes.data;
+            const formattedMmr = new Intl.NumberFormat().format(v.mmr || mmrVal);
+            const optionText = `${v.make_name || makeName} ${v.vehicle_model} (VIN: ${v.vin}, MMR: $${formattedMmr})`;
+            const newOption = new Option(optionText, v.id, true, true);
+            vehicleSelect.add(newOption);
+            vehicleSelect.value = v.id;
+
+            clearNewVehicleFields();
+            if (newVehicleSection) newVehicleSection.style.display = 'none';
+          } else {
+            alert(vehicleRes.message || 'Failed to create vehicle.');
+          }
+        })
+        .catch(err => {
+          saveNewVehicleBtn.disabled = false;
+          saveNewVehicleBtn.innerHTML = 'Save & Select';
+          console.error('Error creating vehicle:', err);
+          alert(`Error: ${err.message}`);
+        });
+    });
+  }
+
   if (addInventoryBtn) {
     addInventoryBtn.addEventListener('click', function() {
       // Reset Form for Add Mode
@@ -290,6 +505,8 @@ document.addEventListener('DOMContentLoaded', function() {
       editIdInput.value = '';
       modalTitle.textContent = 'Add Inventory Item';
       statusSelect.value = '4'; // Default to Available
+      if (newVehicleSection) newVehicleSection.style.display = 'none';
+      clearNewVehicleFields();
     });
   }
 
@@ -467,6 +684,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function openEditModal(id) {
     inventoryForm.classList.remove('was-validated');
     modalTitle.textContent = `Edit Inventory Item #${id}`;
+    if (newVehicleSection) newVehicleSection.style.display = 'none';
+    clearNewVehicleFields();
     
     // Fetch details of single item
     fetch(`/api/inventory/${id}/`)

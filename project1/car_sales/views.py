@@ -491,6 +491,7 @@ def inventory_api_page_view(request):
     _, stores = StoreSerializer.fetch(limit=-1)
     _, employees = EmployeeSerializer.fetch(limit=-1)
     _, selling_infos = SellingInfoSerializer.fetch(limit=1000)
+    _, makes = IndustryInfoSerializer.fetch(limit=-1)
     return render(request, 'car_sales/api_inventory.html', {
         'active_parent': 'api_pages',
         'active_tab': 'api_inventory',
@@ -498,6 +499,7 @@ def inventory_api_page_view(request):
         'stores': stores,
         'employees': employees,
         'selling_infos': selling_infos,
+        'makes': makes,
         'status_choices': Inventory.StatusChoices.choices,
     })
 

@@ -657,6 +657,11 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['data']['inventory_id'], item.inventory_id)
 
+        # Test inventory API page rendering
+        page_url = reverse('inventory_api_page_view')
+        response = self.client.get(page_url)
+        self.assertEqual(response.status_code, 200)
+
         post_data = {
             'vehicle': vehicle2.id,
             'store': self.store.store_id,
