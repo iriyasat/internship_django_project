@@ -912,6 +912,9 @@
                         <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
                             <i class="fa-solid fa-cart-plus me-1"></i> Cart
                         </button>
+                        <button onclick="addToCompareGlobal(${v.inventory_id})" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold">
+                            <i class="fa-solid fa-code-compare me-1"></i> Compare
+                        </button>
                         <a href="{% url 'ecommerce:checkout' %}?inventory_id=${v.inventory_id}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
                             Buy Now
                         </a>

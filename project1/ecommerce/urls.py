@@ -10,6 +10,7 @@ urlpatterns = [
     path('category/', views.catalog_view, name='category'),
     path('vehicle/<int:inventory_id>/', views.vehicle_detail_view, name='vehicle_detail'),
     path('api/catalog/', views.api_catalog_vehicles, name='api_catalog_vehicles'),
+    path('compare/', views.compare_view, name='compare'),
 
 
     path('api/bodies/', views.api_vehicle_bodies, name='api_vehicle_bodies'),
@@ -36,6 +37,7 @@ urlpatterns = [
 
     # Redirect legacy /ecommerce/... paths to new clean URLs
     path('ecommerce/catalog/', RedirectView.as_view(url='/catalog/', permanent=True)),
+    path('ecommerce/compare/', RedirectView.as_view(url='/compare/', permanent=True)),
     path('ecommerce/cart/', RedirectView.as_view(url='/cart/', permanent=True)),
     path('ecommerce/wishlist/', RedirectView.as_view(url='/wishlist/', permanent=True)),
     path('ecommerce/checkout/', RedirectView.as_view(url='/checkout/', permanent=True)),

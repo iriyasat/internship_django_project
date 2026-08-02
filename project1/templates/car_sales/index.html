@@ -636,8 +636,9 @@
 
     <div class="nav-tabs-wrapper d-none d-lg-flex">
       <a href="/" class="nav-tab-link">Home</a>
-      <a href="{% url 'ecommerce:catalog' %}" class="nav-tab-link">Browse Inventory</a>
+      <a href="{% url 'ecommerce:category' %}" class="nav-tab-link">Browse Inventory</a>
       <a href="{% url 'ecommerce:test_drive' %}" class="nav-tab-link">Book Appointment</a>
+
       <a href="{% url 'ecommerce:customer_orders' %}" class="nav-tab-link">My Orders</a>
       {% if user.is_authenticated %}
       <a href="{% url 'ecommerce:customer_profile' %}" class="nav-tab-link">My Profile</a>
@@ -645,6 +646,12 @@
     </div>
 
     <div class="nav-actions">
+      <!-- Vehicle Compare Link -->
+      <a href="{% url 'ecommerce:compare' %}" id="nav-compare-link" class="position-relative text-dark fs-5 px-2" title="Vehicle Comparison">
+          <i class="fa-solid fa-code-compare text-success"></i>
+          <span class="badge-count" id="nav-compare-count">0</span>
+      </a>
+
       <!-- Wishlist Link -->
       <a href="{% url 'ecommerce:wishlist' %}" class="position-relative text-dark fs-5 px-2" title="Saved Wishlist">
           <i class="fa-regular fa-heart text-danger"></i>
@@ -1293,6 +1300,37 @@
             })
             .catch(() => {});
     }
+
+    const COMPARE_STORAGE_KEY = "compare_inventory_ids";
+
+    function getCompareInventoryIds() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || "[]");
+            if (!Array.isArray(parsed)) return [];
+            return parsed
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && id > 0);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function updateCompareBadge() {
+        const countEl = document.getElementById("nav-compare-count");
+        if (countEl) countEl.innerText = String(getCompareInventoryIds().length);
+    }
+
+    const compareNavLink = document.getElementById("nav-compare-link");
+    if (compareNavLink) {
+        compareNavLink.addEventListener("click", function (e) {
+            const ids = getCompareInventoryIds();
+            if (ids.length === 0) return;
+            e.preventDefault();
+            window.location.href = `{% url 'ecommerce:compare' %}?ids=${ids.join(",")}`;
+        });
+    }
+
+    updateCompareBadge();
 
     function toggleWishlistGlobal(vehicleId, btn) {
         fetch("{% url 'ecommerce:api_toggle_wishlist' %}", {

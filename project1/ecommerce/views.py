@@ -213,10 +213,128 @@ def api_vehicle_models(request):
     return JsonResponse({'success': True, 'count': len(models_list), 'models': models_list})
 
 
+# ==============================================================================
+# 2. VEHICLE COMPARE VIEW
+# ==============================================================================
+
+def compare_view(request):
+    """Compare up to 4 vehicles side-by-side using raw SQL."""
+    customer = get_customer_from_request(request)
+    if customer:
+        wishlist_count, cart_count = fetch_customer_nav_counts(customer.customer_id)
+    else:
+        wishlist_count = 0
+        cart_count = 0
+
+    raw_ids = []
+    ids_csv = (request.GET.get('ids') or '').strip()
+    if ids_csv:
+        raw_ids.extend(ids_csv.split(','))
+    raw_ids.extend(request.GET.getlist('inventory_id'))
+
+    seen = set()
+    selected_ids = []
+    for item in raw_ids:
+        try:
+            inv_id = int(str(item).strip())
+        except (TypeError, ValueError):
+            continue
+        if inv_id > 0 and inv_id not in seen:
+            seen.add(inv_id)
+            selected_ids.append(inv_id)
+        if len(selected_ids) == 4:
+            break
+
+    compare_vehicles = []
+    if selected_ids:
+        placeholders = ", ".join(["%s"] * len(selected_ids))
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT
+                    i.inventory_id, i.status,
+                    v.id AS vehicle_id, v.vehicle_model, v.trim, v.body, v.transmission,
+                    v.color, v.interior, v.state, v.condition, v.odometer, v.mmr, v.vin,
+                    m.make_name,
+                    s.store_name, c.city_name, co.country_name
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                JOIN city c ON s.city_id = c.city_id
+                JOIN country co ON s.country_id = co.country_id
+                WHERE i.inventory_id IN ({placeholders})
+                """,
+                selected_ids,
+            )
+            rows = cursor.fetchall()
+
+        row_map = {}
+        for row in rows:
+            (
+                inventory_id,
+                status_code,
+                vehicle_id,
+                model,
+                trim,
+                body,
+                transmission,
+                color,
+                interior,
+                state,
+                condition,
+                odometer,
+                price,
+                vin,
+                make_name,
+                store_name,
+                city_name,
+                country_name,
+            ) = row
+            make_slug = str(make_name or '').lower().replace(' ', '').replace('-', '')
+            logo_alias = 'mercedes' if 'mercedes' in make_slug else ('landrover' if 'landrover' in make_slug else make_slug)
+            row_map[inventory_id] = {
+                'inventory_id': inventory_id,
+                'vehicle_id': vehicle_id,
+                'make': make_name or 'Vehicle',
+                'model': model or '',
+                'trim': trim or '',
+                'body': body or '',
+                'transmission': transmission or '',
+                'color': color or '',
+                'interior': interior or '',
+                'state': state or '',
+                'condition': condition,
+                'odometer': odometer,
+                'price': price,
+                'vin': vin or '',
+                'status_code': status_code,
+                'store_name': store_name or '',
+                'city': city_name or '',
+                'country': country_name or '',
+                'image_url': f"/static/logos/{logo_alias}.png",
+            }
+
+        compare_vehicles = [row_map[i] for i in selected_ids if i in row_map]
+
+    return render(
+        request,
+        'ecommerce/compare.html',
+        {
+            'customer': customer,
+            'wishlist_count': wishlist_count,
+            'cart_count': cart_count,
+            'compare_vehicles': compare_vehicles,
+            'selected_ids': selected_ids,
+            'max_compare': 4,
+        },
+    )
+
+
 
 
 # ==============================================================================
-# 2. WISHLIST VIEWS & APIS
+# 3. WISHLIST VIEWS & APIS
 # ==============================================================================
 
 def wishlist_view(request):
