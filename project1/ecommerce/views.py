@@ -1,6 +1,7 @@
 import json
-from django.db import transaction
+from django.db import transaction, connection, models
 from django.db.models import Max
+
 from django.shortcuts import render, redirect, get_object_or_404
 
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -8,56 +9,114 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 
 from car_sales.models import Customer, CustomerInfo, Store, IndustryInfo, Inventory, Employee, City, Country, VehicleInfo
-from .models import Order, PaymentTransaction, Wishlist, Cart, TestDriveBooking
+from .models import Order, PaymentTransaction, Wishlist, Cart, CartItem, TestDriveBooking
 from .serializers import (
     CatalogService, WishlistService, CartService, TestDriveService, OrderService,
     VehicleBodyService, VehicleBodySerializer, VehicleConditionService, VehicleConditionSerializer,
+    VehicleDetailService,
     WishlistModelSerializer, CartItemModelSerializer, TestDriveBookingModelSerializer,
     OrderModelSerializer, PaymentTransactionModelSerializer
 )
 
 
+
+# Keep raw SQL aligned with current model table names.
+WISHLIST_TABLE = Wishlist._meta.db_table
+CART_TABLE = Cart._meta.db_table
+CART_ITEM_TABLE = CartItem._meta.db_table
+ORDER_TABLE = Order._meta.db_table
+TEST_DRIVE_TABLE = TestDriveBooking._meta.db_table
+
+
+# Strictly secure helper to get current authenticated customer record
 # Strictly secure helper to get current authenticated customer record
 def get_customer_from_request(request):
-    if hasattr(request, 'user') and request.user.is_authenticated:
+    if not (hasattr(request, 'user') and request.user.is_authenticated):
+        return None
+
+    with connection.cursor() as cursor:
         # 1. Check cust_<id> username format
         if request.user.username.startswith('cust_'):
             try:
                 c_id = int(request.user.username.split('_')[1])
-                cust = Customer.objects.filter(customer_id=c_id).first()
-                if cust:
+                cursor.execute(
+                    "SELECT customer_id, email, phone FROM customer WHERE customer_id = %s",
+                    [c_id]
+                )
+                row = cursor.fetchone()
+                if row:
+                    from car_sales.models import Customer as CustomerModel
+                    cust = CustomerModel()
+                    cust.customer_id = row[0]
+                    cust.email = row[1]
+                    cust.phone = row[2]
                     return cust
             except Exception:
                 pass
 
-        # 2. Check matching email in customer table
+        # 2. Check matching email
         if request.user.email:
-            cust = Customer.objects.filter(email=request.user.email).first()
-            if cust:
+            cursor.execute(
+                "SELECT customer_id, email, phone FROM customer WHERE email = %s",
+                [request.user.email]
+            )
+            row = cursor.fetchone()
+            if row:
+                from car_sales.models import Customer as CustomerModel
+                cust = CustomerModel()
+                cust.customer_id = row[0]
+                cust.email = row[1]
+                cust.phone = row[2]
                 return cust
 
-        # 3. Safely create dedicated Customer record for this user
+        # 3. Create new customer record
         try:
-            with transaction.atomic():
-                cust = Customer.objects.create(
-                    email=request.user.email or f"{request.user.username}@customer.com",
-                    password=request.user.password or "securepass",
-                    phone="+1-555-0199"
-                )
-                CustomerInfo.objects.create(
-                    customer=cust,
-                    firstname=request.user.first_name or "Customer",
-                    lastname=request.user.last_name or str(cust.customer_id),
-                    customer_status="Active",
-                    customer_address="Registered Address",
-                    city_id=1,
-                    country_id=1
-                )
+            email = request.user.email or f"{request.user.username}@customer.com"
+            cursor.execute(
+                "INSERT INTO customer (email, password, phone) VALUES (%s, %s, %s)",
+                [email, request.user.password or "securepass", "+1-555-0199"]
+            )
+            new_id = cursor.lastrowid
+            cursor.execute(
+                """INSERT INTO customer_info
+                   (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                [
+                    new_id,
+                    request.user.first_name or "Customer",
+                    request.user.last_name or str(new_id),
+                    "Active", "Registered Address", 1, 1
+                ]
+            )
+            cursor.execute(
+                "SELECT customer_id, email, phone FROM customer WHERE customer_id = %s",
+                [new_id]
+            )
+            row = cursor.fetchone()
+            if row:
+                from car_sales.models import Customer as CustomerModel
+                cust = CustomerModel()
+                cust.customer_id = row[0]
+                cust.email = row[1]
+                cust.phone = row[2]
                 return cust
         except Exception:
-            return Customer.objects.filter(email=request.user.email).first()
+            # Fallback: try email lookup again
+            cursor.execute(
+                "SELECT customer_id, email, phone FROM customer WHERE email = %s",
+                [request.user.email]
+            )
+            row = cursor.fetchone()
+            if row:
+                from car_sales.models import Customer as CustomerModel
+                cust = CustomerModel()
+                cust.customer_id = row[0]
+                cust.email = row[1]
+                cust.phone = row[2]
+                return cust
 
     return None
+
 
 
 # ==============================================================================
@@ -66,98 +125,62 @@ def get_customer_from_request(request):
 
 def catalog_view(request):
     """Customer vehicle catalog page."""
-    makes = IndustryInfo.objects.all().order_by('make_name')
-    stores = Store.objects.select_related('city', 'country').all().order_by('store_name')
+    meta = CatalogService.fetch_catalog_meta(active_condition=request.GET.get('condition', 'all'))
     customer = get_customer_from_request(request)
-    wishlist_count = Wishlist.objects.filter(customer=customer).count() if customer else 0
-    cart = Cart.objects.filter(customer=customer).first() if customer else None
-    cart_count = cart.items.count() if cart else 0
-    vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
-    condition_tabs = VehicleConditionService.fetch_condition_tabs(active_condition=request.GET.get('condition', 'all'))
-
-    transmissions = list(VehicleInfo.objects.exclude(transmission__isnull=True).exclude(transmission='').values_list('transmission', flat=True).distinct().order_by('transmission'))
-    colors = list(VehicleInfo.objects.exclude(color__isnull=True).exclude(color='').values_list('color', flat=True).distinct().order_by('color'))
-    fuel_types = ['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'Flex Fuel']
-
-    avail_qs = Inventory.objects.filter(status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER])
-    condition_counts = {
-        'all': avail_qs.count(),
-        'excellent': avail_qs.filter(vehicle__condition__gte=40).count(),
-        'very_good': avail_qs.filter(vehicle__condition__range=(30, 39)).count(),
-        'good': avail_qs.filter(vehicle__condition__range=(20, 29)).count(),
-        'fair': avail_qs.filter(vehicle__condition__range=(1, 19)).count(),
-    }
-
-    price_stats = avail_qs.aggregate(Max('vehicle__mmr'))
-    max_price_db = price_stats['vehicle__mmr__max'] or 182000
+    if customer:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            wishlist_count = cursor.fetchone()[0]
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} ci JOIN {CART_TABLE} c ON ci.cart_id = c.id WHERE c.customer_id = %s",
+                [customer.customer_id]
+            )
+            cart_count = cursor.fetchone()[0]
+    else:
+        wishlist_count = 0
+        cart_count = 0
 
     return render(request, 'ecommerce/catalog.html', {
         'customer': customer,
-        'makes': makes,
-        'stores': stores,
         'wishlist_count': wishlist_count,
         'cart_count': cart_count,
-        'vehicle_bodies': vehicle_bodies,
-        'condition_tabs': condition_tabs,
-        'condition_counts': condition_counts,
-        'max_price_db': max_price_db,
         'active_condition': request.GET.get('condition', 'all'),
-        'transmissions': transmissions,
-        'colors': colors,
-        'fuel_types': fuel_types,
+        **meta
     })
-
-
-
 
 
 def vehicle_detail_view(request, inventory_id):
     """View to display detailed vehicle information, specs, gallery, financing calculator, and dealer contact."""
-    inventory = get_object_or_404(
-        Inventory.objects.select_related('vehicle', 'vehicle__make', 'store', 'store__city', 'store__country', 'employee'),
-        inventory_id=inventory_id
-    )
-
-    vehicle = inventory.vehicle
+    detail_data = VehicleDetailService.fetch_detail_data(inventory_id)
     customer = get_customer_from_request(request)
-
-    wishlist_count = 0
-    cart_count = 0
     if customer:
-        wishlist_count = Wishlist.objects.filter(customer=customer).count()
-        cart_count = Cart.objects.filter(customer=customer).count()
-
-    import re
-    make_name = vehicle.make.make_name if vehicle.make else 'automobile'
-    brand_slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
-    PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
-    png_slug = PNG_ALIASES.get(brand_slug, brand_slug)
-    brand_logo_url = f"/static/logos/{png_slug}.png"
-
-    # Similar recommended vehicles in same make
-    similar_inventory = Inventory.objects.filter(
-        status=1,
-        vehicle__make=vehicle.make
-    ).exclude(inventory_id=inventory_id).select_related('vehicle', 'vehicle__make', 'store', 'store__city')[:4]
-
-    # Calculate monthly payment (estimate: 72 months, 7.89% APR)
-    r = 0.0789 / 12
-    monthly_payment = round((vehicle.mmr * r * (1 + r)**72) / ((1 + r)**72 - 1), 2) if vehicle.mmr else 245
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            wishlist_count = cursor.fetchone()[0]
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} ci JOIN {CART_TABLE} c ON ci.cart_id = c.id WHERE c.customer_id = %s",
+                [customer.customer_id]
+            )
+            cart_count = cursor.fetchone()[0]
+    else:
+        wishlist_count = 0
+        cart_count = 0
 
     return render(request, 'ecommerce/vehicle_detail.html', {
-        'inventory': inventory,
-        'vehicle': vehicle,
         'customer': customer,
         'wishlist_count': wishlist_count,
         'cart_count': cart_count,
-        'brand_logo_url': brand_logo_url,
-        'similar_inventory': similar_inventory,
-        'monthly_payment': monthly_payment,
+        **detail_data
     })
 
 
 def api_catalog_vehicles(request):
-
     """JSON API for searching and filtering inventory vehicles."""
     vehicles, total_count, total_pages, current_page, available_filters = CatalogService.fetch_catalog_vehicles(
         make_id=request.GET.get('make_id'),
@@ -189,9 +212,6 @@ def api_catalog_vehicles(request):
     })
 
 
-
-
-
 def api_vehicle_bodies(request):
     """JSON API for fetching vehicle body types serialized from database via serializers.py."""
     bodies = VehicleBodyService.fetch_vehicle_bodies()
@@ -206,25 +226,12 @@ def api_vehicle_conditions(request):
 
 
 def api_vehicle_models(request):
-    """JSON API for fetching distinct vehicle models for a selected brand/make."""
+    """JSON API for fetching distinct vehicle models for a selected brand/make via serializers.py."""
     brand = request.GET.get('brand') or request.GET.get('make')
     make_id = request.GET.get('make_id')
-
-    qs = VehicleInfo.objects.all()
-    if make_id and str(make_id).isdigit():
-        qs = qs.filter(make_id=make_id)
-    elif brand and str(brand).lower() not in ['all', '']:
-        qs = qs.filter(make__make_name__icontains=brand)
-
-    models_list = list(
-        qs.exclude(vehicle_model__isnull=True)
-          .exclude(vehicle_model='')
-          .values_list('vehicle_model', flat=True)
-          .distinct()
-          .order_by('vehicle_model')[:50]
-    )
-
+    models_list = CatalogService.fetch_vehicle_models(brand=brand, make_id=make_id)
     return JsonResponse({'success': True, 'count': len(models_list), 'models': models_list})
+
 
 
 
@@ -349,14 +356,61 @@ def test_drive_view(request):
 
     customer = get_customer_from_request(request)
     bookings = TestDriveService.fetch_customer_bookings(customer) if customer else []
-    stores = Store.objects.select_related('city', 'country').all()
-
-    selected_inventory = None
     inventory_id = request.GET.get('inventory_id') or request.GET.get('vehicle_id')
-    if inventory_id and str(inventory_id).isdigit():
-        selected_inventory = Inventory.objects.filter(inventory_id=inventory_id).select_related('vehicle', 'vehicle__make', 'store', 'store__city').first()
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT s.store_id, s.store_name, c.city_name, co.country_name
+            FROM store s
+            JOIN city c ON s.city_id = c.city_id
+            JOIN country co ON s.country_id = co.country_id
+            ORDER BY s.store_name
+        """)
+        stores = [{'store_id': r[0], 'store_name': r[1], 'city': {'city_name': r[2]}, 'country': {'country_name': r[3]}} for r in cursor.fetchall()]
 
-    available_inventories = Inventory.objects.filter(status=1).select_related('vehicle', 'vehicle__make', 'store', 'store__city')[:60]
+        selected_inventory = None
+        if inventory_id and str(inventory_id).isdigit():
+            cursor.execute("""
+                SELECT i.inventory_id, v.vehicle_model, v.trim, m.make_name, s.store_name, c.city_name
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                JOIN city c ON s.city_id = c.city_id
+                WHERE i.inventory_id = %s
+            """, [inventory_id])
+            row = cursor.fetchone()
+            if row:
+                class _Obj:
+                    def __init__(self, **kw):
+                        self.__dict__.update(kw)
+                class _Inv:
+                    def __init__(self, r):
+                        self.inventory_id = r[0]
+                        self.vehicle = _Obj(vehicle_model=r[1], trim=r[2], make=_Obj(make_name=r[3]))
+                        self.store = _Obj(store_name=r[4], city=_Obj(city_name=r[5]))
+                selected_inventory = _Inv(row)
+
+        cursor.execute("""
+            SELECT i.inventory_id, v.vehicle_model, v.trim, m.make_name, s.store_name, c.city_name
+            FROM inventory i
+            JOIN vehicle_info v ON i.vehicle_id = v.id
+            LEFT JOIN industry_info m ON v.make_id = m.make_id
+            JOIN store s ON i.store_id = s.store_id
+            JOIN city c ON s.city_id = c.city_id
+            WHERE i.status = 1
+            LIMIT 60
+        """)
+        class _Obj:
+            def __init__(self, **kw): self.__dict__.update(kw)
+        avail_rows = cursor.fetchall()
+        available_inventories = []
+        for r in avail_rows:
+            class _Inv:
+                def __init__(self, row):
+                    self.inventory_id = row[0]
+                    self.vehicle = _Obj(vehicle_model=row[1], trim=row[2], make=_Obj(make_name=row[3]))
+                    self.store = _Obj(store_name=row[4], city=_Obj(city_name=row[5]))
+            available_inventories.append(_Inv(r))
 
     return render(request, 'ecommerce/test_drive.html', {
         'customer': customer,
@@ -387,10 +441,15 @@ def api_book_test_drive(request):
     store_id = data.get('store_id')
 
     if inventory_id and (not vehicle_id or not store_id):
-        inv = Inventory.objects.filter(inventory_id=inventory_id).first()
-        if inv:
-            vehicle_id = inv.vehicle_id
-            store_id = inv.store_id
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT vehicle_id, store_id FROM inventory WHERE inventory_id = %s",
+                [inventory_id]
+            )
+            row = cursor.fetchone()
+            if row:
+                vehicle_id = row[0]
+                store_id = row[1]
 
     booking_date_str = data.get('booking_date')
     booking_time_str = data.get('booking_time', '10:00')
@@ -424,14 +483,51 @@ def checkout_view(request):
         return redirect('login')
 
     customer = get_customer_from_request(request)
-    customer_info = CustomerInfo.objects.filter(customer=customer).select_related('city', 'country').first() if customer else None
+    if customer:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address,
+                       c.city_id, c.city_name, co.country_id, co.country_name
+                FROM customer_info ci
+                LEFT JOIN city c ON ci.city_id = c.city_id
+                LEFT JOIN country co ON ci.country_id = co.country_id
+                WHERE ci.customer_id = %s
+            """, [customer.customer_id])
+            ci_row = cursor.fetchone()
+    else:
+        ci_row = None
+
+    class _Obj:
+        def __init__(self, **kw): self.__dict__.update(kw)
+    customer_info = _Obj(
+        firstname=ci_row[0], lastname=ci_row[1],
+        customer_status=ci_row[2], customer_address=ci_row[3],
+        city=_Obj(city_id=ci_row[4], city_name=ci_row[5]),
+        country=_Obj(country_id=ci_row[6], country_name=ci_row[7])
+    ) if ci_row else None
     
     cart_items, cart_total = CartService.fetch_customer_cart_items(customer) if customer else ([], 0)
 
     inventory_id = request.GET.get('inventory_id')
     buy_now_item = None
     if inventory_id:
-        buy_now_item = Inventory.objects.select_related('vehicle__make', 'store').filter(pk=inventory_id).first()
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT i.inventory_id, v.vehicle_model, v.mmr, m.make_name, s.store_name
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                WHERE i.inventory_id = %s
+            """, [inventory_id])
+            b_row = cursor.fetchone()
+        if b_row:
+            buy_now_item = _Obj(
+                inventory_id=b_row[0],
+                vehicle=_Obj(vehicle_model=b_row[1], mmr=b_row[2], make=_Obj(make_name=b_row[3])),
+                store=_Obj(store_name=b_row[4])
+            )
+
 
     total_amount = buy_now_item.vehicle.mmr if buy_now_item else cart_total
 
@@ -486,7 +582,33 @@ def customer_orders_view(request):
         return redirect('login')
 
     customer = get_customer_from_request(request)
-    orders = Order.objects.filter(customer=customer).select_related('inventory__vehicle__make', 'store', 'invoice', 'assigned_employee').order_by('-order_id') if customer else []
+    orders = []
+    if customer:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT o.order_id, o.total_amount, o.order_status, o.fulfillment_type,
+                       o.created_at, v.vehicle_model, m.make_name, s.store_name
+                FROM {order_table} o
+                LEFT JOIN inventory i ON o.inventory_id = i.inventory_id
+                LEFT JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                LEFT JOIN store s ON o.store_id = s.store_id
+                WHERE o.customer_id = %s
+                ORDER BY o.order_id DESC
+            """.format(order_table=ORDER_TABLE), [customer.customer_id])
+            order_rows = cursor.fetchall()
+
+        class _Obj:
+            def __init__(self, **kw): self.__dict__.update(kw)
+        STATUS_MAP = {1: 'Needs Approval', 2: 'Approved', 3: 'Partially Paid', 4: 'Paid', 5: 'Fulfilled', 6: 'Rejected', 7: 'Cancelled'}
+        for r in order_rows:
+            orders.append(_Obj(
+                order_id=r[0], total_amount=r[1],
+                order_status=r[2], get_order_status_display=lambda s=r[2]: STATUS_MAP.get(s, str(s)),
+                fulfillment_type=r[3], created_at=r[4],
+                inventory=_Obj(vehicle=_Obj(vehicle_model=r[5], make=_Obj(make_name=r[6]))),
+                store=_Obj(store_name=r[7])
+            ))
     return render(request, 'ecommerce/customer_orders.html', {
         'customer': customer,
         'orders': orders
@@ -504,14 +626,49 @@ def customer_profile_view(request):
         return redirect('login')
 
     customer = get_customer_from_request(request)
-    customer_info = CustomerInfo.objects.filter(customer=customer).select_related('city', 'country').first() if customer else None
-    
-    orders_count = Order.objects.filter(customer=customer).count() if customer else 0
-    wishlist_count = Wishlist.objects.filter(customer=customer).count() if customer else 0
-    test_drives_count = TestDriveBooking.objects.filter(customer=customer).count() if customer else 0
 
-    cities = City.objects.all().order_by('city_name')
-    countries = Country.objects.all().order_by('country_name')
+    class _Obj:
+        def __init__(self, **kw): self.__dict__.update(kw)
+
+    customer_info = None
+    orders_count = 0
+    wishlist_count = 0
+    test_drives_count = 0
+    cities = []
+    countries = []
+
+    if customer:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address,
+                       c.city_id, c.city_name, co.country_id, co.country_name
+                FROM customer_info ci
+                LEFT JOIN city c ON ci.city_id = c.city_id
+                LEFT JOIN country co ON ci.country_id = co.country_id
+                WHERE ci.customer_id = %s
+            """, [customer.customer_id])
+            ci_row = cursor.fetchone()
+            customer_info = _Obj(
+                firstname=ci_row[0], lastname=ci_row[1],
+                customer_status=ci_row[2], customer_address=ci_row[3],
+                city=_Obj(city_id=ci_row[4], city_name=ci_row[5]),
+                country=_Obj(country_id=ci_row[6], country_name=ci_row[7])
+            ) if ci_row else None
+
+            cursor.execute(f"SELECT COUNT(*) FROM {ORDER_TABLE} WHERE customer_id = %s", [customer.customer_id])
+            orders_count = cursor.fetchone()[0]
+
+            cursor.execute(f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s", [customer.customer_id])
+            wishlist_count = cursor.fetchone()[0]
+
+            cursor.execute(f"SELECT COUNT(*) FROM {TEST_DRIVE_TABLE} WHERE customer_id = %s", [customer.customer_id])
+            test_drives_count = cursor.fetchone()[0]
+
+            cursor.execute("SELECT city_id, city_name FROM city ORDER BY city_name")
+            cities = [_Obj(city_id=r[0], city_name=r[1]) for r in cursor.fetchall()]
+
+            cursor.execute("SELECT country_id, country_name FROM country ORDER BY country_name")
+            countries = [_Obj(country_id=r[0], country_name=r[1]) for r in cursor.fetchall()]
 
     return render(request, 'ecommerce/profile.html', {
         'customer': customer,
@@ -547,28 +704,50 @@ def api_update_customer_profile(request):
     country_id = data.get('country_id')
 
     try:
-        with transaction.atomic():
+        with connection.cursor() as cursor:
             if phone is not None:
-                customer.phone = phone
-                customer.save()
+                cursor.execute(
+                    "UPDATE customer SET phone = %s WHERE customer_id = %s",
+                    [phone, customer.customer_id]
+                )
 
-            info, _ = CustomerInfo.objects.get_or_create(
-                customer=customer,
-                defaults={
-                    'firstname': firstname or request.user.first_name or "Customer",
-                    'lastname': lastname or request.user.last_name or str(customer.customer_id),
-                    'customer_status': 'Active',
-                    'customer_address': customer_address or 'Registered Address',
-                    'city_id': city_id or 1,
-                    'country_id': country_id or 1
-                }
+            # Check if customer_info record exists
+            cursor.execute(
+                "SELECT customer_id FROM customer_info WHERE customer_id = %s",
+                [customer.customer_id]
             )
-            if firstname: info.firstname = firstname
-            if lastname: info.lastname = lastname
-            if customer_address: info.customer_address = customer_address
-            if city_id: info.city_id = city_id
-            if country_id: info.country_id = country_id
-            info.save()
+            existing_info = cursor.fetchone()
+
+            if existing_info:
+                # Update existing record
+                updates = []
+                params = []
+                if firstname: updates.append("firstname = %s"); params.append(firstname)
+                if lastname: updates.append("lastname = %s"); params.append(lastname)
+                if customer_address: updates.append("customer_address = %s"); params.append(customer_address)
+                if city_id: updates.append("city_id = %s"); params.append(city_id)
+                if country_id: updates.append("country_id = %s"); params.append(country_id)
+                if updates:
+                    params.append(customer.customer_id)
+                    cursor.execute(
+                        f"UPDATE customer_info SET {', '.join(updates)} WHERE customer_id = %s",
+                        params
+                    )
+            else:
+                # Insert new record
+                cursor.execute("""
+                    INSERT INTO customer_info
+                        (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, [
+                    customer.customer_id,
+                    firstname or request.user.first_name or 'Customer',
+                    lastname or request.user.last_name or str(customer.customer_id),
+                    'Active',
+                    customer_address or 'Registered Address',
+                    city_id or 1,
+                    country_id or 1
+                ])
 
         return JsonResponse({'success': True, 'message': 'Profile updated successfully!'})
     except Exception as e:

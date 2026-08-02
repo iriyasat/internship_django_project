@@ -414,6 +414,7 @@
                     </h5>
 
                     <form id="category-filter-form">
+                        <input type="hidden" name="trim" id="filter-trim">
                         
                         <!-- Search Keyword -->
                         <div class="mb-3">
@@ -550,6 +551,65 @@
     let currentPage = 1;
 
     document.addEventListener("DOMContentLoaded", function() {
+        const initialQuery = new URLSearchParams(window.location.search);
+
+        function setSelectValueCaseInsensitive(selectEl, rawValue) {
+            if (!selectEl || !rawValue) return;
+            const target = String(rawValue).toLowerCase();
+            const option = Array.from(selectEl.options).find(o => String(o.value).toLowerCase() === target);
+            if (option) {
+                selectEl.value = option.value;
+            } else {
+                selectEl.value = rawValue;
+            }
+        }
+
+        function applyInitialFiltersFromUrl() {
+            const q = initialQuery.get('q');
+            const brand = initialQuery.get('brand') || initialQuery.get('make');
+            const body = initialQuery.get('body');
+            const condition = initialQuery.get('condition');
+            const transmission = initialQuery.get('transmission');
+            const color = initialQuery.get('color');
+            const storeId = initialQuery.get('store_id');
+            const trim = initialQuery.get('trim');
+            const minPrice = initialQuery.get('min_price');
+            const maxPrice = initialQuery.get('max_price');
+
+            const qInput = document.getElementById('filter-q');
+            const brandSelect = document.getElementById('filter-brand');
+            const bodySelect = document.getElementById('filter-body');
+            const conditionSelect = document.getElementById('filter-condition');
+            const transmissionSelect = document.getElementById('filter-transmission');
+            const colorSelect = document.getElementById('filter-color');
+            const storeSelect = document.getElementById('filter-store');
+            const trimInput = document.getElementById('filter-trim');
+
+            if (qInput && q) qInput.value = q;
+            if (brandSelect && brand) setSelectValueCaseInsensitive(brandSelect, brand);
+            if (bodySelect && body) setSelectValueCaseInsensitive(bodySelect, body);
+            if (conditionSelect && condition) setSelectValueCaseInsensitive(conditionSelect, condition);
+            if (transmissionSelect && transmission) setSelectValueCaseInsensitive(transmissionSelect, transmission);
+            if (colorSelect && color) setSelectValueCaseInsensitive(colorSelect, color);
+            if (storeSelect && storeId) setSelectValueCaseInsensitive(storeSelect, storeId);
+            if (trimInput) trimInput.value = trim || '';
+
+            const rangeMin = document.getElementById('range-min');
+            const rangeMax = document.getElementById('range-max');
+            const inputMin = document.getElementById('input-min-price');
+            const inputMax = document.getElementById('input-max-price');
+            if (minPrice && rangeMin && inputMin) {
+                rangeMin.value = minPrice;
+                inputMin.value = minPrice;
+            }
+            if (maxPrice && rangeMax && inputMax) {
+                rangeMax.value = maxPrice;
+                inputMax.value = maxPrice;
+            }
+        }
+
+        applyInitialFiltersFromUrl();
+
         // Toggle Sort Dropdown
         const dropdownBtn = document.getElementById('coreDropdownBtn');
         const dropdownMenu = document.getElementById('coreDropdownMenu');
@@ -897,4 +957,3 @@
     }
 </script>
 {% endblock %}
-

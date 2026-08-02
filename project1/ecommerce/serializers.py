@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime, date, time
-from django.db import transaction, models, connections
+from django.db import transaction, models, connections, connection
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -10,6 +10,11 @@ from car_sales.models import (
     Employee, SellingInfo, Invoice, IndustryInfo
 )
 from .models import Wishlist, Cart, CartItem, TestDriveBooking, Order, PaymentTransaction
+
+WISHLIST_TABLE = Wishlist._meta.db_table
+CART_TABLE = Cart._meta.db_table
+CART_ITEM_TABLE = CartItem._meta.db_table
+TEST_DRIVE_TABLE = TestDriveBooking._meta.db_table
 
 
 # ------------------------------------------------------------------------------
@@ -135,19 +140,20 @@ class VehicleBodyService:
 
     @classmethod
     def fetch_vehicle_bodies(cls):
-        db_bodies = (
-            VehicleInfo.objects
-            .exclude(body__isnull=True)
-            .exclude(body='')
-            .values('body')
-            .annotate(count=models.Count('id'))
-            .order_by('-count')
-        )
+        # RAW SQL Execution
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT body, COUNT(id) as count
+                FROM vehicle_info
+                WHERE body IS NOT NULL AND body != ''
+                GROUP BY body
+                ORDER BY count DESC
+            """)
+            db_bodies = [{'body': row[0], 'count': row[1]} for row in cursor.fetchall()]
 
         body_list = []
         seen = set()
 
-        # Featured UI items first
         featured_names = ['Electric', 'Sedan', 'SUV', 'Pickup Truck', 'Access Cab', 'Luxury', 'Hatchback', 'Crossover', 'Convertible', 'Coupe', 'Minivan', 'Wagon']
 
         for item in db_bodies:
@@ -165,7 +171,6 @@ class VehicleBodyService:
                     'svg': cls.get_svg_for_body(display_name)
                 })
 
-        # Ensure featured list items are also included if missing
         for fname in featured_names:
             if fname not in seen:
                 seen.add(fname)
@@ -194,13 +199,26 @@ class VehicleConditionService:
 
     @classmethod
     def fetch_condition_tabs(cls, active_condition='all'):
-        avail_qs = Inventory.objects.select_related('vehicle').filter(
-            status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
-        )
+        # RAW SQL Execution
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (1, 4)")
+            all_count = cursor.fetchone()[0]
 
-        all_count = avail_qs.count()
-        new_count = avail_qs.filter(vehicle__odometer__lte=cls.NEW_CAR_MAX_ODOMETER).count()
-        used_count = avail_qs.filter(vehicle__odometer__gt=cls.NEW_CAR_MAX_ODOMETER).count()
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                WHERE i.status IN (1, 4) AND v.odometer <= %s
+            """, [cls.NEW_CAR_MAX_ODOMETER])
+            new_count = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                WHERE i.status IN (1, 4) AND v.odometer > %s
+            """, [cls.NEW_CAR_MAX_ODOMETER])
+            used_count = cursor.fetchone()[0]
 
         act = str(active_condition or 'all').lower()
 
@@ -233,119 +251,145 @@ class VehicleConditionService:
 
 
 # ------------------------------------------------------------------------------
-# Encapsulated Business Query & Transaction Services
+# Encapsulated Business Query & Transaction Services (RAW SQL)
 # ------------------------------------------------------------------------------
 
 class CatalogService:
     @staticmethod
     def fetch_catalog_vehicles(make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, sort=None, page=1, page_size=24, limit=None):
-        qs = Inventory.objects.select_related('vehicle__make', 'store', 'store__city', 'store__country').filter(
-            status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
-        )
+        params = []
+        where_clauses = ["i.status IN (1, 4)"]
 
         if make_id and str(make_id).isdigit():
-            qs = qs.filter(vehicle__make_id=make_id)
+            where_clauses.append("v.make_id = %s")
+            params.append(int(make_id))
         elif brand and str(brand).lower() not in ['all', '']:
-            qs = qs.filter(vehicle__make__make_name__icontains=brand)
+            where_clauses.append("LOWER(m.make_name) LIKE %s")
+            params.append(f"%{brand.lower()}%")
         elif make_id and not str(make_id).isdigit() and str(make_id).lower() not in ['all', '']:
-            qs = qs.filter(vehicle__make__make_name__icontains=make_id)
+            where_clauses.append("LOWER(m.make_name) LIKE %s")
+            params.append(f"%{make_id.lower()}%")
 
         if store_id:
-            qs = qs.filter(store_id=store_id)
+            where_clauses.append("i.store_id = %s")
+            params.append(store_id)
+
         if body:
             b_lower = body.lower()
             if b_lower in ['pickup truck', 'truck']:
-                qs = qs.filter(
-                    models.Q(vehicle__body__icontains='cab') |
-                    models.Q(vehicle__body__icontains='truck') |
-                    models.Q(vehicle__body__icontains='xtracab')
-                )
+                where_clauses.append("(LOWER(v.body) LIKE %s OR LOWER(v.body) LIKE %s OR LOWER(v.body) LIKE %s)")
+                params.extend(['%cab%', '%truck%', '%xtracab%'])
             elif b_lower in ['minivan', 'van']:
-                qs = qs.filter(
-                    models.Q(vehicle__body__icontains='van') |
-                    models.Q(vehicle__body__icontains='minivan')
-                )
+                where_clauses.append("(LOWER(v.body) LIKE %s OR LOWER(v.body) LIKE %s)")
+                params.extend(['%van%', '%minivan%'])
             elif b_lower == 'coupe':
-                qs = qs.filter(
-                    models.Q(vehicle__body__icontains='coupe') |
-                    models.Q(vehicle__body__icontains='koup')
-                )
+                where_clauses.append("(LOWER(v.body) LIKE %s OR LOWER(v.body) LIKE %s)")
+                params.extend(['%coupe%', '%koup%'])
             else:
-                qs = qs.filter(vehicle__body__icontains=body)
+                where_clauses.append("LOWER(v.body) LIKE %s")
+                params.append(f"%{b_lower}%")
+
         if condition and str(condition).lower() not in ['all', 'condition', '']:
             c_lower = str(condition).lower()
             if c_lower == 'new':
-                qs = qs.filter(vehicle__odometer__lte=VehicleConditionService.NEW_CAR_MAX_ODOMETER)
+                where_clauses.append("v.odometer <= 100")
             elif c_lower in ['used', 'pre-owned']:
-                qs = qs.filter(vehicle__odometer__gt=VehicleConditionService.NEW_CAR_MAX_ODOMETER)
+                where_clauses.append("v.odometer > 100")
             elif c_lower in ['excellent', '40-50']:
-                qs = qs.filter(vehicle__condition__gte=40)
+                where_clauses.append("v.condition >= 40")
             elif c_lower in ['very_good', '30-39']:
-                qs = qs.filter(vehicle__condition__range=(30, 39))
+                where_clauses.append("v.condition BETWEEN 30 AND 39")
             elif c_lower in ['good', '20-29']:
-                qs = qs.filter(vehicle__condition__range=(20, 29))
+                where_clauses.append("v.condition BETWEEN 20 AND 29")
             elif c_lower in ['fair', '1-19']:
-                qs = qs.filter(vehicle__condition__range=(1, 19))
+                where_clauses.append("v.condition BETWEEN 1 AND 19")
             elif c_lower.isdigit():
-                qs = qs.filter(vehicle__condition=int(c_lower))
+                where_clauses.append("v.condition = %s")
+                params.append(int(c_lower))
+
         if transmission and str(transmission).lower() not in ['all', '']:
             t_lower = str(transmission).lower()
             if 'auto' in t_lower:
-                qs = qs.filter(vehicle__transmission__icontains='auto')
+                where_clauses.append("LOWER(v.transmission) LIKE %s")
+                params.append('%auto%')
             elif 'man' in t_lower:
-                qs = qs.filter(vehicle__transmission__icontains='manual')
+                where_clauses.append("LOWER(v.transmission) LIKE %s")
+                params.append('%manual%')
             else:
-                qs = qs.filter(vehicle__transmission__icontains=transmission)
+                where_clauses.append("LOWER(v.transmission) LIKE %s")
+                params.append(f"%{t_lower}%")
+
         if color and str(color).lower() not in ['all', 'color', '']:
-            qs = qs.filter(vehicle__color__icontains=color)
+            where_clauses.append("LOWER(v.color) LIKE %s")
+            params.append(f"%{color.lower()}%")
+
         if interior and str(interior).lower() not in ['all', 'interior', '']:
-            qs = qs.filter(vehicle__interior__icontains=interior)
+            where_clauses.append("LOWER(v.interior) LIKE %s")
+            params.append(f"%{interior.lower()}%")
+
         if state and str(state).lower() not in ['all', 'state', '']:
-            qs = qs.filter(vehicle__state__iexact=state)
+            where_clauses.append("LOWER(v.state) = %s")
+            params.append(state.lower())
+
         if trim and str(trim).lower() not in ['all', 'trim', '']:
-            qs = qs.filter(vehicle__trim__icontains=trim)
+            where_clauses.append("LOWER(v.trim) LIKE %s")
+            params.append(f"%{trim.lower()}%")
+
         if search_q:
-            qs = qs.filter(
-                models.Q(vehicle__vehicle_model__icontains=search_q) |
-                models.Q(vehicle__make__make_name__icontains=search_q) |
-                models.Q(vehicle__vin__icontains=search_q)
-            )
+            where_clauses.append("(LOWER(v.vehicle_model) LIKE %s OR LOWER(m.make_name) LIKE %s OR LOWER(v.vin) LIKE %s)")
+            q_like = f"%{search_q.lower()}%"
+            params.extend([q_like, q_like, q_like])
+
         if min_price:
             try:
-                qs = qs.filter(vehicle__mmr__gte=int(min_price))
+                where_clauses.append("v.mmr >= %s")
+                params.append(int(min_price))
             except (ValueError, TypeError):
                 pass
         if max_price:
             try:
-                qs = qs.filter(vehicle__mmr__lte=int(max_price))
+                where_clauses.append("v.mmr <= %s")
+                params.append(int(max_price))
             except (ValueError, TypeError):
                 pass
+
         if min_miles:
             try:
-                qs = qs.filter(vehicle__odometer__gte=int(min_miles))
+                where_clauses.append("v.odometer >= %s")
+                params.append(int(min_miles))
             except (ValueError, TypeError):
                 pass
         if max_miles:
             try:
-                qs = qs.filter(vehicle__odometer__lte=int(max_miles))
+                where_clauses.append("v.odometer <= %s")
+                params.append(int(max_miles))
             except (ValueError, TypeError):
                 pass
 
-        total_count = qs.count()
+        where_sql = " WHERE " + " AND ".join(where_clauses)
 
-        sort_field = '-inventory_id'
+        # Count total query
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM inventory i
+            JOIN vehicle_info v ON i.vehicle_id = v.id
+            LEFT JOIN industry_info m ON v.make_id = m.make_id
+            JOIN store s ON i.store_id = s.store_id
+            JOIN city c ON s.city_id = c.city_id
+            JOIN country co ON s.country_id = co.country_id
+            {where_sql}
+        """
+
+        # Sorting logic
+        sort_order = "i.inventory_id DESC"
         if sort == 'lowest-price':
-            sort_field = 'vehicle__mmr'
+            sort_order = "v.mmr ASC"
         elif sort == 'highest-price':
-            sort_field = '-vehicle__mmr'
+            sort_order = "v.mmr DESC"
         elif sort == 'lowest-mileage':
-            sort_field = 'vehicle__odometer'
+            sort_order = "v.odometer ASC"
         elif sort == 'highest-mileage':
-            sort_field = '-vehicle__odometer'
-        elif sort == 'newest-year':
-            sort_field = '-vehicle__year'
-        elif sort == 'oldest-year':
-            sort_field = 'vehicle__year'
+            sort_order = "v.odometer DESC"
 
         try:
             page = int(page) if page else 1
@@ -357,62 +401,285 @@ class CatalogService:
         except (ValueError, TypeError):
             page_size = 24
 
-        start = (page - 1) * page_size
-        end = start + page_size
-        sliced_qs = qs.order_by(sort_field)[start:end]
+        offset = (page - 1) * page_size
 
+        select_sql = f"""
+            SELECT i.inventory_id, i.vehicle_id, i.store_id, i.status,
+                   v.vehicle_model, v.trim, v.body, v.transmission, v.color, v.interior, v.state, v.condition, v.odometer, v.mmr, v.vin,
+                   m.make_name, s.store_name, c.city_name, co.country_name
+            FROM inventory i
+            JOIN vehicle_info v ON i.vehicle_id = v.id
+            LEFT JOIN industry_info m ON v.make_id = m.make_id
+            JOIN store s ON i.store_id = s.store_id
+            JOIN city c ON s.city_id = c.city_id
+            JOIN country co ON s.country_id = co.country_id
+            {where_sql}
+            ORDER BY {sort_order}
+            LIMIT %s OFFSET %s
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total_count = cursor.fetchone()[0]
+
+            cursor.execute(select_sql, params + [page_size, offset])
+            rows = cursor.fetchall()
+
+            # Price Stats SQL
+            cursor.execute(f"SELECT MIN(v.mmr), MAX(v.mmr) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql}", params)
+            p_stats = cursor.fetchone()
+            min_p = p_stats[0] or 0
+            max_p = p_stats[1] or 182000
+
+        status_map = {1: 'Available', 4: 'Pre-Order', 2: 'Sold', 3: 'Reserved'}
         vehicles = []
-        for item in sliced_qs:
-            v = item.vehicle
+        for r in rows:
+            inv_id, v_id, s_id, st_code, v_model, v_trim, v_body, v_trans, v_color, v_int, v_state, v_cond, v_odo, v_mmr, v_vin, m_name, s_name, c_name, co_name = r
+
+            
+            # Resolve image URL
+            m_slug = str(m_name or '').lower().replace(' ', '').replace('-', '') if m_name else 'toyota'
+            logo_alias = 'mercedes' if 'mercedes' in m_slug else ('landrover' if 'landrover' in m_slug else m_slug)
+            img_url = f"/static/logos/{logo_alias}.png"
+
             vehicles.append({
-                'inventory_id': item.inventory_id,
-                'vehicle_id': v.id,
-                'make': v.make.make_name,
-                'model': v.vehicle_model,
-                'trim': v.trim or '',
-                'body': v.body or '',
-                'transmission': v.transmission or '',
-                'color': v.color or '',
-                'condition': v.condition or '',
-                'odometer': v.odometer or '',
-                'price': v.mmr,
-                'vin': v.vin,
-                'status': item.get_status_display(),
-                'status_code': item.status,
-                'store_id': item.store_id,
-                'store_name': item.store.store_name,
-                'city': item.store.city.city_name,
-                'country': item.store.country.country_name,
-                'image_url': v.image_url,
+                'inventory_id': inv_id,
+                'vehicle_id': v_id,
+                'make': m_name or 'Vehicle',
+                'model': v_model or '',
+                'trim': v_trim or '',
+                'body': v_body or '',
+                'transmission': v_trans or '',
+                'color': v_color or '',
+                'condition': v_cond or '',
+                'odometer': v_odo or '',
+                'price': v_mmr or 0,
+                'vin': v_vin or '',
+                'status': status_map.get(st_code, 'Available'),
+                'status_code': st_code,
+                'store_id': s_id,
+                'store_name': s_name,
+                'city': c_name,
+                'country': co_name,
+                'image_url': img_url,
             })
 
-        from django.db.models import Count, Min, Max
-        price_stats = qs.aggregate(Min('vehicle__mmr'), Max('vehicle__mmr'))
         available_filters = {
-            'min_price': price_stats['vehicle__mmr__min'] or 0,
-            'max_price': price_stats['vehicle__mmr__max'] or 182000,
-            'bodies': list(qs.values('vehicle__body').annotate(count=Count('inventory_id')).order_by('-count')),
-            'transmissions': [t for t in qs.values_list('vehicle__transmission', flat=True).distinct() if t],
-            'colors': [c for c in qs.values_list('vehicle__color', flat=True).distinct() if c],
-            'stores': list(qs.values('store__store_id', 'store__store_name', 'store__city__city_name').annotate(count=Count('inventory_id')).order_by('store__store_name')),
+            'min_price': min_p,
+            'max_price': max_p,
             'conditions': {
                 'all': total_count,
-                'excellent': qs.filter(vehicle__condition__gte=40).count(),
-                'very_good': qs.filter(vehicle__condition__range=(30, 39)).count(),
-                'good': qs.filter(vehicle__condition__range=(20, 29)).count(),
-                'fair': qs.filter(vehicle__condition__range=(1, 19)).count(),
-                'new': qs.filter(vehicle__odometer__lte=VehicleConditionService.NEW_CAR_MAX_ODOMETER).count(),
-                'used': qs.filter(vehicle__odometer__gt=VehicleConditionService.NEW_CAR_MAX_ODOMETER).count(),
             }
         }
-
-
-
-
 
         import math
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
         return vehicles, total_count, total_pages, page, available_filters
+
+    @staticmethod
+    def fetch_catalog_meta(active_condition='all'):
+        """Fetch catalog metadata (makes, stores, transmissions, colors, condition counts, max price) using Raw SQL."""
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT make_id, make_name FROM industry_info ORDER BY make_name")
+            makes = [{'id': row[0], 'make_name': row[1]} for row in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT s.store_id, s.store_name, c.city_name, co.country_name
+                FROM store s
+                JOIN city c ON s.city_id = c.city_id
+                JOIN country co ON s.country_id = co.country_id
+                ORDER BY s.store_name
+            """)
+            stores = [{'store_id': r[0], 'store_name': r[1], 'city': {'city_name': r[2]}, 'country': {'country_name': r[3]}} for r in cursor.fetchall()]
+
+            cursor.execute("SELECT DISTINCT transmission FROM vehicle_info WHERE transmission IS NOT NULL AND transmission != '' ORDER BY transmission")
+            transmissions = [r[0] for r in cursor.fetchall()]
+
+            cursor.execute("SELECT DISTINCT color FROM vehicle_info WHERE color IS NOT NULL AND color != '' ORDER BY color")
+            colors = [r[0] for r in cursor.fetchall()]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (1, 4)")
+            cnt_all = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition >= 40")
+            cnt_excellent = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 30 AND 39")
+            cnt_very_good = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 20 AND 29")
+            cnt_good = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 1 AND 19")
+            cnt_fair = cursor.fetchone()[0]
+
+            cursor.execute("SELECT MAX(v.mmr) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4)")
+            max_p = cursor.fetchone()[0] or 182000
+
+        vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
+        condition_tabs = VehicleConditionService.fetch_condition_tabs(active_condition=active_condition)
+
+        return {
+            'makes': makes,
+            'stores': stores,
+            'transmissions': transmissions,
+            'colors': colors,
+            'vehicle_bodies': vehicle_bodies,
+            'condition_tabs': condition_tabs,
+            'condition_counts': {
+                'all': cnt_all,
+                'excellent': cnt_excellent,
+                'very_good': cnt_very_good,
+                'good': cnt_good,
+                'fair': cnt_fair,
+            },
+            'max_price_db': max_p,
+            'fuel_types': ['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'Flex Fuel'],
+        }
+
+    @staticmethod
+    def fetch_vehicle_models(brand=None, make_id=None):
+        """Fetch distinct vehicle models for a brand or make_id using Raw SQL."""
+        where_clauses = ["vehicle_model IS NOT NULL", "vehicle_model != ''"]
+        params = []
+
+        if make_id and str(make_id).isdigit():
+            where_clauses.append("make_id = %s")
+            params.append(int(make_id))
+        elif brand and str(brand).lower() not in ['all', '']:
+            where_clauses.append("make_id IN (SELECT make_id FROM industry_info WHERE LOWER(make_name) LIKE %s)")
+            params.append(f"%{brand.lower()}%")
+
+        where_sql = " WHERE " + " AND ".join(where_clauses)
+        query = f"SELECT DISTINCT vehicle_model FROM vehicle_info {where_sql} ORDER BY vehicle_model LIMIT 50"
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            return [row[0] for row in cursor.fetchall()]
+
+
+class VehicleDetailService:
+    @staticmethod
+    def fetch_detail_data(inventory_id):
+        """Fetch full vehicle detail using Raw SQL only — no ORM."""
+        import re
+        from django.http import Http404
+
+        PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
+
+        with connection.cursor() as cursor:
+            # Main inventory + vehicle + store detail
+            cursor.execute("""
+                SELECT
+                    i.inventory_id, i.vehicle_id, i.store_id, i.status,
+                    v.vehicle_model, v.trim, v.body, v.transmission, v.color, v.interior,
+                    v.state, v.condition, v.odometer, v.mmr, v.vin, v.make_id,
+                    m.make_name,
+                    s.store_id, s.store_name,
+                    ci.city_name, co.country_name,
+                    e.employee_id,
+                    e.first_name AS emp_firstname, e.last_name AS emp_lastname,
+                    e.employee_role AS emp_position
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                JOIN city ci ON s.city_id = ci.city_id
+                JOIN country co ON s.country_id = co.country_id
+                LEFT JOIN employee e ON i.employee_id = e.employee_id
+                WHERE i.inventory_id = %s
+            """, [inventory_id])
+            row = cursor.fetchone()
+
+        if not row:
+            raise Http404(f"Inventory {inventory_id} not found")
+
+        (
+            inv_id, v_id, store_id, status,
+            v_model, v_trim, v_body, v_trans, v_color, v_interior,
+            v_state, v_cond, v_odo, v_mmr, v_vin, make_id,
+            make_name,
+            s_id, s_name, city_name, country_name,
+            emp_id, emp_firstname, emp_lastname, emp_position
+        ) = row
+
+
+        brand_slug = re.sub(r'[^a-z0-9]', '', str(make_name or '').lower())
+        png_slug = PNG_ALIASES.get(brand_slug, brand_slug)
+        brand_logo_url = f"/static/logos/{png_slug}.png"
+
+        # Build mock objects that templates expect
+        class _Obj(dict):
+            """Dict-like object with attribute access for template compatibility."""
+            def __getattr__(self, k):
+                try: return self[k]
+                except KeyError: return None
+            def __setattr__(self, k, v): self[k] = v
+
+        vehicle = _Obj(
+            id=v_id, vehicle_id=v_id,
+            vehicle_model=v_model, trim=v_trim, body=v_body,
+            transmission=v_trans, color=v_color, interior=v_interior,
+            state=v_state, condition=v_cond, odometer=v_odo, mmr=v_mmr, vin=v_vin,
+            make_id=make_id,
+            make=_Obj(make_name=make_name)
+        )
+        store = _Obj(
+            store_id=s_id, store_name=s_name,
+            city=_Obj(city_name=city_name),
+            country=_Obj(country_name=country_name)
+        )
+        employee = _Obj(
+            employee_id=emp_id,
+            firstname=emp_firstname, lastname=emp_lastname,
+            position=emp_position,
+            full_name=f"{emp_firstname or ''} {emp_lastname or ''}".strip() or None
+        ) if emp_id else None
+
+        status_map = {1: 'Available', 2: 'Sold', 3: 'Reserved', 4: 'Pre-Order'}
+        inventory = _Obj(
+            inventory_id=inv_id, vehicle_id=v_id, store_id=store_id,
+            status=status, status_display=status_map.get(status, 'Available'),
+            vehicle=vehicle, store=store, employee=employee
+        )
+
+        # Similar vehicles raw SQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT i.inventory_id, v.vehicle_model, v.trim, v.mmr, m.make_name, s.store_name, c.city_name
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                JOIN city c ON s.city_id = c.city_id
+                WHERE i.status IN (1, 4) AND v.make_id = %s AND i.inventory_id != %s
+                LIMIT 4
+            """, [make_id, inventory_id])
+            sim_rows = cursor.fetchall()
+
+        similar_inventory = []
+        for r in sim_rows:
+            inv_i, v_mod, v_tr, v_pr, m_nm, s_nm, c_nm = r
+            m_slg = re.sub(r'[^a-z0-9]', '', str(m_nm or '').lower())
+            l_alias = PNG_ALIASES.get(m_slg, m_slg)
+            similar_inventory.append({
+                'inventory_id': inv_i,
+                'vehicle': {'vehicle_model': v_mod, 'trim': v_tr, 'mmr': v_pr, 'make': {'make_name': m_nm}, 'image_url': f"/static/logos/{l_alias}.png"},
+                'store': {'store_name': s_nm, 'city': {'city_name': c_nm}}
+            })
+
+        rate = 0.0789 / 12
+        monthly_payment = round((v_mmr * rate * (1 + rate)**72) / ((1 + rate)**72 - 1), 2) if v_mmr else 245
+
+        return {
+            'inventory': inventory,
+            'vehicle': vehicle,
+            'brand_logo_url': brand_logo_url,
+            'similar_inventory': similar_inventory,
+            'monthly_payment': monthly_payment,
+        }
+
+
 
 
 
@@ -420,87 +687,283 @@ class CatalogService:
 class WishlistService:
     @staticmethod
     def fetch_customer_wishlist(customer):
+        """Fetch all wishlist items for a customer using Raw SQL."""
         if not customer:
             return []
-        return Wishlist.objects.filter(customer=customer).select_related('vehicle__make')
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT w.id, w.vehicle_id, v.vehicle_model, v.mmr, m.make_name, w.created_at
+                FROM {wishlist_table} w
+                JOIN vehicle_info v ON w.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                WHERE w.customer_id = %s
+                ORDER BY w.created_at DESC
+            """.format(wishlist_table=WISHLIST_TABLE), [customer.customer_id])
+            rows = cursor.fetchall()
+
+        class _WishlistItem:
+            """Lightweight wishlist item proxy for template compatibility."""
+            def __init__(self, row):
+                self.id, self.vehicle_id, model, price, make_name, self.created_at = row
+                class _Make:
+                    def __init__(self, name): self.make_name = name
+                class _Vehicle:
+                    def __init__(self, vehicle_id, model, price, make_obj):
+                        self.id = vehicle_id
+                        self.vehicle_model = model
+                        self.mmr = price
+                        self.make = make_obj
+                self.vehicle = _Vehicle(self.vehicle_id, model, price, _Make(make_name))
+
+        return [_WishlistItem(r) for r in rows]
 
     @staticmethod
     def toggle_wishlist(customer, vehicle_id):
+        """Add or remove a vehicle from the customer wishlist using Raw SQL."""
         if not customer:
             raise ValueError("Authentication required")
-        vehicle = VehicleInfo.objects.get(pk=vehicle_id)
-        item, created = Wishlist.objects.get_or_create(customer=customer, vehicle=vehicle)
-        if not created:
-            item.delete()
-            added = False
-            msg = "Removed from Wishlist"
-        else:
-            added = True
-            msg = "Added to Wishlist"
-        count = Wishlist.objects.filter(customer=customer).count()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT id FROM {WISHLIST_TABLE} WHERE customer_id = %s AND vehicle_id = %s",
+                [customer.customer_id, vehicle_id]
+            )
+            existing = cursor.fetchone()
+            if existing:
+                cursor.execute(f"DELETE FROM {WISHLIST_TABLE} WHERE id = %s", [existing[0]])
+                added = False
+                msg = "Removed from Wishlist"
+            else:
+                cursor.execute(
+                    f"INSERT INTO {WISHLIST_TABLE} (customer_id, vehicle_id, created_at) VALUES (%s, %s, NOW())",
+                    [customer.customer_id, vehicle_id]
+                )
+                added = True
+                msg = "Added to Wishlist"
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            count = cursor.fetchone()[0]
         return {'added': added, 'message': msg, 'wishlist_count': count}
 
 
 class CartService:
     @staticmethod
     def fetch_customer_cart_items(customer):
+        """Fetch cart items with prices using Raw SQL."""
         if not customer:
             return [], 0
-        cart, _ = Cart.objects.get_or_create(customer=customer)
-        items = list(cart.items.select_related('inventory__vehicle__make', 'inventory__store').all())
-        total_price = sum(item.inventory.vehicle.mmr for item in items)
+        with connection.cursor() as cursor:
+            # Ensure cart exists
+            cursor.execute(
+                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            cart_row = cursor.fetchone()
+            if not cart_row:
+                cursor.execute(
+                    f"INSERT INTO {CART_TABLE} (customer_id, created_at) VALUES (%s, NOW())",
+                    [customer.customer_id]
+                )
+                cursor.execute(
+                    f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                    [customer.customer_id]
+                )
+                cart_row = cursor.fetchone()
+            cart_id = cart_row[0]
+
+            cursor.execute("""
+                SELECT ci.id, ci.inventory_id, v.vehicle_model, v.mmr, m.make_name,
+                       s.store_name, ci.added_at
+                FROM {cart_item_table} ci
+                JOIN inventory i ON ci.inventory_id = i.inventory_id
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON i.store_id = s.store_id
+                WHERE ci.cart_id = %s
+                ORDER BY ci.added_at DESC
+            """.format(cart_item_table=CART_ITEM_TABLE), [cart_id])
+            rows = cursor.fetchall()
+
+        class _CartItem:
+            """Lightweight cart item proxy for template compatibility."""
+            def __init__(self, row):
+                self.id, self.inventory_id, model, price, make_name, store_name, self.added_at = row
+                class _Make:
+                    def __init__(self, name): self.make_name = name
+                class _Vehicle:
+                    def __init__(self, model, price, make_obj):
+                        self.vehicle_model = model; self.mmr = price; self.make = make_obj
+                class _Store:
+                    def __init__(self, name): self.store_name = name
+                class _Inv:
+                    def __init__(self, inv_id, veh, store):
+                        self.inventory_id = inv_id; self.vehicle = veh; self.store = store
+                self.inventory = _Inv(
+                    self.inventory_id,
+                    _Vehicle(model, price, _Make(make_name)),
+                    _Store(store_name)
+                )
+                self.price = price
+
+        items = [_CartItem(r) for r in rows]
+        total_price = sum(item.price for item in items)
         return items, total_price
 
     @staticmethod
     def add_to_cart(customer, inventory_id):
+        """Add inventory item to cart using Raw SQL."""
         if not customer:
             raise ValueError("Authentication required")
-        inventory = Inventory.objects.get(pk=inventory_id)
-        if inventory.status not in [Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]:
-            raise ValueError("Item is no longer available")
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT status FROM inventory WHERE inventory_id = %s", [inventory_id])
+            inv_row = cursor.fetchone()
+            if not inv_row:
+                raise ValueError("Inventory item not found")
+            if inv_row[0] not in [1, 4]:  # 1=Available, 4=Pre-Order
+                raise ValueError("Item is no longer available")
 
-        cart, _ = Cart.objects.get_or_create(customer=customer)
-        item, created = CartItem.objects.get_or_create(cart=cart, inventory=inventory)
-        count = cart.items.count()
+            cursor.execute(
+                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            cart_row = cursor.fetchone()
+            if not cart_row:
+                cursor.execute(
+                    f"INSERT INTO {CART_TABLE} (customer_id, created_at) VALUES (%s, NOW())",
+                    [customer.customer_id]
+                )
+                cursor.execute(
+                    f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                    [customer.customer_id]
+                )
+                cart_row = cursor.fetchone()
+            cart_id = cart_row[0]
+
+            cursor.execute(
+                f"SELECT id FROM {CART_ITEM_TABLE} WHERE cart_id = %s AND inventory_id = %s",
+                [cart_id, inventory_id]
+            )
+            existing = cursor.fetchone()
+            if existing:
+                created = False
+            else:
+                cursor.execute(
+                    f"INSERT INTO {CART_ITEM_TABLE} (cart_id, inventory_id, added_at) VALUES (%s, %s, NOW())",
+                    [cart_id, inventory_id]
+                )
+                created = True
+
+            cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE cart_id = %s", [cart_id])
+            count = cursor.fetchone()[0]
+
         return {'created': created, 'message': 'Added to Cart' if created else 'Item already in Cart', 'cart_count': count}
 
     @staticmethod
     def remove_from_cart(customer, inventory_id):
+        """Remove item from cart using Raw SQL."""
         if not customer:
             raise ValueError("Authentication required")
-        cart = Cart.objects.filter(customer=customer).first()
-        if cart:
-            CartItem.objects.filter(cart=cart, inventory_id=inventory_id).delete()
-            count = cart.items.count()
-        else:
-            count = 0
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                [customer.customer_id]
+            )
+            cart_row = cursor.fetchone()
+            if cart_row:
+                cart_id = cart_row[0]
+                cursor.execute(
+                    f"DELETE FROM {CART_ITEM_TABLE} WHERE cart_id = %s AND inventory_id = %s",
+                    [cart_id, inventory_id]
+                )
+                cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE cart_id = %s", [cart_id])
+                count = cursor.fetchone()[0]
+            else:
+                count = 0
         return {'message': 'Item removed from cart', 'cart_count': count}
 
 
 class TestDriveService:
     @staticmethod
     def fetch_customer_bookings(customer):
+        """Fetch all test drive bookings for a customer using Raw SQL."""
         if not customer:
             return []
-        return TestDriveBooking.objects.filter(customer=customer).select_related('vehicle__make', 'store', 'assigned_employee').order_by('-booking_date')
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    td.booking_id, td.vehicle_id, td.store_id, td.assigned_employee_id,
+                    td.booking_date, td.booking_time, td.status, td.notes, td.created_at,
+                    v.vehicle_model, m.make_name, s.store_name,
+                    e.first_name, e.last_name
+                FROM {test_drive_table} td
+                JOIN vehicle_info v ON td.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                JOIN store s ON td.store_id = s.store_id
+                LEFT JOIN employee e ON td.assigned_employee_id = e.employee_id
+                WHERE td.customer_id = %s
+                ORDER BY td.booking_date DESC
+            """.format(test_drive_table=TEST_DRIVE_TABLE), [customer.customer_id])
+            rows = cursor.fetchall()
+
+
+        class _Booking:
+            """Lightweight booking proxy for template compatibility."""
+            def __init__(self, row):
+                (
+                    self.booking_id, self.vehicle_id, self.store_id, self.assigned_employee_id,
+                    self.booking_date, self.booking_time, self.status, self.notes, self.created_at,
+                    model, make_name, store_name, emp_first, emp_last
+                ) = row
+                class _Make:
+                    def __init__(self, n): self.make_name = n
+                class _Vehicle:
+                    def __init__(self, vid, model, make_obj):
+                        self.id = vid; self.vehicle_model = model; self.make = make_obj
+                class _Store:
+                    def __init__(self, name): self.store_name = name
+                class _Emp:
+                    def __init__(self, f, l):
+                        self.firstname = f; self.lastname = l
+                        self.full_name = f"{f or ''} {l or ''}".strip()
+                self.vehicle = _Vehicle(self.vehicle_id, model, _Make(make_name))
+                self.store = _Store(store_name)
+                self.assigned_employee = _Emp(emp_first, emp_last) if self.assigned_employee_id else None
+                STATUS_MAP = {1: 'Scheduled', 2: 'Completed', 3: 'Cancelled'}
+                self.status_display = STATUS_MAP.get(self.status, str(self.status))
+
+        return [_Booking(r) for r in rows]
 
     @staticmethod
     def create_booking(customer, vehicle_id, store_id, booking_date_str, booking_time_str='10:00', notes=''):
+        """Create a test drive booking using Raw SQL."""
         if not customer:
             raise ValueError("Authentication required")
-        vehicle = VehicleInfo.objects.get(pk=vehicle_id)
-        store = Store.objects.get(pk=store_id)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id FROM vehicle_info WHERE id = %s", [vehicle_id])
+            if not cursor.fetchone():
+                raise ValueError("Vehicle not found")
+            cursor.execute("SELECT store_id FROM store WHERE store_id = %s", [store_id])
+            if not cursor.fetchone():
+                raise ValueError("Store not found")
 
-        booking = TestDriveBooking.objects.create(
-            customer=customer,
-            vehicle=vehicle,
-            store=store,
-            booking_date=booking_date_str,
-            booking_time=booking_time_str,
-            notes=notes,
-            status=TestDriveBooking.BookingStatus.SCHEDULED
-        )
-        return booking
+            cursor.execute("""
+                INSERT INTO {test_drive_table}
+                    (customer_id, vehicle_id, store_id, booking_date, booking_time, notes, status, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 1, NOW())
+            """.format(test_drive_table=TEST_DRIVE_TABLE), [customer.customer_id, vehicle_id, store_id, booking_date_str, booking_time_str, notes])
+            booking_id = cursor.lastrowid
+
+            cursor.execute(
+                f"SELECT booking_id, booking_date, booking_time FROM {TEST_DRIVE_TABLE} WHERE booking_id = %s",
+                [booking_id]
+            )
+            row = cursor.fetchone()
+
+        class _Booking:
+            def __init__(self, r):
+                self.booking_id, self.booking_date, self.booking_time = r
+        return _Booking(row)
 
 
 class OrderService:
