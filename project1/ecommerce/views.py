@@ -1,15 +1,19 @@
 import json
-from django.db import transaction, connection, models
-from django.db.models import Max
+from django.db import connection
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 
-from car_sales.models import Customer, CustomerInfo, Store, IndustryInfo, Inventory, Employee, City, Country, VehicleInfo
-from .models import Order, PaymentTransaction, Wishlist, Cart, CartItem, TestDriveBooking
+from .models import Order
+from .db import (
+    WISHLIST_TABLE,
+    ORDER_TABLE,
+    TEST_DRIVE_TABLE,
+    fetch_customer_nav_counts,
+)
 from .serializers import (
     CatalogService, WishlistService, CartService, TestDriveService, OrderService,
     VehicleBodyService, VehicleBodySerializer, VehicleConditionService, VehicleConditionSerializer,
@@ -17,15 +21,6 @@ from .serializers import (
     WishlistModelSerializer, CartItemModelSerializer, TestDriveBookingModelSerializer,
     OrderModelSerializer, PaymentTransactionModelSerializer
 )
-
-
-
-# Keep raw SQL aligned with current model table names.
-WISHLIST_TABLE = Wishlist._meta.db_table
-CART_TABLE = Cart._meta.db_table
-CART_ITEM_TABLE = CartItem._meta.db_table
-ORDER_TABLE = Order._meta.db_table
-TEST_DRIVE_TABLE = TestDriveBooking._meta.db_table
 
 
 # Strictly secure helper to get current authenticated customer record
@@ -128,17 +123,7 @@ def catalog_view(request):
     meta = CatalogService.fetch_catalog_meta(active_condition=request.GET.get('condition', 'all'))
     customer = get_customer_from_request(request)
     if customer:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
-                [customer.customer_id]
-            )
-            wishlist_count = cursor.fetchone()[0]
-            cursor.execute(
-                f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} ci JOIN {CART_TABLE} c ON ci.cart_id = c.id WHERE c.customer_id = %s",
-                [customer.customer_id]
-            )
-            cart_count = cursor.fetchone()[0]
+        wishlist_count, cart_count = fetch_customer_nav_counts(customer.customer_id)
     else:
         wishlist_count = 0
         cart_count = 0
@@ -157,17 +142,7 @@ def vehicle_detail_view(request, inventory_id):
     detail_data = VehicleDetailService.fetch_detail_data(inventory_id)
     customer = get_customer_from_request(request)
     if customer:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
-                [customer.customer_id]
-            )
-            wishlist_count = cursor.fetchone()[0]
-            cursor.execute(
-                f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} ci JOIN {CART_TABLE} c ON ci.cart_id = c.id WHERE c.customer_id = %s",
-                [customer.customer_id]
-            )
-            cart_count = cursor.fetchone()[0]
+        wishlist_count, cart_count = fetch_customer_nav_counts(customer.customer_id)
     else:
         wishlist_count = 0
         cart_count = 0
@@ -202,6 +177,11 @@ def api_catalog_vehicles(request):
         page=request.GET.get('page', 1),
         page_size=request.GET.get('page_size', 24)
     )
+
+    vehicles_only = str(request.GET.get('vehicles_only', '')).lower() in ['1', 'true', 'yes']
+    if vehicles_only:
+        return JsonResponse({'vehicles': vehicles})
+
     return JsonResponse({
         'success': True,
         'count': total_count,

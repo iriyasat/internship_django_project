@@ -10,11 +10,14 @@ from car_sales.models import (
     Employee, SellingInfo, Invoice, IndustryInfo
 )
 from .models import Wishlist, Cart, CartItem, TestDriveBooking, Order, PaymentTransaction
-
-WISHLIST_TABLE = Wishlist._meta.db_table
-CART_TABLE = Cart._meta.db_table
-CART_ITEM_TABLE = CartItem._meta.db_table
-TEST_DRIVE_TABLE = TestDriveBooking._meta.db_table
+from .db import (
+    WISHLIST_TABLE,
+    CART_TABLE,
+    CART_ITEM_TABLE,
+    TEST_DRIVE_TABLE,
+    CART_PK_COLUMN,
+    CART_ITEM_CART_COLUMN,
+)
 
 
 # ------------------------------------------------------------------------------
@@ -756,7 +759,7 @@ class CartService:
         with connection.cursor() as cursor:
             # Ensure cart exists
             cursor.execute(
-                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                 [customer.customer_id]
             )
             cart_row = cursor.fetchone()
@@ -766,7 +769,7 @@ class CartService:
                     [customer.customer_id]
                 )
                 cursor.execute(
-                    f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                    f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                     [customer.customer_id]
                 )
                 cart_row = cursor.fetchone()
@@ -780,9 +783,9 @@ class CartService:
                 JOIN vehicle_info v ON i.vehicle_id = v.id
                 LEFT JOIN industry_info m ON v.make_id = m.make_id
                 JOIN store s ON i.store_id = s.store_id
-                WHERE ci.cart_id = %s
+                WHERE ci.{cart_item_cart_column} = %s
                 ORDER BY ci.added_at DESC
-            """.format(cart_item_table=CART_ITEM_TABLE), [cart_id])
+            """.format(cart_item_table=CART_ITEM_TABLE, cart_item_cart_column=CART_ITEM_CART_COLUMN), [cart_id])
             rows = cursor.fetchall()
 
         class _CartItem:
@@ -824,7 +827,7 @@ class CartService:
                 raise ValueError("Item is no longer available")
 
             cursor.execute(
-                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                 [customer.customer_id]
             )
             cart_row = cursor.fetchone()
@@ -834,14 +837,14 @@ class CartService:
                     [customer.customer_id]
                 )
                 cursor.execute(
-                    f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                    f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                     [customer.customer_id]
                 )
                 cart_row = cursor.fetchone()
             cart_id = cart_row[0]
 
             cursor.execute(
-                f"SELECT id FROM {CART_ITEM_TABLE} WHERE cart_id = %s AND inventory_id = %s",
+                f"SELECT id FROM {CART_ITEM_TABLE} WHERE {CART_ITEM_CART_COLUMN} = %s AND inventory_id = %s",
                 [cart_id, inventory_id]
             )
             existing = cursor.fetchone()
@@ -849,12 +852,12 @@ class CartService:
                 created = False
             else:
                 cursor.execute(
-                    f"INSERT INTO {CART_ITEM_TABLE} (cart_id, inventory_id, added_at) VALUES (%s, %s, NOW())",
+                    f"INSERT INTO {CART_ITEM_TABLE} ({CART_ITEM_CART_COLUMN}, inventory_id, added_at) VALUES (%s, %s, NOW())",
                     [cart_id, inventory_id]
                 )
                 created = True
 
-            cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE cart_id = %s", [cart_id])
+            cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE {CART_ITEM_CART_COLUMN} = %s", [cart_id])
             count = cursor.fetchone()[0]
 
         return {'created': created, 'message': 'Added to Cart' if created else 'Item already in Cart', 'cart_count': count}
@@ -866,17 +869,17 @@ class CartService:
             raise ValueError("Authentication required")
         with connection.cursor() as cursor:
             cursor.execute(
-                f"SELECT id FROM {CART_TABLE} WHERE customer_id = %s",
+                f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                 [customer.customer_id]
             )
             cart_row = cursor.fetchone()
             if cart_row:
                 cart_id = cart_row[0]
                 cursor.execute(
-                    f"DELETE FROM {CART_ITEM_TABLE} WHERE cart_id = %s AND inventory_id = %s",
+                    f"DELETE FROM {CART_ITEM_TABLE} WHERE {CART_ITEM_CART_COLUMN} = %s AND inventory_id = %s",
                     [cart_id, inventory_id]
                 )
-                cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE cart_id = %s", [cart_id])
+                cursor.execute(f"SELECT COUNT(*) FROM {CART_ITEM_TABLE} WHERE {CART_ITEM_CART_COLUMN} = %s", [cart_id])
                 count = cursor.fetchone()[0]
             else:
                 count = 0
