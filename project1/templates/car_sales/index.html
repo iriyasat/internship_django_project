@@ -1,4 +1,4 @@
-{% load static %}
+{% load static humanize %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -560,122 +560,7 @@
     }
 
     /* ─── BRANDS Showcase ─── */
-    .brands-section {
-      background: #fff;
-      padding: 40px 6%;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-    }
-    .brand-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--bg-light);
-      border: 1px solid #e2e8f0;
-      padding: 10px 22px;
-      border-radius: 50px;
-      text-decoration: none;
-      color: var(--text-main);
-      font-weight: 700;
-      font-size: 0.9rem;
-      transition: all 0.25s;
-    }
-    .brand-pill:hover {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
-    }
 
-    /* ─── VEHICLE CAROUSEL / GRID ─── */
-    .inventory-section {
-      padding: 90px 6%;
-      background: #f8fafc;
-    }
-    .section-title-wrap {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-    .section-label {
-      font-size: 0.82rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--primary);
-      margin-bottom: 12px;
-    }
-    .section-title {
-      font-size: clamp(2rem, 3.5vw, 2.8rem);
-      font-weight: 900;
-      color: var(--dark-bg);
-      letter-spacing: -0.02em;
-    }
-
-    .vehicle-card {
-      background: #fff;
-      border-radius: 24px;
-      border: 1px solid rgba(226, 232, 240, 0.9);
-      overflow: hidden;
-      transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
-    }
-    .vehicle-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
-      border-color: rgba(59, 130, 246, 0.3);
-    }
-    .vehicle-img-wrap {
-      position: relative;
-      height: 180px;
-      background: #ffffff;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      padding: 24px;
-    }
-    .vehicle-img-wrap img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      transition: transform 0.4s ease;
-      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.06));
-    }
-    .vehicle-card:hover .vehicle-img-wrap img {
-      transform: scale(1.12);
-    }
-
-    /* ─── FEATURES ─── */
-    .features-section {
-      padding: 90px 6%;
-      background: #fff;
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
-    }
-    .feature-card {
-      background: var(--bg-light);
-      border-radius: var(--radius);
-      padding: 36px 30px;
-      border: 1px solid rgba(226, 232, 240, 0.8);
-      transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .feature-card:hover { transform: translateY(-6px); box-shadow: var(--card-shadow); border-color: rgba(59, 130, 246, 0.2); }
-    .feature-card:hover::before { opacity: 1; }
 
     /* ─── STATS BAND ─── */
     .stats-band {
@@ -750,22 +635,12 @@
     </a>
 
     <div class="nav-tabs-wrapper d-none d-lg-flex">
-      <a href="/" class="nav-tab-link">
-        <i class="fa-solid fa-house text-primary"></i> Home
-      </a>
-      <a href="{% url 'ecommerce:catalog' %}" class="nav-tab-link">
-        <i class="fa-solid fa-car text-primary"></i> Browse Inventory
-      </a>
-      <a href="{% url 'ecommerce:test_drive' %}" class="nav-tab-link">
-        <i class="fa-solid fa-calendar-check text-success"></i> Book Appointment
-      </a>
-      <a href="{% url 'ecommerce:customer_orders' %}" class="nav-tab-link">
-        <i class="fa-solid fa-box-archive text-info"></i> My Orders
-      </a>
+      <a href="/" class="nav-tab-link">Home</a>
+      <a href="{% url 'ecommerce:catalog' %}" class="nav-tab-link">Browse Inventory</a>
+      <a href="{% url 'ecommerce:test_drive' %}" class="nav-tab-link">Book Appointment</a>
+      <a href="{% url 'ecommerce:customer_orders' %}" class="nav-tab-link">My Orders</a>
       {% if user.is_authenticated %}
-      <a href="{% url 'ecommerce:customer_profile' %}" class="nav-tab-link">
-        <i class="fa-solid fa-user text-warning"></i> My Profile
-      </a>
+      <a href="{% url 'ecommerce:customer_profile' %}" class="nav-tab-link">My Profile</a>
       {% endif %}
     </div>
 
@@ -928,7 +803,7 @@
         
         <a href="{% url 'ecommerce:catalog' %}" id="heroSearchBtn" class="search-cars__search flex items-center gap-8 justify-center md-w-full text-decoration-none">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span id="heroMatchesText">Show {{ available_inventory_count|default:"26,998" }} Matches</span>
+          <span id="heroMatchesText">Show {% if available_inventory_count %}{{ available_inventory_count|intcomma }}{% else %}26,998{% endif %} Matches</span>
         </a>
       </div>
       
@@ -1121,102 +996,7 @@
   </section>
 
   <!-- ─── BRANDS BAR ─── -->
-  <section class="brands-section">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-      <span class="fw-bold text-uppercase small text-muted">Featured Brands:</span>
-      <div class="d-flex flex-wrap gap-2">
-        {% for make in makes %}
-          <a href="{% url 'ecommerce:catalog' %}?make_id={{ make.make_id }}" class="brand-pill">
-            <i class="fa-solid fa-circle-check text-primary small"></i> {{ make.make_name }}
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
 
-  <!-- ─── FEATURED LIVE INVENTORY GRID ─── -->
-  <section class="inventory-section">
-    <div class="section-title-wrap">
-      <span class="section-label">Live Inventory Marketplace</span>
-      <h2 class="section-title">Trending Available Vehicles</h2>
-      <p class="text-muted">Verified inventory cars ready for instant purchase, reservation, or store test drive.</p>
-    </div>
-
-    <div class="row g-4">
-      {% for item in featured_inventory %}
-      <div class="col-lg-3 col-md-4 col-sm-6">
-        <div class="vehicle-card h-100 d-flex flex-column justify-content-between">
-          <div>
-            <div class="vehicle-img-wrap">
-              <img src="{{ item.vehicle.image_url }}" alt="{{ item.vehicle.vehicle_model }}" onerror="this.src='/static/assets/img/card.jpg'">
-              <span class="badge bg-success position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill fw-bold">Available</span>
-              <button onclick="toggleWishlistGlobal({{ item.vehicle.id }}, this)" class="btn btn-light btn-sm rounded-circle position-absolute top-0 end-0 m-3 shadow-sm">
-                <i class="fa-regular fa-heart text-danger"></i>
-              </button>
-            </div>
-            <div class="p-3">
-              <small class="text-uppercase fw-extrabold text-muted small">{{ item.vehicle.make.make_name }}</small>
-              <h6 class="fw-bold text-dark mb-1 text-truncate">{{ item.vehicle.vehicle_model }}</h6>
-              <p class="small text-muted mb-0"><i class="fa-solid fa-location-dot text-primary me-1"></i> {{ item.store.store_name }} ({{ item.store.city.city_name }})</p>
-            </div>
-          </div>
-
-          <div class="p-3 pt-0 border-top d-flex align-items-center justify-content-between mt-2">
-            <div>
-              <small class="text-muted d-block small">MMR Price</small>
-              <span class="fw-extrabold text-primary fs-5">${{ item.vehicle.mmr }}</span>
-            </div>
-            <a href="{% url 'ecommerce:checkout' %}?inventory_id={{ item.inventory_id }}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
-              Reserve <i class="fa-solid fa-arrow-right ms-1"></i>
-            </a>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div class="text-center mt-5">
-      <a href="{% url 'ecommerce:catalog' %}" class="btn btn-outline-primary btn-lg rounded-pill px-5 fw-bold">
-        <i class="fa-solid fa-car me-2"></i> View All {{ inventory_count }} Vehicles in Catalog
-      </a>
-    </div>
-  </section>
-
-  <!-- ─── FEATURES ─── -->
-  <section class="features-section">
-    <div class="section-title-wrap">
-      <span class="section-label">Platform Excellence</span>
-      <h2 class="section-title">Everything You Need in One Place</h2>
-      <p class="text-muted">Designed for automotive buyers and showroom teams demanding precision and speed.</p>
-    </div>
-
-    <div class="features-grid">
-      <a href="{% url 'ecommerce:catalog' %}" class="feature-card text-decoration-none" style="display: block;">
-        <div class="feature-icon-wrap bg-primary bg-opacity-10 text-primary rounded-4 p-3 d-inline-block mb-3">
-          <i class="fa-solid fa-car-side fs-3"></i>
-        </div>
-        <h4 class="fw-bold text-dark">Browse Vehicle Inventory</h4>
-        <p class="text-muted small">Explore over {{ inventory_count }} verified luxury, SUV, sedan, and pre-owned vehicles across {{ store_count }} store locations with home delivery options.</p>
-        <span class="btn btn-sm btn-outline-primary rounded-pill fw-semibold mt-2">Browse Catalog <i class="fa-solid fa-arrow-right ms-1"></i></span>
-      </a>
-
-      <div class="feature-card">
-        <div class="feature-icon-wrap bg-warning bg-opacity-10 text-warning rounded-4 p-3 d-inline-block mb-3">
-          <i class="fa-solid fa-chart-line fs-3"></i>
-        </div>
-        <h4 class="fw-bold text-dark">Real-Time Sales Analytics</h4>
-        <p class="text-muted small">Monitor store revenue, track top-selling makes, and view monthly performance with live updating charts.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon-wrap bg-success bg-opacity-10 text-success rounded-4 p-3 d-inline-block mb-3">
-          <i class="fa-solid fa-calendar-check fs-3"></i>
-        </div>
-        <h4 class="fw-bold text-dark">Pre-Purchase Test Drives</h4>
-        <p class="text-muted small">Schedule 30-minute test drive sessions at any showroom store location with an assigned sales specialist.</p>
-      </div>
-    </div>
-  </section>
 
   <!-- ─── STATS BAND ─── -->
   <section class="stats-band text-center">

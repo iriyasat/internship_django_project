@@ -161,11 +161,13 @@ class VehicleInfo(models.Model):
 
     @property
     def image_url(self):
-        """Return local vector brand logo for vehicle listings."""
+        """Return the brand PNG logo path."""
         import re
+        PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
         make_name = self.make.make_name if self.make else 'automobile'
         slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
-        return f"/static/logos/{slug}.svg"
+        png_slug = PNG_ALIASES.get(slug, slug)
+        return f"/static/logos/{png_slug}.png"
 
     class Meta:
         db_table = 'vehicle_info'
