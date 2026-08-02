@@ -1,4 +1,5 @@
 {% extends 'ecommerce/base.html' %}
+{% load humanize %}
 
 {% block title %}Schedule a Test Drive | Automobile{% endblock %}
 
@@ -7,10 +8,9 @@
 <div class="ecom-page-header mb-5">
     <div class="container">
         <h1 class="fw-extrabold display-5 mb-2">Schedule a Test Drive</h1>
-        <p class="text-secondary mb-0">Book a 30-minute trial session with a sales specialist at your preferred showroom.</p>
+        <p class="text-secondary mb-0">Book a 30-minute trial session with a sales specialist at your vehicle's designated showroom location.</p>
     </div>
 </div>
-
 
 <div class="container mb-5">
     <div class="row g-4">
@@ -18,31 +18,79 @@
         <!-- Left Schedule Form -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="fa-solid fa-clock text-primary me-2"></i> Book Test Drive Slot</h5>
+                <h5 class="fw-bold mb-4 border-bottom pb-3 text-dark">
+                    <i class="fa-solid fa-calendar-check text-primary me-2"></i> Confirm Test Drive Slot
+                </h5>
                 
                 <form id="test-drive-form" class="d-grid gap-3">
-                    <div>
-                        <label class="form-label small fw-semibold text-muted mb-1">Select Vehicle (ID or Name)</label>
-                        <input type="number" name="vehicle_id" class="form-control rounded-3" placeholder="Enter Vehicle ID (e.g. 1)" value="1" required>
-                    </div>
+                    {% if selected_inventory %}
+                        <!-- Auto-Selected Vehicle Summary Card -->
+                        <input type="hidden" name="inventory_id" value="{{ selected_inventory.inventory_id }}">
+                        <input type="hidden" name="vehicle_id" value="{{ selected_inventory.vehicle.id }}">
+                        <input type="hidden" name="store_id" id="store-id-input" value="{{ selected_inventory.store.store_id }}">
 
-                    <div>
-                        <label class="form-label small fw-semibold text-muted mb-1">Preferred Showroom Location</label>
-                        <select name="store_id" class="form-select rounded-3" required>
-                            {% for st in stores %}
-                                <option value="{{ st.store_id }}">{{ st.store_name }} ({{ st.city.city_name }}, {{ st.country.country_name }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                        <div class="p-3 bg-light rounded-4 border d-flex align-items-center gap-3 mb-2">
+                            <img src="{{ selected_inventory.vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ selected_inventory.vehicle.vehicle_model }}" class="rounded-3" style="width: 90px; height: 65px; object-fit: cover;">
+                            <div>
+                                <span class="badge bg-primary-subtle text-primary fw-bold mb-1">Selected Vehicle</span>
+                                <h6 class="fw-bold mb-1 text-dark">{{ selected_inventory.vehicle.make.make_name }} {{ selected_inventory.vehicle.vehicle_model }} {% if selected_inventory.vehicle.trim %}({{ selected_inventory.vehicle.trim }}){% endif %}</h6>
+                                <div class="small text-muted">
+                                    <span class="me-2"><i class="fa-solid fa-barcode text-primary me-1"></i> VIN: <strong>{{ selected_inventory.vehicle.vin }}</strong></span>
+                                    <span><i class="fa-solid fa-tag text-success me-1"></i> ${{ selected_inventory.vehicle.mmr|intcomma }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fixed Showroom Location -->
+                        <div>
+                            <label class="form-label small fw-semibold text-muted mb-1">Assigned Showroom Store</label>
+                            <div class="p-3 bg-primary bg-opacity-10 border border-primary-subtle rounded-3 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-store text-primary fs-5"></i>
+                                <div>
+                                    <div class="fw-bold text-dark fs-6" id="display-store-name">{{ selected_inventory.store.store_name }}</div>
+                                    <div class="small text-muted" id="display-store-loc">{{ selected_inventory.store.city.city_name }} Showroom</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <!-- Dropdown to Choose Vehicle from Inventory -->
+                        <div>
+                            <label class="form-label small fw-semibold text-muted mb-1">Select Available Vehicle</label>
+                            <select name="inventory_id" id="inventory-select" class="form-select rounded-3 p-2.5" required onchange="updateStoreFromSelect(this)">
+                                <option value="" disabled selected>-- Choose a Car from Showroom Inventory --</option>
+                                {% for inv in available_inventories %}
+                                    <option value="{{ inv.inventory_id }}" data-vehicle-id="{{ inv.vehicle.id }}" data-store-id="{{ inv.store.store_id }}" data-store-name="{{ inv.store.store_name }}" data-store-city="{{ inv.store.city.city_name }}">
+                                        {{ inv.vehicle.make.make_name }} {{ inv.vehicle.vehicle_model }} {% if inv.vehicle.trim %}({{ inv.vehicle.trim }}){% endif %} — VIN: {{ inv.vehicle.vin }} (${{ inv.vehicle.mmr|intcomma }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <input type="hidden" name="vehicle_id" id="vehicle-id-input" value="">
+                        <input type="hidden" name="store_id" id="store-id-input" value="">
+
+                        <!-- Fixed Showroom Location Output -->
+                        <div>
+                            <label class="form-label small fw-semibold text-muted mb-1">Assigned Showroom Store</label>
+                            <div class="p-3 bg-light border rounded-3 d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-primary fs-5"></i>
+                                <div>
+                                    <div class="fw-bold text-dark fs-6" id="display-store-name">Select a vehicle above</div>
+                                    <div class="small text-muted" id="display-store-loc">Store location auto-populates upon selection</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Booking Date</label>
-                            <input type="date" name="booking_date" class="form-control rounded-3" value="2015-10-15" required>
+                            <label class="form-label small fw-semibold text-muted mb-1">Preferred Booking Date</label>
+                            <input type="date" name="booking_date" id="booking_date" class="form-control rounded-3" value="2026-08-03" min="2026-08-02" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Booking Time</label>
-                            <select name="booking_time" class="form-select rounded-3">
+                            <label class="form-label small fw-semibold text-muted mb-1">Preferred Time Slot</label>
+                            <select name="booking_time" class="form-select rounded-3" required>
                                 <option value="10:00">10:00 AM</option>
                                 <option value="11:30">11:30 AM</option>
                                 <option value="14:00">02:00 PM</option>
@@ -53,11 +101,11 @@
                     </div>
 
                     <div>
-                        <label class="form-label small fw-semibold text-muted mb-1">Special Requests / Notes</label>
-                        <textarea name="notes" class="form-control rounded-3" rows="3" placeholder="e.g. Please ensure battery is fully charged."></textarea>
+                        <label class="form-label small fw-semibold text-muted mb-1">Special Requests / Notes (Optional)</label>
+                        <textarea name="notes" class="form-control rounded-3" rows="3" placeholder="e.g. Please ensure battery is charged and vehicle is prepped for test drive."></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow-lg">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow-lg mt-2">
                         <i class="fa-solid fa-calendar-plus me-2"></i> Confirm Test Drive Slot
                     </button>
                 </form>
@@ -67,7 +115,7 @@
         <!-- Right My Test Drives List -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="fa-solid fa-list-check text-primary me-2"></i> My Scheduled Test Drives</h5>
+                <h5 class="fw-bold mb-4 border-bottom pb-3 text-dark"><i class="fa-solid fa-list-check text-primary me-2"></i> My Scheduled Test Drives</h5>
                 
                 {% if bookings %}
                     <div class="d-grid gap-3">
@@ -83,7 +131,11 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="text-muted mb-0 py-4 text-center">No scheduled test drive bookings found.</p>
+                    <div class="text-center py-5">
+                        <i class="fa-regular fa-calendar-xmark text-muted fs-1 mb-3"></i>
+                        <p class="text-muted mb-0 fw-semibold">No scheduled test drive bookings found.</p>
+                        <span class="small text-muted">Complete the form to schedule your first trial appointment!</span>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -94,11 +146,32 @@
 
 {% block extra_js %}
 <script>
+    function updateStoreFromSelect(elem) {
+        const opt = elem.options[elem.selectedIndex];
+        if (!opt || !opt.dataset.storeId) return;
+
+        document.getElementById('vehicle-id-input').value = opt.dataset.vehicleId;
+        document.getElementById('store-id-input').value = opt.dataset.storeId;
+        document.getElementById('display-store-name').innerText = opt.dataset.storeName;
+        document.getElementById('display-store-loc').innerText = opt.dataset.storeCity + " Showroom";
+    }
+
     document.getElementById('test-drive-form').addEventListener('submit', function(e) {
         e.preventDefault();
+
+        const inventoryId = this.inventory_id ? this.inventory_id.value : '';
+        const vehicleId = this.vehicle_id ? this.vehicle_id.value : '';
+        const storeId = this.store_id ? this.store_id.value : '';
+
+        if (!inventoryId && (!vehicleId || !storeId)) {
+            alert("Please select a vehicle for your test drive.");
+            return;
+        }
+
         const data = {
-            vehicle_id: this.vehicle_id.value,
-            store_id: this.store_id.value,
+            inventory_id: inventoryId,
+            vehicle_id: vehicleId,
+            store_id: storeId,
             booking_date: this.booking_date.value,
             booking_time: this.booking_time.value,
             notes: this.notes.value
@@ -124,3 +197,4 @@
     });
 </script>
 {% endblock %}
+

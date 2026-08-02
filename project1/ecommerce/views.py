@@ -111,7 +111,53 @@ def catalog_view(request):
 
 
 
+def vehicle_detail_view(request, inventory_id):
+    """View to display detailed vehicle information, specs, gallery, financing calculator, and dealer contact."""
+    inventory = get_object_or_404(
+        Inventory.objects.select_related('vehicle', 'vehicle__make', 'store', 'store__city', 'store__country', 'employee'),
+        inventory_id=inventory_id
+    )
+
+    vehicle = inventory.vehicle
+    customer = get_customer_from_request(request)
+
+    wishlist_count = 0
+    cart_count = 0
+    if customer:
+        wishlist_count = Wishlist.objects.filter(customer=customer).count()
+        cart_count = Cart.objects.filter(customer=customer).count()
+
+    import re
+    make_name = vehicle.make.make_name if vehicle.make else 'automobile'
+    brand_slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
+    PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
+    png_slug = PNG_ALIASES.get(brand_slug, brand_slug)
+    brand_logo_url = f"/static/logos/{png_slug}.png"
+
+    # Similar recommended vehicles in same make
+    similar_inventory = Inventory.objects.filter(
+        status=1,
+        vehicle__make=vehicle.make
+    ).exclude(inventory_id=inventory_id).select_related('vehicle', 'vehicle__make', 'store', 'store__city')[:4]
+
+    # Calculate monthly payment (estimate: 72 months, 7.89% APR)
+    r = 0.0789 / 12
+    monthly_payment = round((vehicle.mmr * r * (1 + r)**72) / ((1 + r)**72 - 1), 2) if vehicle.mmr else 245
+
+    return render(request, 'ecommerce/vehicle_detail.html', {
+        'inventory': inventory,
+        'vehicle': vehicle,
+        'customer': customer,
+        'wishlist_count': wishlist_count,
+        'cart_count': cart_count,
+        'brand_logo_url': brand_logo_url,
+        'similar_inventory': similar_inventory,
+        'monthly_payment': monthly_payment,
+    })
+
+
 def api_catalog_vehicles(request):
+
     """JSON API for searching and filtering inventory vehicles."""
     vehicles, total_count, total_pages, current_page, available_filters = CatalogService.fetch_catalog_vehicles(
         make_id=request.GET.get('make_id'),
@@ -305,10 +351,19 @@ def test_drive_view(request):
     bookings = TestDriveService.fetch_customer_bookings(customer) if customer else []
     stores = Store.objects.select_related('city', 'country').all()
 
+    selected_inventory = None
+    inventory_id = request.GET.get('inventory_id') or request.GET.get('vehicle_id')
+    if inventory_id and str(inventory_id).isdigit():
+        selected_inventory = Inventory.objects.filter(inventory_id=inventory_id).select_related('vehicle', 'vehicle__make', 'store', 'store__city').first()
+
+    available_inventories = Inventory.objects.filter(status=1).select_related('vehicle', 'vehicle__make', 'store', 'store__city')[:60]
+
     return render(request, 'ecommerce/test_drive.html', {
         'customer': customer,
         'bookings': bookings,
-        'stores': stores
+        'stores': stores,
+        'selected_inventory': selected_inventory,
+        'available_inventories': available_inventories,
     })
 
 
@@ -327,8 +382,16 @@ def api_book_test_drive(request):
     except Exception:
         data = request.POST
 
+    inventory_id = data.get('inventory_id')
     vehicle_id = data.get('vehicle_id')
     store_id = data.get('store_id')
+
+    if inventory_id and (not vehicle_id or not store_id):
+        inv = Inventory.objects.filter(inventory_id=inventory_id).first()
+        if inv:
+            vehicle_id = inv.vehicle_id
+            store_id = inv.store_id
+
     booking_date_str = data.get('booking_date')
     booking_time_str = data.get('booking_time', '10:00')
     notes = data.get('notes', '')
@@ -347,6 +410,7 @@ def api_book_test_drive(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
 
 
 # ==============================================================================

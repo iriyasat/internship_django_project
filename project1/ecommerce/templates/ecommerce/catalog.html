@@ -822,7 +822,7 @@
                 </div>
                 
                 <div class="image"> 
-                    <a href="#">
+                    <a href="/vehicle/${v.inventory_id}/">
                         <img class="card--img" src="${v.image_url}" onerror="this.src='/static/assets/img/card.jpg'" alt="${v.model}">
                     </a>
                 </div>
@@ -831,7 +831,7 @@
                     <div>
                         <p class="category uppercase text-muted small fw-bold mb-1">${v.make}</p>
                         <p class="h6 card-box__title mb-2">
-                            <a href="#">${v.model} ${v.trim ? v.trim : ''}</a>
+                            <a href="/vehicle/${v.inventory_id}/">${v.model} ${v.trim ? v.trim : ''}</a>
                         </p>
                     </div>
 
@@ -843,6 +843,9 @@
 
                     <p class="h6 card-box__price mb-3 flex justify-between gap-8 items-center">
                         $${v.price ? v.price.toLocaleString() : 'N/A'}
+                        <a href="/vehicle/${v.inventory_id}/" class="text-primary small fw-bold text-decoration-none ms-auto">
+                            View Details <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </a>
                     </p>
 
                     <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-2">
@@ -855,6 +858,7 @@
                     </div>
                 </div>
             </div>
+
             `;
         });
 

@@ -236,6 +236,12 @@
         </div>
 
         <div class="nav-actions">
+            <!-- Vehicle Compare Link -->
+            <a href="{% url 'ecommerce:catalog' %}" class="position-relative text-dark fs-5 px-2" title="Vehicle Comparison">
+                <i class="fa-solid fa-code-compare text-success"></i>
+                <span class="badge-count" id="nav-compare-count">0</span>
+            </a>
+
             <!-- Wishlist Link -->
             <a href="{% url 'ecommerce:wishlist' %}" class="position-relative text-dark fs-5 px-2" title="Saved Wishlist">
                 <i class="fa-regular fa-heart text-danger"></i>
@@ -258,6 +264,7 @@
                 </a>
             {% endif %}
         </div>
+
     </nav>
 
 

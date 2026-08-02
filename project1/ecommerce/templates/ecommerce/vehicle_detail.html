@@ -1,0 +1,658 @@
+{% extends 'ecommerce/base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} {{ vehicle.trim }} - Vehicle Details | Automobile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vehicle-detail-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 24px 0;
+    }
+    .detail-gallery-main {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #f1f5f9;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+    }
+    .detail-gallery-main img {
+        max-height: 440px;
+        object-fit: contain;
+        width: 100%;
+        transition: transform 0.3s ease;
+    }
+    .detail-gallery-main img:hover {
+        transform: scale(1.02);
+    }
+    .detail-gallery-thumb {
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .detail-gallery-thumb:hover, .detail-gallery-thumb.active {
+        border-color: #0d6efd;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+    .detail-gallery-thumb img {
+        max-height: 80px;
+        object-fit: contain;
+    }
+    .spec-badge-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s ease;
+    }
+    .spec-badge-box:hover {
+        background: #ffffff;
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+    .spec-icon-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #eff6ff;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .feature-check-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+    }
+    .feature-check-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        color: #334155;
+    }
+    .sidebar-price-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+    }
+    .dealer-contact-card {
+        background: #1e293b;
+        color: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    .rating-bar-track {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .rating-bar-fill {
+        height: 100%;
+        background: #f59e0b;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="flex-grow-1">
+
+    <!-- Breadcrumb Header -->
+    <div class="vehicle-detail-header">
+        <div class="container">
+            <nav aria-label="breadcrumb" class="mb-2">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none text-muted">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none text-muted">Vehicle Directory</a></li>
+                    <li class="breadcrumb-item active text-primary fw-semibold" aria-current="page">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }}</li>
+                </ol>
+            </nav>
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <img src="{{ brand_logo_url }}" alt="{{ vehicle.make.make_name }}" style="height: 42px; width: 60px; object-fit: contain;">
+                    <div>
+                        <h1 class="h2 fw-extrabold mb-1 text-dark">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} {% if vehicle.trim %}<span class="text-muted fs-4 fw-normal">{{ vehicle.trim }}</span>{% endif %}</h1>
+                        <div class="d-flex align-items-center gap-3 text-muted small">
+                            <span><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ inventory.store.store_name }} ({{ inventory.store.city.city_name }})</span>
+                            <span><i class="fa-solid fa-barcode text-primary me-1"></i> VIN: <strong class="text-dark">{{ vehicle.vin }}</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-success rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="alert('Added {{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} to comparison tray!')">
+                        <i class="fa-solid fa-code-compare me-1"></i> Compare
+                    </button>
+                    <button class="btn btn-outline-secondary rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="toggleWishlistGlobal({{ vehicle.id }}, this)">
+                        <i class="fa-regular fa-heart me-1 text-danger"></i> Wishlist
+                    </button>
+                    <a href="{% url 'ecommerce:catalog' %}" class="btn btn-outline-primary rounded-pill px-3 py-2 btn-sm fw-semibold">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Back to Catalog
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Section -->
+    <div class="container py-5">
+        <div class="row g-4">
+            
+            <!-- Left Main Details Column (8 Cols) -->
+            <div class="col-lg-8">
+                
+                <!-- Gallery Section -->
+                <div class="mb-5">
+                    <div class="detail-gallery-main mb-3 p-4">
+                        <img id="main-detail-image" src="{{ vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ vehicle.vehicle_model }}">
+                        <div class="position-absolute bottom-0 start-0 m-3 d-flex gap-2">
+                            <span class="badge bg-dark bg-opacity-75 rounded-pill px-3 py-2"><i class="fa-solid fa-camera me-1"></i> HD Verified Image</span>
+                            <span class="badge {% if inventory.status == 4 %}bg-success{% else %}bg-primary{% endif %} rounded-pill px-3 py-2">{{ inventory.get_status_display }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Thumbnails (Hidden) -->
+                    <!--
+                    <div class="row g-2">
+                        <div class="col-3">
+                            <div class="detail-gallery-thumb active" onclick="switchMainImage('{{ vehicle.image_url }}', this)">
+                                <img src="{{ vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="Thumb 1">
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="detail-gallery-thumb" onclick="switchMainImage('/static/assets/img/card.jpg', this)">
+                                <img src="/static/assets/img/card.jpg" alt="Thumb 2">
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="detail-gallery-thumb" onclick="switchMainImage('{{ brand_logo_url }}', this)">
+                                <img src="{{ brand_logo_url }}" alt="Thumb 3">
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="detail-gallery-thumb d-flex flex-column align-items-center justify-content-center bg-light text-muted">
+                                <i class="fa-solid fa-images fs-4 mb-1"></i>
+                                <span class="small fw-bold">3 Photos</span>
+                            </div>
+                        </div>
+                    </div>
+                    -->
+
+                </div>
+
+                <!-- Vehicle Overview Specs Grid -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+                    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                        <h4 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i> Comprehensive Vehicle Specifications</h4>
+                        <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill"><i class="fa-solid fa-database me-1"></i> Verified DB Specs</span>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <!-- Make -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-industry"></i></div>
+                                <div>
+                                    <div class="text-muted small">Brand Make</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.make.make_name }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Model & Trim -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-car"></i></div>
+                                <div>
+                                    <div class="text-muted small">Model & Trim</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.vehicle_model }} {% if vehicle.trim %}({{ vehicle.trim }}){% endif %}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Odometer -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-gauge-high"></i></div>
+                                <div>
+                                    <div class="text-muted small">Odometer Mileage</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.odometer|intcomma|default:"N/A" }} mi</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Body Style -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-car-side"></i></div>
+                                <div>
+                                    <div class="text-muted small">Body Style</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.body|title|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transmission -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-gears"></i></div>
+                                <div>
+                                    <div class="text-muted small">Transmission</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.transmission|title|default:"Automatic" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Condition Rating -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-shield-halved"></i></div>
+                                <div>
+                                    <div class="text-muted small">Condition Score</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.condition|default:"N/A" }} / 49 Rating</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Exterior Color -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-palette"></i></div>
+                                <div>
+                                    <div class="text-muted small">Exterior Color</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.color|title|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interior Color -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-couch"></i></div>
+                                <div>
+                                    <div class="text-muted small">Interior Trim</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.interior|title|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- State -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-map-location-dot"></i></div>
+                                <div>
+                                    <div class="text-muted small">Registration State</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.state|upper|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MMR Price -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-sack-dollar"></i></div>
+                                <div>
+                                    <div class="text-muted small">MMR Market Price</div>
+                                    <div class="fw-bold text-primary fs-6">${{ vehicle.mmr|intcomma|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VIN -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-barcode"></i></div>
+                                <div>
+                                    <div class="text-muted small">VIN Code</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.vin }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Listing Date -->
+                        <div class="col-md-4 col-6">
+                            <div class="spec-badge-box">
+                                <div class="spec-icon-circle"><i class="fa-solid fa-calendar-day"></i></div>
+                                <div>
+                                    <div class="text-muted small">Date Listed</div>
+                                    <div class="fw-bold text-dark fs-6">{{ inventory.created_at|date:"M d, Y" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- Description Block -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+                    <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-align-left text-primary me-2"></i> Vehicle Description & Inspection Summary</h4>
+                    <p class="text-secondary leading-relaxed mb-3">
+                        This <strong>{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} {% if vehicle.trim %}({{ vehicle.trim }}){% endif %}</strong> is a fully inspected, verified inventory vehicle currently housed at our <strong>{{ inventory.store.store_name }}</strong> location in <strong>{{ inventory.store.city.city_name }}</strong>. 
+                        Featuring a clean title, an MMR market pricing score of <strong>${{ vehicle.mmr|intcomma }}</strong>, and a verified condition score of <strong>{{ vehicle.condition|default:"40" }}/49</strong>.
+                    </p>
+                    <p class="text-secondary leading-relaxed mb-0">
+                        Equipped with a smooth {{ vehicle.transmission|lower|default:"automatic" }} transmission, {{ vehicle.color|lower|default:"premium" }} exterior finish, and a comfortable {{ vehicle.interior|lower|default:"standard" }} interior layout. Every vehicle in our inventory undergoes rigorous multi-point mechanical diagnostic testing prior to showroom listing.
+                    </p>
+                </div>
+
+                <!-- Get To Know This Car (Feature Tabs) -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+                    <h4 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-sliders text-primary me-2"></i> Standard & Premium Features</h4>
+                    
+                    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="feature-tabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active rounded-pill px-4 fw-semibold" id="tab-exterior-btn" data-bs-toggle="pill" data-bs-target="#tab-exterior" type="button">Exterior</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link rounded-pill px-4 fw-semibold" id="tab-interior-btn" data-bs-toggle="pill" data-bs-target="#tab-interior" type="button">Interior</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link rounded-pill px-4 fw-semibold" id="tab-safety-btn" data-bs-toggle="pill" data-bs-target="#tab-safety" type="button">Safety</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link rounded-pill px-4 fw-semibold" id="tab-mech-btn" data-bs-toggle="pill" data-bs-target="#tab-mechanical" type="button">Mechanical</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="feature-tab-content">
+                        <div class="tab-pane fade show active" id="tab-exterior">
+                            <div class="feature-check-list">
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Power Heated Side Mirrors</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> All-Season Radial Tires</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Aluminum Alloy Wheels</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Automatic LED Headlights</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Rear Aerodynamic Spoiler</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Rain-Sensing Wipers</div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-interior">
+                            <div class="feature-check-list">
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Dual-Zone Climate Control</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Ergonomic Front Bucket Seats</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Power Windows & One-Touch Locks</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Multi-Function Steering Wheel</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Center Armrest Storage Console</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Rear Passenger Defroster</div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-safety">
+                            <div class="feature-check-list">
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> 4-Wheel Anti-lock Brakes (ABS)</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Electronic Stability Control</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Advanced Front & Side Airbags</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Tire Pressure Monitoring (TPMS)</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Rearview Backup Camera</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Child Seat LATCH Anchors</div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-mechanical">
+                            <div class="feature-check-list">
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Speed-Sensitive Power Steering</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Ventilated Disc Brakes</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> High-Efficiency Powertrain</div>
+                                <div class="feature-check-item"><i class="fa-solid fa-circle-check text-success"></i> Independent Front Suspension</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financing Calculator Section -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
+                    <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-calculator text-primary me-2"></i> Auto Financing Payment Calculator</h4>
+                    <p class="text-muted small mb-4">Estimate your monthly payment based on loan terms, down payment, and interest rates.</p>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-bold text-muted">Vehicle Price ($)</label>
+                            <input type="number" id="calc-price" class="form-control rounded-3" value="{{ vehicle.mmr|default:25000 }}">
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-bold text-muted">Down Payment ($)</label>
+                            <input type="number" id="calc-down" class="form-control rounded-3" value="2500">
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-bold text-muted">Term (Months)</label>
+                            <select id="calc-term" class="form-select rounded-3">
+                                <option value="72" selected>72 Months (6 Yrs)</option>
+                                <option value="60">60 Months (5 Yrs)</option>
+                                <option value="48">48 Months (4 Yrs)</option>
+                                <option value="36">36 Months (3 Yrs)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-bold text-muted">Interest Rate (%)</label>
+                            <input type="number" id="calc-rate" class="form-control rounded-3" value="7.89" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div>
+                            <span class="text-muted small d-block">Estimated Monthly Payment</span>
+                            <span id="calc-result-monthly" class="h3 fw-extrabold text-primary mb-0">${{ monthly_payment }}/mo</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small d-block">Est. Total Interest</span>
+                            <span id="calc-result-interest" class="fw-bold text-dark mb-0">$0</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small d-block">Est. Total Financed</span>
+                            <span id="calc-result-total" class="fw-bold text-dark mb-0">${{ vehicle.mmr|intcomma }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Reviews & Rating Section -->
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <h4 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-star text-warning me-2"></i> Dealership Customer Reviews & Satisfaction</h4>
+                    
+                    <div class="row align-items-center mb-4">
+                        <div class="col-md-4 text-center border-end py-3">
+                            <div class="display-4 fw-extrabold text-dark mb-0">4.8</div>
+                            <div class="text-warning mb-2 fs-5">
+                                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star-half-stroke"></i>
+                            </div>
+                            <div class="text-muted small">(1,968 Verified Ratings)</div>
+                        </div>
+
+                        <div class="col-md-8 px-4">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="small fw-bold text-muted" style="width: 50px;">5 Star</span>
+                                <div class="flex-grow-1 rating-bar-track"><div class="rating-bar-fill" style="width: 75%;"></div></div>
+                                <span class="small text-muted" style="width: 40px;">75%</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="small fw-bold text-muted" style="width: 50px;">4 Star</span>
+                                <div class="flex-grow-1 rating-bar-track"><div class="rating-bar-fill" style="width: 18%;"></div></div>
+                                <span class="small text-muted" style="width: 40px;">18%</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="small fw-bold text-muted" style="width: 50px;">3 Star</span>
+                                <div class="flex-grow-1 rating-bar-track"><div class="rating-bar-fill" style="width: 5%;"></div></div>
+                                <span class="small text-muted" style="width: 40px;">5%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Feedback Items -->
+                    <div class="border-top pt-3">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-dark">Marcus Vance <span class="badge bg-light text-secondary ms-2 fw-normal">Verified Buyer</span></span>
+                                <span class="text-warning small"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></span>
+                            </div>
+                            <p class="text-secondary small mb-0">Purchased directly from {{ inventory.store.store_name }}. Inspection report was transparent, test drive booking was seamless, and vehicle runs smoothly!</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Sidebar Column (4 Cols) -->
+            <div class="col-lg-4">
+                
+                <!-- Sidebar Price & Actions Card -->
+                <div class="sidebar-price-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small fw-bold uppercase">Listing MMR Price</span>
+                        <span class="badge bg-success-subtle text-success fw-bold px-3 py-1 rounded-pill">Verified In Stock</span>
+                    </div>
+
+                    <div class="h2 fw-extrabold text-primary mb-1">${{ vehicle.mmr|intcomma|default:"N/A" }}</div>
+                    <div class="text-muted small mb-4"><i class="fa-solid fa-tag me-1"></i> Or estimated <strong class="text-dark">${{ monthly_payment }}/mo</strong> for 72 months</div>
+
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{% url 'ecommerce:checkout' %}?inventory_id={{ inventory.inventory_id }}" class="btn btn-primary rounded-pill py-2.5 fw-bold shadow-sm">
+                            <i class="fa-solid fa-bolt me-1"></i> Buy Now Directly
+                        </a>
+                        <button onclick="addToCartGlobal({{ inventory.inventory_id }}, this)" class="btn btn-outline-primary rounded-pill py-2.5 fw-bold">
+                            <i class="fa-solid fa-cart-plus me-1"></i> Add to Cart
+                        </button>
+                        <a href="{% url 'ecommerce:test_drive' %}?inventory_id={{ inventory.inventory_id }}" class="btn btn-light rounded-pill py-2.5 fw-semibold border">
+                            <i class="fa-solid fa-calendar-check me-1 text-primary"></i> Book Test Drive
+                        </a>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 text-center">
+                        <span class="small text-muted d-block mb-1"><i class="fa-solid fa-shield-heart text-danger me-1"></i> Buyer Protection Guaranteed</span>
+                        <span class="small text-secondary">No hidden dealer markup fees</span>
+                    </div>
+                </div>
+
+
+
+                <!-- Vehicle Inquiry Form -->
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-paper-plane text-primary me-2"></i> Send Dealer Inquiry</h5>
+                    <form onsubmit="event.preventDefault(); alert('Thank you! Your inquiry has been sent to {{ inventory.store.store_name }}.');">
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm rounded-3" placeholder="Your Name" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="email" class="form-control form-control-sm rounded-3" placeholder="Email Address" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="tel" class="form-control form-control-sm rounded-3" placeholder="Phone Number">
+                        </div>
+                        <div class="mb-3">
+                            <textarea class="form-control form-control-sm rounded-3" rows="3" placeholder="I am interested in vehicle #INV-{{ inventory.inventory_id }}..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                            Send Vehicle Inquiry
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Recommended Similar Inventory Section -->
+        {% if similar_inventory %}
+        <div class="mt-5 pt-4 border-top">
+            <h3 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-car text-primary me-2"></i> You Might Also Like</h3>
+            
+            <div class="row g-4">
+                {% for sim in similar_inventory %}
+                <div class="col-lg-3 col-md-6">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                        <a href="{% url 'ecommerce:vehicle_detail' sim.inventory_id %}">
+                            <img src="{{ sim.vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" class="card-img-top" alt="{{ sim.vehicle.vehicle_model }}" style="height: 180px; object-fit: contain; background: #f8fafc; padding: 12px;">
+                        </a>
+                        <div class="card-body d-flex flex-column">
+                            <span class="text-muted small fw-bold uppercase mb-1">{{ sim.vehicle.make.make_name }}</span>
+                            <h6 class="fw-bold mb-2">
+                                <a href="{% url 'ecommerce:vehicle_detail' sim.inventory_id %}" class="text-decoration-none text-dark">{{ sim.vehicle.vehicle_model }}</a>
+                            </h6>
+                            <div class="text-muted small mb-3">
+                                <span><i class="fa-solid fa-gauge me-1"></i> {{ sim.vehicle.odometer|intcomma }} mi</span>
+                            </div>
+                            <div class="mt-auto d-flex align-items-center justify-content-between pt-2 border-top">
+                                <span class="fw-extrabold text-primary">${{ sim.vehicle.mmr|intcomma }}</span>
+                                <a href="{% url 'ecommerce:vehicle_detail' sim.inventory_id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</main>
+
+<script>
+    function switchMainImage(src, element) {
+        document.getElementById('main-detail-image').src = src;
+        document.querySelectorAll('.detail-gallery-thumb').forEach(el => el.classList.remove('active'));
+        if (element) element.classList.add('active');
+    }
+
+    // Auto Financing Calculator JS
+    document.addEventListener("DOMContentLoaded", function() {
+        const priceInput = document.getElementById('calc-price');
+        const downInput = document.getElementById('calc-down');
+        const termInput = document.getElementById('calc-term');
+        const rateInput = document.getElementById('calc-rate');
+
+        function recalculateLoan() {
+            const price = parseFloat(priceInput.value) || 0;
+            const down = parseFloat(downInput.value) || 0;
+            const months = parseInt(termInput.value) || 72;
+            const annualRate = parseFloat(rateInput.value) || 7.89;
+
+            const principal = Math.max(0, price - down);
+            const r = (annualRate / 100) / 12;
+
+            let monthly = 0;
+            if (r > 0 && principal > 0) {
+                monthly = (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+            } else if (months > 0) {
+                monthly = principal / months;
+            }
+
+            const totalPaid = monthly * months;
+            const totalInterest = Math.max(0, totalPaid - principal);
+
+            document.getElementById('calc-result-monthly').innerText = '$' + Math.round(monthly).toLocaleString() + '/mo';
+            document.getElementById('calc-result-interest').innerText = '$' + Math.round(totalInterest).toLocaleString();
+            document.getElementById('calc-result-total').innerText = '$' + Math.round(principal).toLocaleString();
+        }
+
+        [priceInput, downInput, termInput, rateInput].forEach(elem => {
+            if (elem) elem.addEventListener('input', recalculateLoan);
+            if (elem) elem.addEventListener('change', recalculateLoan);
+        });
+
+        recalculateLoan();
+    });
+</script>
+{% endblock %}
