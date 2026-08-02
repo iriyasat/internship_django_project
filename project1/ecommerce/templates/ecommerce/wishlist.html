@@ -1,0 +1,60 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}My Wishlist | Automobile{% endblock %}
+
+{% block content %}
+<!-- Dark Hero Header -->
+<div class="ecom-page-header mb-5">
+    <div class="container">
+        <span class="badge bg-danger bg-opacity-20 text-danger border border-danger border-opacity-20 px-3 py-2 rounded-pill fw-bold small uppercase mb-3">
+            <i class="fa-solid fa-heart me-1"></i> Saved Wishlist
+        </span>
+        <h1 class="fw-extrabold display-5 mb-2">My Saved Vehicles</h1>
+        <p class="text-secondary mb-0">Your saved vehicles for future price review, purchase, and pre-purchase trial.</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    {% if wishlist_items %}
+        <div class="row g-4">
+            {% for item in wishlist_items %}
+            <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden vehicle-card-hover bg-white d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="position-relative bg-white border-bottom p-4 d-flex align-items-center justify-content-center" style="height: 180px;">
+                            <img src="{{ item.vehicle.image_url }}" 
+                                 class="mw-100 mh-100 object-fit-contain" style="max-height: 130px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.06));"
+                                 onerror="this.src='/static/assets/img/card.jpg'">
+                            <button onclick="toggleWishlistGlobal({{ item.vehicle.id }}, this)" class="btn btn-light btn-sm rounded-circle position-absolute top-0 end-0 m-3 shadow-sm" title="Remove from Wishlist">
+                                <i class="fa-solid fa-trash text-danger"></i>
+                            </button>
+                        </div>
+                        <div class="card-body p-3">
+                            <small class="text-muted text-uppercase fw-bold small">{{ item.vehicle.make.make_name }}</small>
+                            <h6 class="fw-extrabold text-dark mb-1">{{ item.vehicle.vehicle_model }}</h6>
+                        </div>
+                    </div>
+                    <div class="p-3 pt-0 border-top d-flex align-items-center justify-content-between mt-2">
+                        <span class="price-tag">${{ item.vehicle.mmr }}</span>
+                        <a href="{% url 'ecommerce:catalog' %}?q={{ item.vehicle.vehicle_model }}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
+                            View Catalog
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+            <i class="fa-regular fa-heart display-1 text-muted mb-3"></i>
+            <h4 class="fw-bold">No Saved Vehicles in Wishlist</h4>
+            <p class="text-muted">Click the heart icon on any vehicle card in the catalog to save it to your wishlist.</p>
+            <div>
+                <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                    <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

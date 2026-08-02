@@ -1,0 +1,77 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}My Orders & Purchase Tracking | Automobile{% endblock %}
+
+{% block content %}
+<!-- Dark Hero Header -->
+<div class="ecom-page-header mb-5">
+    <div class="container">
+        <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-20 px-3 py-2 rounded-pill fw-bold small uppercase mb-3">
+            <i class="fa-solid fa-box-archive me-1"></i> Order Tracking
+        </span>
+        <h1 class="fw-extrabold display-5 mb-2">My Vehicle Orders</h1>
+        <p class="text-secondary mb-0">Track your order statuses, store approval, invoices, and vehicle delivery timeline.</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    {% if orders %}
+        <div class="d-grid gap-3">
+            {% for o in orders %}
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white vehicle-card-hover">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-3 mb-3">
+                    <div>
+                        <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold mb-1">Order #{{ o.order_id }}</span>
+                        <small class="text-muted ms-2"><i class="fa-solid fa-calendar me-1"></i> {{ o.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    <div class="mt-2 mt-md-0">
+                        {% if o.order_status == 'FULFILLED' %}
+                            <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-check me-1"></i> {{ o.get_order_status_display }}</span>
+                        {% elif o.order_status == 'NEEDS_APPROVAL' %}
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-hourglass-half me-1"></i> {{ o.get_order_status_display }}</span>
+                        {% elif o.order_status == 'APPROVED' or o.order_status == 'PAID' or o.order_status == 'PARTIALLY_PAID' %}
+                            <span class="badge bg-info text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-thumbs-up me-1"></i> {{ o.get_order_status_display }}</span>
+                        {% else %}
+                            <span class="badge bg-danger px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-xmark me-1"></i> {{ o.get_order_status_display }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row align-items-center g-3">
+                    <div class="col-md-2 bg-white p-2 rounded-3 border d-flex align-items-center justify-content-center" style="height: 90px;">
+                        <img src="{{ o.inventory.vehicle.image_url }}" class="mw-100 mh-100 object-fit-contain" style="max-height: 70px;">
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-uppercase fw-bold text-muted">{{ o.inventory.vehicle.make.make_name }}</small>
+                        <h5 class="fw-extrabold text-dark mb-1">{{ o.inventory.vehicle.vehicle_model }}</h5>
+                        <p class="small text-muted mb-1"><i class="fa-solid fa-store text-primary me-1"></i> Showroom: {{ o.store.store_name }}</p>
+                        <p class="small text-muted mb-0"><i class="fa-solid fa-user me-1"></i> Assigned Sales Specialist: {{ o.assigned_employee|default:"Pending Staff Assignment" }}</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <small class="text-muted d-block">Total Amount</small>
+                        <h4 class="fw-extrabold text-primary mb-1">${{ o.total_amount }}</h4>
+                        <small class="badge bg-light text-dark border px-2 py-1 mb-2">{{ o.get_payment_preference_display }}</small>
+                        {% if o.invoice %}
+                            <div class="mt-1">
+                                <small class="text-muted">Invoice #{{ o.invoice.invoice_id }} [{{ o.invoice.get_payment_status_display }}]</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+            <i class="fa-solid fa-box-open display-1 text-muted mb-3"></i>
+            <h4 class="fw-bold">No Order History Found</h4>
+            <p class="text-muted">Place your first vehicle order from our online catalog.</p>
+            <div>
+                <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                    <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

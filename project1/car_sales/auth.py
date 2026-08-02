@@ -1,5 +1,5 @@
 import types
-from django.db import connections
+from django.db import connections, transaction
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -67,7 +67,7 @@ def get_employee_profile(request):
 
 
 class EmployeeBackend(BaseBackend):
-    """Custom authentication backend using Raw SQL queries."""
+    """Custom authentication backend using Raw SQL queries for Staff/Employee logins."""
     def _create_in_memory_user(self, profile, uid):
         is_manager_user = check_is_manager(profile.employee_id)
         user = User(
@@ -85,28 +85,24 @@ class EmployeeBackend(BaseBackend):
         return user
 
     def authenticate(self, request, username=None, password=None, **kwargs):
-        if not username or not str(username).isdigit():
+        if not username:
             return None
-        emp_id = int(username)
-        with connections['default'].cursor() as cursor:
-            cursor.execute("""
-                SELECT e.employee_id, e.first_name, e.last_name, e.store_id, r.role_name, s.status, e.password
-                FROM employee e
-                LEFT JOIN employee_role r ON e.employee_role = r.role_id
-                LEFT JOIN employee_status s ON e.status = s.status_id
-                WHERE e.employee_id = %s
-                LIMIT 1
-            """, [emp_id])
-            row = cursor.fetchone()
-            if not row:
-                return None
-            status_name = row[5]
-            emp_password = row[6]
-            if status_name == 'Terminated':
-                return None
-            if emp_password == password:
-                profile = EmployeeProfile(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
-                return self._create_in_memory_user(profile, -profile.employee_id)
+        # Check numeric employee_id login
+        if str(username).isdigit():
+            emp_id = int(username)
+            with connections['default'].cursor() as cursor:
+                cursor.execute("""
+                    SELECT e.employee_id, e.first_name, e.last_name, e.store_id, r.role_name, s.status, e.password
+                    FROM employee e
+                    LEFT JOIN employee_role r ON e.employee_role = r.role_id
+                    LEFT JOIN employee_status s ON e.status = s.status_id
+                    WHERE e.employee_id = %s
+                    LIMIT 1
+                """, [emp_id])
+                row = cursor.fetchone()
+                if row and row[5] != 'Terminated' and row[6] == password:
+                    profile = EmployeeProfile(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+                    return self._create_in_memory_user(profile, -profile.employee_id)
         return None
 
     def get_user(self, user_id):
@@ -137,36 +133,106 @@ class EmployeeBackend(BaseBackend):
 
 
 def login_view(request):
+    """Role-aware login view supporting Customer and Staff / Employee login tabs."""
     if request.user.is_authenticated:
         return redirect('home')
+    
     error_message = None
+    selected_role = 'customer'
+
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        username_input = request.POST.get('username', '').strip()
+        password_input = request.POST.get('password', '').strip()
+        user_role_param = request.POST.get('user_role')
         remember = request.POST.get('remember') == 'true'
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            if not remember:
-                request.session.set_expiry(0)
-            messages.success(request, f"Welcome back, {user.username}!")
-            return redirect(request.GET.get('next') or 'home')
+
+        # Auto-detect staff if numeric Employee ID or explicit staff role
+        if user_role_param == 'staff' or (not user_role_param and username_input.isdigit()):
+            selected_role = 'staff'
         else:
-            error_message = "Invalid username or password."
-            messages.error(request, error_message)
-    return render(request, 'car_sales/login.html', {'error_message': error_message})
+            selected_role = 'customer'
+
+        if not username_input or not password_input:
+            error_message = "Please enter both username/ID and password."
+        else:
+            user = None
+
+            if selected_role == 'staff':
+                # 1. Try Employee ID numeric login via EmployeeBackend
+                user = authenticate(request, username=username_input, password=password_input)
+                
+                # 2. Try Django superuser/staff accounts (e.g., admin, ihriyasat)
+                if user is None:
+                    user = authenticate(request, username=username_input, password=password_input)
+
+            else: # Customer Login
+                # 1. Try Django User authentication by username or email
+                user = authenticate(request, username=username_input, password=password_input)
+                
+                if user is None:
+                    # Check if username_input is an email matching auth_user
+                    try:
+                        user_obj = User.objects.filter(email=username_input).first()
+                        if user_obj and user_obj.check_password(password_input):
+                            user = user_obj
+                    except Exception:
+                        pass
+
+                # 2. Check customer database record if not yet linked to auth_user
+                if user is None:
+                    with connections['default'].cursor() as cursor:
+                        cursor.execute("""
+                            SELECT c.customer_id, ci.firstname, ci.lastname, c.email
+                            FROM customer c
+                            LEFT JOIN customer_info ci ON ci.customer_id = c.customer_id
+                            WHERE c.email = %s LIMIT 1
+                        """, [username_input])
+                        row = cursor.fetchone()
+                        if row:
+                            c_id, f_name, l_name, c_email = row
+                            user_obj, _ = User.objects.get_or_create(
+                                username=f"cust_{c_id}",
+                                defaults={
+                                    'email': c_email or f"cust_{c_id}@customer.com",
+                                    'first_name': f_name or "Customer",
+                                    'last_name': l_name or str(c_id),
+                                    'is_staff': False,
+                                    'is_superuser': False,
+                                }
+                            )
+                            user_obj.set_password(password_input)
+                            user_obj.save()
+                            user = user_obj
+
+            if user is not None:
+                login(request, user)
+                if not remember:
+                    request.session.set_expiry(0)
+                messages.success(request, f"Welcome back, {user.first_name or user.username}!")
+                return redirect(request.GET.get('next') or 'home')
+            else:
+                error_message = "Invalid username or password."
+                messages.error(request, error_message)
+
+    return render(request, 'car_sales/login.html', {
+        'error_message': error_message,
+        'selected_role': selected_role
+    })
 
 
 def register_view(request):
+    """Customer-only registration view."""
     if request.user.is_authenticated:
         return redirect('home')
+        
     error_message = None
     if request.method == 'POST':
-        name = request.POST.get('name')
-        email = request.POST.get('email')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
         terms = request.POST.get('terms')
+
         if not terms:
             error_message = "You must agree to the terms and conditions."
         elif not name or not email or not username or not password:
@@ -179,17 +245,43 @@ def register_view(request):
                 else:
                     cursor.execute("SELECT 1 FROM auth_user WHERE email = %s LIMIT 1", [email])
                     if cursor.fetchone():
-                        error_message = "Email already registered."
+                        error_message = "Email address is already registered."
 
         if not error_message:
             first_name, last_name = name.split(' ', 1) if ' ' in name else (name, '')
-            user = User.objects.create_user(username=username, email=email, password=password, first_name=first_name, last_name=last_name)
+
+            with transaction.atomic():
+                # 1. Create Django User
+                user = User.objects.create_user(
+                    username=username, 
+                    email=email, 
+                    password=password, 
+                    first_name=first_name, 
+                    last_name=last_name
+                )
+
+                # 2. Insert Customer record using Raw SQL query (correct fields: email, password, phone)
+                with connections['default'].cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO customer (email, password, phone, created_at, updated_at)
+                        VALUES (%s, %s, %s, NOW(), NOW())
+                    """, [email, password, "+1-555-0199"])
+                    cust_id = cursor.lastrowid
+
+                    # 3. Insert CustomerInfo record using Raw SQL query
+                    cursor.execute("""
+                        INSERT INTO customer_info (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    """, [cust_id, first_name, last_name, "Active", "Registered Address", 1, 1])
+
             user.backend = 'django.contrib.auth.backends.ModelBackend'
             login(request, user)
-            messages.success(request, f"Registration successful. Welcome, {user.username}!")
+            messages.success(request, f"Customer account registered successfully! Welcome, {user.first_name or user.username}.")
             return redirect('home')
+
         if error_message:
             messages.error(request, error_message)
+
     return render(request, 'car_sales/register.html', {'error_message': error_message})
 
 

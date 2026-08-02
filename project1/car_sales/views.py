@@ -37,18 +37,25 @@ def _in_scope(value, allowed):
     return value == allowed
 
 
+def is_staff_user(request):
+    """Check if request user is an Employee/Staff member or Superuser."""
+    if not request.user.is_authenticated:
+        return False
+    if request.user.is_staff or request.user.is_superuser:
+        return True
+    profile = get_employee_profile(request)
+    return profile is not None
+
+
 def _has_scoped_access(request, store_id=None, employee_id=None):
     """Single source of truth for showroom/country and own-record checks."""
-    if request.user.is_authenticated:
-        return True
-    return False
+    return is_staff_user(request)
 
 
 def _payload_is_in_scope(request, model_name, data):
     """Prevent a valid user from submitting another showroom's IDs in a write."""
-    if request.user.is_authenticated:
-        return True
-    return False
+    return is_staff_user(request)
+
 
 def check_analytical_access_and_get_params(request):
     if not request.user.is_authenticated:
@@ -56,16 +63,12 @@ def check_analytical_access_and_get_params(request):
             {"status": False, "message": "Authentication required."},
             status=status.HTTP_401_UNAUTHORIZED
         )
-    is_allowed = request.user.is_authenticated
-    profile = get_employee_profile(request)
-    if not is_allowed and profile:
-        if check_is_manager(profile.employee_id):
-            is_allowed = True
-    if not is_allowed:
+    if not is_staff_user(request):
         return None, None, None, Response(
-            {"status": False, "message": "Access Denied. Only administrators and store managers can fetch this API data."},
+            {"status": False, "message": "Access Denied. Only staff members and store administrators can fetch this API data."},
             status=status.HTTP_403_FORBIDDEN
         )
+    profile = get_employee_profile(request)
     dt_from = request.data.get('dt_from') if isinstance(request.data, dict) else None
     dt_to = request.data.get('dt_to') if isinstance(request.data, dict) else None
     if not dt_from:
@@ -80,13 +83,9 @@ def check_analytical_access_and_get_params(request):
     store_id, employee_id = get_user_filters(request, profile)
     return dt_from, dt_to, (store_id, employee_id), None
 
+
 def check_analytical_page_access(request):
-    profile = get_employee_profile(request)
-    is_allowed = request.user.is_authenticated
-    if not is_allowed and profile:
-        if check_is_manager(profile.employee_id):
-            is_allowed = True
-    return is_allowed
+    return is_staff_user(request)
 
 
 def render_analytical_page(request, template, active_tab):
@@ -146,6 +145,9 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
 
 @login_required
 def home_view(request):
+    if not is_staff_user(request):
+        messages.error(request, "Permission denied. Only staff members and store administrators can access the dealership dashboard.")
+        return redirect('home')
     profile = get_employee_profile(request)
     store_id, employee_id = get_user_filters(request, profile)
     stats = SellingInfoSerializer.fetch_dashboard_stats(store_id, employee_id)
@@ -157,7 +159,40 @@ def home_view(request):
 dashboard_view = home_view
 
 def index_view(request):
-    return render(request, 'car_sales/index.html')
+    inventory_count = Inventory.objects.count()
+    available_inventory_count = Inventory.objects.filter(status=Inventory.StatusChoices.AVAILABLE).count()
+    store_count = Store.objects.count()
+    customer_count = Customer.objects.count()
+    makes = IndustryInfo.objects.all().order_by('make_name')[:12]
+    stores = Store.objects.select_related('city', 'country').all().order_by('store_name')[:15]
+    
+    # Query top available vehicles from inventory database
+    featured_inventory = Inventory.objects.select_related(
+        'vehicle__make', 'store', 'store__city'
+    ).filter(
+        status=Inventory.StatusChoices.AVAILABLE
+    ).order_by('-inventory_id')[:8]
+
+    # Fetch dynamic vehicle body categories and condition tabs from DB via ecommerce serializers
+    try:
+        from ecommerce.serializers import VehicleBodyService, VehicleConditionService
+        vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
+        condition_tabs = VehicleConditionService.fetch_condition_tabs(active_condition=request.GET.get('condition', 'all'))
+    except Exception:
+        vehicle_bodies = []
+        condition_tabs = []
+
+    return render(request, 'car_sales/index.html', {
+        'inventory_count': inventory_count,
+        'available_inventory_count': available_inventory_count,
+        'store_count': store_count,
+        'customer_count': customer_count,
+        'makes': makes,
+        'stores': stores,
+        'featured_inventory': featured_inventory,
+        'vehicle_bodies': vehicle_bodies,
+        'condition_tabs': condition_tabs,
+    })
 
 @login_required
 def employee_view(request):

@@ -1,30 +1,61 @@
 import json
+from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 
-from car_sales.models import Customer, CustomerInfo, Store, IndustryInfo, Inventory, Employee
-from .models import Order, PaymentTransaction
+from car_sales.models import Customer, CustomerInfo, Store, IndustryInfo, Inventory, Employee, City, Country, VehicleInfo
+from .models import Order, PaymentTransaction, Wishlist, Cart, TestDriveBooking
 from .serializers import (
     CatalogService, WishlistService, CartService, TestDriveService, OrderService,
+    VehicleBodyService, VehicleBodySerializer, VehicleConditionService, VehicleConditionSerializer,
     WishlistModelSerializer, CartItemModelSerializer, TestDriveBookingModelSerializer,
     OrderModelSerializer, PaymentTransactionModelSerializer
 )
 
 
-# Helper to get current authenticated customer or demo fallback
+# Strictly secure helper to get current authenticated customer record
 def get_customer_from_request(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
-        try:
-            if request.user.username.startswith('cust_'):
+        # 1. Check cust_<id> username format
+        if request.user.username.startswith('cust_'):
+            try:
                 c_id = int(request.user.username.split('_')[1])
-                return Customer.objects.filter(customer_id=c_id).first()
+                cust = Customer.objects.filter(customer_id=c_id).first()
+                if cust:
+                    return cust
+            except Exception:
+                pass
+
+        # 2. Check matching email in customer table
+        if request.user.email:
+            cust = Customer.objects.filter(email=request.user.email).first()
+            if cust:
+                return cust
+
+        # 3. Safely create dedicated Customer record for this user
+        try:
+            with transaction.atomic():
+                cust = Customer.objects.create(
+                    email=request.user.email or f"{request.user.username}@customer.com",
+                    password=request.user.password or "securepass",
+                    phone="+1-555-0199"
+                )
+                CustomerInfo.objects.create(
+                    customer=cust,
+                    firstname=request.user.first_name or "Customer",
+                    lastname=request.user.last_name or str(cust.customer_id),
+                    customer_status="Active",
+                    customer_address="Registered Address",
+                    city_id=1,
+                    country_id=1
+                )
+                return cust
         except Exception:
-            pass
-        cust = Customer.objects.filter(email=request.user.email).first()
-        if cust:
-            return cust
-    return Customer.objects.first()
+            return Customer.objects.filter(email=request.user.email).first()
+
+    return None
 
 
 # ==============================================================================
@@ -32,25 +63,84 @@ def get_customer_from_request(request):
 # ==============================================================================
 
 def catalog_view(request):
-    """Render customer e-commerce vehicle catalog page."""
+    """Customer vehicle catalog page."""
     makes = IndustryInfo.objects.all().order_by('make_name')
     stores = Store.objects.select_related('city', 'country').all().order_by('store_name')
+    customer = get_customer_from_request(request)
+    wishlist_count = Wishlist.objects.filter(customer=customer).count() if customer else 0
+    cart = Cart.objects.filter(customer=customer).first() if customer else None
+    cart_count = cart.items.count() if cart else 0
+    vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
+    condition_tabs = VehicleConditionService.fetch_condition_tabs(active_condition=request.GET.get('condition', 'all'))
+
     return render(request, 'ecommerce/catalog.html', {
+        'customer': customer,
         'makes': makes,
         'stores': stores,
+        'wishlist_count': wishlist_count,
+        'cart_count': cart_count,
+        'vehicle_bodies': vehicle_bodies,
+        'condition_tabs': condition_tabs,
+        'active_condition': request.GET.get('condition', 'all'),
     })
 
 
 def api_catalog_vehicles(request):
     """JSON API for searching and filtering inventory vehicles."""
-    vehicles = CatalogService.fetch_catalog_vehicles(
+    vehicles, total_count = CatalogService.fetch_catalog_vehicles(
         make_id=request.GET.get('make_id'),
+        brand=request.GET.get('brand') or request.GET.get('make'),
         store_id=request.GET.get('store_id'),
         search_q=request.GET.get('q'),
         min_price=request.GET.get('min_price'),
-        max_price=request.GET.get('max_price')
+        max_price=request.GET.get('max_price'),
+        min_miles=request.GET.get('min_miles'),
+        max_miles=request.GET.get('max_miles'),
+        body=request.GET.get('body'),
+        condition=request.GET.get('condition'),
+        transmission=request.GET.get('transmission'),
+        color=request.GET.get('color'),
+        interior=request.GET.get('interior'),
+        state=request.GET.get('state'),
+        trim=request.GET.get('trim')
     )
-    return JsonResponse({'success': True, 'count': len(vehicles), 'vehicles': vehicles})
+    return JsonResponse({'success': True, 'count': total_count, 'vehicles': vehicles})
+
+
+def api_vehicle_bodies(request):
+    """JSON API for fetching vehicle body types serialized from database via serializers.py."""
+    bodies = VehicleBodyService.fetch_vehicle_bodies()
+    return JsonResponse({'success': True, 'count': len(bodies), 'bodies': bodies})
+
+
+def api_vehicle_conditions(request):
+    """JSON API for fetching vehicle condition tabs (All Car, New Car, Used Car) serialized from database via serializers.py."""
+    active_condition = request.GET.get('condition', 'all')
+    tabs = VehicleConditionService.fetch_condition_tabs(active_condition=active_condition)
+    return JsonResponse({'success': True, 'count': len(tabs), 'conditions': tabs})
+
+
+def api_vehicle_models(request):
+    """JSON API for fetching distinct vehicle models for a selected brand/make."""
+    brand = request.GET.get('brand') or request.GET.get('make')
+    make_id = request.GET.get('make_id')
+
+    qs = VehicleInfo.objects.all()
+    if make_id and str(make_id).isdigit():
+        qs = qs.filter(make_id=make_id)
+    elif brand and str(brand).lower() not in ['all', '']:
+        qs = qs.filter(make__make_name__icontains=brand)
+
+    models_list = list(
+        qs.exclude(vehicle_model__isnull=True)
+          .exclude(vehicle_model='')
+          .values_list('vehicle_model', flat=True)
+          .distinct()
+          .order_by('vehicle_model')[:50]
+    )
+
+    return JsonResponse({'success': True, 'count': len(models_list), 'models': models_list})
+
 
 
 # ==============================================================================
@@ -58,9 +148,13 @@ def api_catalog_vehicles(request):
 # ==============================================================================
 
 def wishlist_view(request):
-    """Render customer wishlist page."""
+    """Customer wishlist page."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to access your saved wishlist.")
+        return redirect('login')
+
     customer = get_customer_from_request(request)
-    wishlist_items = WishlistService.fetch_customer_wishlist(customer)
+    wishlist_items = WishlistService.fetch_customer_wishlist(customer) if customer else []
     return render(request, 'ecommerce/wishlist.html', {
         'customer': customer,
         'wishlist_items': wishlist_items
@@ -70,9 +164,12 @@ def wishlist_view(request):
 @require_POST
 def api_toggle_wishlist(request):
     """Add or remove a vehicle from customer's wishlist."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
     customer = get_customer_from_request(request)
     if not customer:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        return JsonResponse({'success': False, 'error': 'Customer account profile not found.'}, status=400)
 
     try:
         data = json.loads(request.body)
@@ -95,9 +192,13 @@ def api_toggle_wishlist(request):
 # ==============================================================================
 
 def cart_view(request):
-    """Render customer shopping cart page."""
+    """Customer shopping cart page."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to view your shopping cart.")
+        return redirect('login')
+
     customer = get_customer_from_request(request)
-    cart_items, total_price = CartService.fetch_customer_cart_items(customer)
+    cart_items, total_price = CartService.fetch_customer_cart_items(customer) if customer else ([], 0)
     return render(request, 'ecommerce/cart.html', {
         'customer': customer,
         'cart_items': cart_items,
@@ -108,9 +209,12 @@ def cart_view(request):
 @require_POST
 def api_add_to_cart(request):
     """Add an inventory item to customer's cart."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
     customer = get_customer_from_request(request)
     if not customer:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
 
     try:
         data = json.loads(request.body)
@@ -128,9 +232,12 @@ def api_add_to_cart(request):
 @require_POST
 def api_remove_from_cart(request):
     """Remove an item from customer's cart."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
     customer = get_customer_from_request(request)
     if not customer:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
 
     try:
         data = json.loads(request.body)
@@ -150,9 +257,13 @@ def api_remove_from_cart(request):
 # ==============================================================================
 
 def test_drive_view(request):
-    """Render test drive booking page and user's scheduled test drives."""
+    """Test drive booking page and user's scheduled test drives."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to schedule or view your test drive bookings.")
+        return redirect('login')
+
     customer = get_customer_from_request(request)
-    bookings = TestDriveService.fetch_customer_bookings(customer)
+    bookings = TestDriveService.fetch_customer_bookings(customer) if customer else []
     stores = Store.objects.select_related('city', 'country').all()
 
     return render(request, 'ecommerce/test_drive.html', {
@@ -165,9 +276,12 @@ def test_drive_view(request):
 @require_POST
 def api_book_test_drive(request):
     """Schedule a pre-purchase test drive."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
     customer = get_customer_from_request(request)
     if not customer:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
 
     try:
         data = json.loads(request.body)
@@ -201,11 +315,15 @@ def api_book_test_drive(request):
 # ==============================================================================
 
 def checkout_view(request):
-    """Render checkout page."""
+    """Customer checkout page."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to proceed to checkout.")
+        return redirect('login')
+
     customer = get_customer_from_request(request)
     customer_info = CustomerInfo.objects.filter(customer=customer).select_related('city', 'country').first() if customer else None
     
-    cart_items, cart_total = CartService.fetch_customer_cart_items(customer)
+    cart_items, cart_total = CartService.fetch_customer_cart_items(customer) if customer else ([], 0)
 
     inventory_id = request.GET.get('inventory_id')
     buy_now_item = None
@@ -225,10 +343,13 @@ def checkout_view(request):
 
 @require_POST
 def api_submit_order(request):
-    """Submit a new online order (enters NEEDS_APPROVAL status for store staff)."""
+    """Submit a new online order."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
     customer = get_customer_from_request(request)
     if not customer:
-        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
 
     try:
         data = json.loads(request.body)
@@ -256,7 +377,11 @@ def api_submit_order(request):
 
 
 def customer_orders_view(request):
-    """View order history for customer."""
+    """View order history strictly for logged in customer."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to view your order history.")
+        return redirect('login')
+
     customer = get_customer_from_request(request)
     orders = Order.objects.filter(customer=customer).select_related('inventory__vehicle__make', 'store', 'invoice', 'assigned_employee').order_by('-order_id') if customer else []
     return render(request, 'ecommerce/customer_orders.html', {
@@ -266,111 +391,82 @@ def customer_orders_view(request):
 
 
 # ==============================================================================
-# 6. STORE STAFF DASHBOARD & WORKFLOW APIS
+# 6. CUSTOMER PROFILE VIEWS & APIS
 # ==============================================================================
 
-def store_staff_dashboard_view(request):
-    """Store Staff Order Approval & Queue Dashboard."""
-    store_id = request.GET.get('store_id')
-    stores = Store.objects.select_related('city', 'country').all().order_by('store_name')
+def customer_profile_view(request):
+    """Customer profile management page."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to view your customer profile.")
+        return redirect('login')
 
-    selected_store = Store.objects.filter(pk=store_id).first() if store_id else stores.first()
+    customer = get_customer_from_request(request)
+    customer_info = CustomerInfo.objects.filter(customer=customer).select_related('city', 'country').first() if customer else None
+    
+    orders_count = Order.objects.filter(customer=customer).count() if customer else 0
+    wishlist_count = Wishlist.objects.filter(customer=customer).count() if customer else 0
+    test_drives_count = TestDriveBooking.objects.filter(customer=customer).count() if customer else 0
 
-    pending_orders = Order.objects.filter(
-        store=selected_store, 
-        order_status=Order.OrderStatus.NEEDS_APPROVAL
-    ).select_related('customer', 'inventory__vehicle__make', 'assigned_employee').order_by('-order_id')
+    cities = City.objects.all().order_by('city_name')
+    countries = Country.objects.all().order_by('country_name')
 
-    approved_orders = Order.objects.filter(
-        store=selected_store, 
-        order_status__in=[Order.OrderStatus.APPROVED, Order.OrderStatus.PARTIALLY_PAID, Order.OrderStatus.PAID]
-    ).select_related('customer', 'inventory__vehicle__make', 'assigned_employee', 'invoice').order_by('-order_id')
-
-    return render(request, 'ecommerce/staff_dashboard.html', {
-        'stores': stores,
-        'selected_store': selected_store,
-        'pending_orders': pending_orders,
-        'approved_orders': approved_orders
+    return render(request, 'ecommerce/profile.html', {
+        'customer': customer,
+        'customer_info': customer_info,
+        'orders_count': orders_count,
+        'wishlist_count': wishlist_count,
+        'test_drives_count': test_drives_count,
+        'cities': cities,
+        'countries': countries,
     })
 
 
 @require_POST
-def api_review_order(request):
-    """Store staff accepts or rejects an incoming order."""
+def api_update_customer_profile(request):
+    """API endpoint to update customer profile info."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+
+    customer = get_customer_from_request(request)
+    if not customer:
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
+
     try:
         data = json.loads(request.body)
     except Exception:
         data = request.POST
 
-    order_id = data.get('order_id')
-    action = data.get('action') # 'ACCEPT' or 'REJECT'
-    employee_id = data.get('employee_id')
-    rejection_reason = data.get('rejection_reason', '')
-
-    if not order_id or action not in ['ACCEPT', 'REJECT']:
-        return JsonResponse({'success': False, 'error': 'order_id and valid action (ACCEPT/REJECT) required'}, status=400)
-
-    try:
-        order, msg = OrderService.review_order(order_id, action, employee_id, rejection_reason)
-        return JsonResponse({
-            'success': True, 
-            'message': msg, 
-            'order_id': order.order_id, 
-            'order_status': order.get_order_status_display()
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
-
-
-@require_POST
-def api_record_payment(request):
-    """Store staff records in-person cash, card, or delivery payment."""
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        data = request.POST
-
-    order_id = data.get('order_id')
-    amount = data.get('amount')
-    payment_method = data.get('payment_method', PaymentTransaction.PaymentMethod.STORE_CASH)
-    employee_id = data.get('employee_id')
-
-    if not order_id or not amount:
-        return JsonResponse({'success': False, 'error': 'order_id and amount are required'}, status=400)
+    phone = data.get('phone')
+    firstname = data.get('firstname')
+    lastname = data.get('lastname')
+    customer_address = data.get('customer_address')
+    city_id = data.get('city_id')
+    country_id = data.get('country_id')
 
     try:
-        txn, order = OrderService.record_payment(order_id, amount, payment_method, employee_id)
-        return JsonResponse({
-            'success': True,
-            'message': f"Payment of ${amount} recorded successfully",
-            'transaction_id': txn.transaction_id,
-            'order_status': order.get_order_status_display()
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        with transaction.atomic():
+            if phone is not None:
+                customer.phone = phone
+                customer.save()
 
+            info, _ = CustomerInfo.objects.get_or_create(
+                customer=customer,
+                defaults={
+                    'firstname': firstname or request.user.first_name or "Customer",
+                    'lastname': lastname or request.user.last_name or str(customer.customer_id),
+                    'customer_status': 'Active',
+                    'customer_address': customer_address or 'Registered Address',
+                    'city_id': city_id or 1,
+                    'country_id': country_id or 1
+                }
+            )
+            if firstname: info.firstname = firstname
+            if lastname: info.lastname = lastname
+            if customer_address: info.customer_address = customer_address
+            if city_id: info.city_id = city_id
+            if country_id: info.country_id = country_id
+            info.save()
 
-@require_POST
-def api_fulfill_order(request):
-    """Staff completes vehicle handover -> Auto-creates SellingInfo record and updates Inventory to SOLD (1)."""
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        data = request.POST
-
-    order_id = data.get('order_id')
-    employee_id = data.get('employee_id')
-
-    if not order_id:
-        return JsonResponse({'success': False, 'error': 'order_id required'}, status=400)
-
-    try:
-        selling_info, order = OrderService.fulfill_order(order_id, employee_id)
-        return JsonResponse({
-            'success': True,
-            'message': f"Order #{order.order_id} fulfilled! Sales credit assigned to employee #{selling_info.employee_id}.",
-            'sell_id': selling_info.sell_id,
-            'order_status': order.get_order_status_display()
-        })
+        return JsonResponse({'success': True, 'message': 'Profile updated successfully!'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

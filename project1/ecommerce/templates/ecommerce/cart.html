@@ -1,0 +1,108 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Shopping Cart | Automobile{% endblock %}
+
+{% block content %}
+<!-- Dark Hero Header -->
+<div class="ecom-page-header mb-5">
+    <div class="container">
+        <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-20 px-3 py-2 rounded-pill fw-bold small uppercase mb-3">
+            <i class="fa-solid fa-cart-shopping me-1"></i> Your Cart Selection
+        </span>
+        <h1 class="fw-extrabold display-5 mb-2">Shopping Cart</h1>
+        <p class="text-secondary mb-0">Review vehicles selected for hold reservation before proceeding to checkout.</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row g-4">
+        
+        <div class="col-lg-8">
+            {% if cart_items %}
+                <div class="d-grid gap-3">
+                    {% for item in cart_items %}
+                    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vehicle-card-hover">
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-3 bg-white p-2 rounded-3 border d-flex align-items-center justify-content-center" style="height: 100px;">
+                                <img src="{{ item.inventory.vehicle.image_url }}" 
+                                     class="mw-100 mh-100 object-fit-contain" style="max-height: 80px;"
+                                     onerror="this.src='/static/assets/img/card.jpg'">
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-uppercase fw-bold text-muted">{{ item.inventory.vehicle.make.make_name }}</small>
+                                <h5 class="fw-bold text-dark mb-1">{{ item.inventory.vehicle.vehicle_model }}</h5>
+                                <p class="small text-muted mb-0"><i class="fa-solid fa-store text-primary me-1"></i> {{ item.inventory.store.store_name }}</p>
+                            </div>
+                            <div class="col-md-3 text-md-end">
+                                <h4 class="fw-extrabold text-primary mb-2">${{ item.inventory.vehicle.mmr }}</h4>
+                                <button onclick="removeFromCart({{ item.inventory.inventory_id }}, this)" class="btn btn-outline-danger btn-sm rounded-pill">
+                                    <i class="fa-solid fa-trash me-1"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+                    <i class="fa-solid fa-cart-arrow-down display-1 text-muted mb-3"></i>
+                    <h4 class="fw-bold">Your Cart is Currently Empty</h4>
+                    <p class="text-muted">Browse our vehicle inventory catalog to add cars to your shopping cart.</p>
+                    <div>
+                        <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                            <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if cart_items %}
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white sticky-top" style="top: 100px;">
+                <h5 class="fw-bold mb-3 border-bottom pb-2">Order Summary</h5>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Cart Subtotal</span>
+                    <span class="fw-bold">${{ total_price }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Hold Deposit (per vehicle)</span>
+                    <span class="fw-bold text-success">$500</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3 pt-2 border-top">
+                    <span class="fw-extrabold text-dark fs-5">Total</span>
+                    <span class="fw-extrabold text-primary fs-5">${{ total_price }}</span>
+                </div>
+                <a href="{% url 'ecommerce:checkout' %}" class="btn btn-primary btn-lg rounded-pill fw-bold w-100 py-3 shadow-lg">
+                    Proceed to Checkout <i class="fa-solid fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function removeFromCart(inventoryId, btn) {
+        fetch("{% url 'ecommerce:api_remove_from_cart' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify({ inventory_id: inventoryId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || "Failed to remove item");
+            }
+        });
+    }
+</script>
+{% endblock %}

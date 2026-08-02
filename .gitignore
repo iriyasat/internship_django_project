@@ -12,7 +12,7 @@ project1/car_sales/temporary_file/serializers.py
 project1/car_sales/temporary_file/views.py
 project1/dataset/car_sales_ecom.zip
 project1/templates/car_sales/newtemp/
-
+project1/ecommerce/templates/ecommerce/demo
 
 # Django specific files
 db.sqlite3

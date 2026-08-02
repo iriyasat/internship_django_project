@@ -20,6 +20,6 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     
     path('.well-known/appspecific/com.chrome.devtools.json', chrome_devtools_json),
-    path('ecommerce/', include('ecommerce.urls')),
+    path('', include('ecommerce.urls')),
     path('', include('car_sales.urls')),
 ]

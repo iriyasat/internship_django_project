@@ -159,6 +159,14 @@ class VehicleInfo(models.Model):
     def __str__(self):
         return f"{self.make.make_name} {self.vehicle_model} ({self.vin})"
 
+    @property
+    def image_url(self):
+        """Return local vector brand logo for vehicle listings."""
+        import re
+        make_name = self.make.make_name if self.make else 'automobile'
+        slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
+        return f"/static/logos/{slug}.svg"
+
     class Meta:
         db_table = 'vehicle_info'
         verbose_name_plural = 'vehicle info'

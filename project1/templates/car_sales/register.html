@@ -6,8 +6,8 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Register - Car Sales Management</title>
-  <meta content="Car Sales Management System Registration" name="description">
+  <title>Customer Registration - Car Sales</title>
+  <meta content="Customer Registration" name="description">
 
   <!-- Favicons -->
   <link href="{% static 'assets/img/favicon.png' %}" rel="icon">
@@ -36,13 +36,13 @@
     }
     .card {
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
     }
     .card-title {
       color: #012970;
       font-family: "Nunito", sans-serif;
-      font-weight: 500;
+      font-weight: 600;
     }
     .btn-primary {
       background-color: #4154f1;
@@ -77,7 +77,7 @@
       <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
         <div class="container">
           <div class="row justify-content-center">
-            <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
+            <div class="col-lg-5 col-md-7 d-flex flex-column align-items-center justify-content-center">
 
               <div class="d-flex justify-content-center py-4">
                 <a href="/" class="logo d-flex align-items-center w-auto text-decoration-none">
@@ -86,13 +86,13 @@
                 </a>
               </div><!-- End Logo -->
 
-              <div class="card mb-3">
+              <div class="card mb-3 w-100">
 
-                <div class="card-body">
+                <div class="card-body p-4">
 
-                  <div class="pt-4 pb-2">
-                    <h5 class="card-title text-center pb-0 fs-4">Create an Account</h5>
-                    <p class="text-center small text-muted">Enter your personal details to create account</p>
+                  <div class="pt-2 pb-3 text-center">
+                    <h5 class="card-title pb-0 fs-4 mb-1"><i class="bi bi-person-plus-fill me-1 text-primary"></i> Customer Registration</h5>
+                    <p class="small text-muted mb-0">Create your buyer account to purchase & reserve vehicles</p>
                   </div>
 
                   <!-- Display messages -->
@@ -109,44 +109,46 @@
                     {% csrf_token %}
 
                     <div class="col-12">
-                      <label for="yourName" class="form-label">Your Name</label>
-                      <input type="text" name="name" class="form-control" id="yourName" required>
-                      <div class="invalid-feedback">Please enter your name.</div>
+                      <label for="yourName" class="form-label">Full Name</label>
+                      <input type="text" name="name" class="form-control" id="yourName" placeholder="e.g. John Doe" required>
+                      <div class="invalid-feedback">Please enter your full name.</div>
                     </div>
 
                     <div class="col-12">
-                      <label for="yourEmail" class="form-label">Your Email</label>
-                      <input type="email" name="email" class="form-control" id="yourEmail" required>
+                      <label for="yourEmail" class="form-label">Email Address</label>
+                      <input type="email" name="email" class="form-control" id="yourEmail" placeholder="e.g. john.doe@example.com" required>
                       <div class="invalid-feedback">Please enter a valid Email address!</div>
                     </div>
 
                     <div class="col-12">
-                      <label for="yourUsername" class="form-label">Username</label>
+                      <label for="yourUsername" class="form-label">Customer Username</label>
                       <div class="input-group has-validation">
                         <span class="input-group-text" id="inputGroupPrepend">@</span>
-                        <input type="text" name="username" class="form-control" id="yourUsername" required>
+                        <input type="text" name="username" class="form-control" id="yourUsername" placeholder="e.g. johndoe" required>
                         <div class="invalid-feedback">Please choose a username.</div>
                       </div>
                     </div>
 
                     <div class="col-12">
                       <label for="yourPassword" class="form-label">Password</label>
-                      <input type="password" name="password" class="form-control" id="yourPassword" required>
+                      <input type="password" name="password" class="form-control" id="yourPassword" placeholder="••••••••" required>
                       <div class="invalid-feedback">Please enter your password!</div>
                     </div>
 
                     <div class="col-12">
                       <div class="form-check">
                         <input class="form-check-input" name="terms" type="checkbox" value="true" id="acceptTerms" required>
-                        <label class="form-check-label text-muted" for="acceptTerms">I agree and accept the <a href="#">terms and conditions</a></label>
+                        <label class="form-check-label text-muted small" for="acceptTerms">I agree and accept the <a href="#">terms and conditions</a></label>
                         <div class="invalid-feedback">You must agree before submitting.</div>
                       </div>
                     </div>
+
                     <div class="col-12">
-                      <button class="btn btn-primary w-100" type="submit">Create Account</button>
+                      <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit">Create Customer Account</button>
                     </div>
-                    <div class="col-12 text-center">
-                      <p class="small mb-0">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+
+                    <div class="col-12 text-center pt-2">
+                      <p class="small text-muted mb-0">Already registered? <a href="{% url 'login' %}" class="fw-bold">Log in here</a></p>
                     </div>
                   </form>
 

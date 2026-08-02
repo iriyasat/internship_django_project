@@ -1,0 +1,175 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Checkout & Order Placement | Automobile{% endblock %}
+
+{% block content %}
+<!-- Dark Hero Header -->
+<div class="ecom-page-header mb-5">
+    <div class="container">
+        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-20 px-3 py-2 rounded-pill fw-bold small uppercase mb-3">
+            <i class="fa-solid fa-credit-card me-1"></i> Order Checkout
+        </span>
+        <h1 class="fw-extrabold display-5 mb-2">Checkout & Vehicle Reservation</h1>
+        <p class="text-secondary mb-0">Select your preferred fulfillment method and payment preference to complete your order.</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row g-4">
+        
+        <!-- Left Checkout Form -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h5 class="fw-bold mb-3 border-bottom pb-2">1. Delivery & Fulfillment Preference</h5>
+                
+                <form id="checkout-form" class="d-grid gap-3">
+                    {% if buy_now_item %}
+                        <input type="hidden" name="inventory_id" value="{{ buy_now_item.inventory_id }}">
+                    {% elif cart_items %}
+                        <input type="hidden" name="inventory_id" value="{{ cart_items.0.inventory.inventory_id }}">
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check card p-3 border rounded-4 text-start bg-light">
+                                <input class="form-check-input ms-0 me-2" type="radio" name="fulfillment_type" id="ful_pickup" value="STORE_PICKUP" checked onchange="toggleAddressBox(false)">
+                                <label class="form-check-label fw-bold cursor-pointer" for="ful_pickup">
+                                    <i class="fa-solid fa-store text-primary me-2"></i> In-Person Store Pickup
+                                    <small class="d-block text-muted fw-normal mt-1">Collect at dealership showroom with sales specialist assistance.</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check card p-3 border rounded-4 text-start bg-light">
+                                <input class="form-check-input ms-0 me-2" type="radio" name="fulfillment_type" id="ful_delivery" value="HOME_DELIVERY" onchange="toggleAddressBox(true)">
+                                <label class="form-check-label fw-bold cursor-pointer" for="ful_delivery">
+                                    <i class="fa-solid fa-truck-ramp-box text-primary me-2"></i> Home Delivery
+                                    <small class="d-block text-muted fw-normal mt-1">Direct home transport & delivery to your registered address.</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="address-box" class="d-none mt-2">
+                        <label class="form-label small fw-semibold text-muted mb-1">Delivery Home Address</label>
+                        <input type="text" name="delivery_address" class="form-control rounded-3" 
+                               value="{% if customer_info %}{{ customer_info.customer_address }}, {{ customer_info.city.city_name }}, {{ customer_info.country.country_name }}{% else %}Customer Street Address{% endif %}">
+                    </div>
+
+                    <h5 class="fw-bold mb-2 border-bottom pb-2 mt-4">2. Payment Method Preference</h5>
+                    
+                    <div class="d-grid gap-2">
+                        <div class="form-check card p-3 border rounded-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_card" value="ONLINE_CARD" checked>
+                            <label class="form-check-label fw-bold" for="pay_card">
+                                <i class="fa-solid fa-credit-card text-success me-2"></i> Online Card ($500 Deposit Upfront + Remaining Balance)
+                            </label>
+                        </div>
+                        <div class="form-check card p-3 border rounded-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_store" value="STORE_PAYMENT">
+                            <label class="form-check-label fw-bold" for="pay_store">
+                                <i class="fa-solid fa-cash-register text-primary me-2"></i> Pay Upfront at Store (Cash / Credit Card in Person)
+                            </label>
+                        </div>
+                        <div class="form-check card p-3 border rounded-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_cod" value="CASH_ON_DELIVERY">
+                            <label class="form-check-label fw-bold" for="pay_cod">
+                                <i class="fa-solid fa-hand-holding-dollar text-warning me-2"></i> Cash on Delivery (COD at Transport Arrival)
+                            </label>
+                        </div>
+                        <div class="form-check card p-3 border rounded-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_finance" value="FINANCING">
+                            <label class="form-check-label fw-bold" for="pay_finance">
+                                <i class="fa-solid fa-building-columns text-info me-2"></i> Dealership Financing / Bank Wire Transfer
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 mt-4 shadow-lg">
+                        <i class="fa-solid fa-circle-check me-2"></i> Submit Order for Store Approval
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Summary Card -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white sticky-top" style="top: 100px;">
+                <h5 class="fw-bold mb-3 border-bottom pb-2">Vehicle Purchase Details</h5>
+                
+                {% if buy_now_item %}
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="{{ buy_now_item.vehicle.image_url }}" class="rounded-3" style="width: 80px; height: 60px; object-fit: cover;">
+                        <div>
+                            <small class="text-uppercase fw-bold text-muted">{{ buy_now_item.vehicle.make.make_name }}</small>
+                            <h6 class="fw-extrabold text-dark mb-0">{{ buy_now_item.vehicle.vehicle_model }}</h6>
+                            <small class="text-muted"><i class="fa-solid fa-store me-1"></i> {{ buy_now_item.store.store_name }}</small>
+                        </div>
+                    </div>
+                {% elif cart_items %}
+                    {% for item in cart_items %}
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <img src="{{ item.inventory.vehicle.image_url }}" class="rounded-3" style="width: 70px; height: 50px; object-fit: cover;">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">{{ item.inventory.vehicle.make.make_name }} {{ item.inventory.vehicle.vehicle_model }}</h6>
+                            <small class="text-muted">${{ item.inventory.vehicle.mmr }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="pt-3 border-top mt-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Vehicle MMR Amount</span>
+                        <span class="fw-extrabold text-dark fs-5">${{ total_amount }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Required Deposit</span>
+                        <span class="fw-bold text-success">$500</span>
+                    </div>
+                    <p class="small text-muted mb-0 mt-3">
+                        <i class="fa-solid fa-shield-halved text-primary me-1"></i> Submitting your order reserves the vehicle (`PRE_ORDER`) and sends it to store staff for approval.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAddressBox(show) {
+        document.getElementById('address-box').classList.toggle('d-none', !show);
+    }
+
+    document.getElementById('checkout-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const data = {
+            inventory_id: this.inventory_id.value,
+            fulfillment_type: this.fulfillment_type.value,
+            payment_preference: this.payment_preference.value,
+            delivery_address: this.delivery_address ? this.delivery_address.value : ''
+        };
+
+        fetch("{% url 'ecommerce:api_submit_order' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.href = "{% url 'ecommerce:customer_orders' %}";
+            } else {
+                alert(data.error || "Order submission failed");
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Login - Car Sales Management</title>
+  <title>Login - Car Sales & E-Commerce Management</title>
   <meta content="Car Sales Management System Login" name="description">
 
   <!-- Favicons -->
@@ -36,13 +36,13 @@
     }
     .card {
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       box-shadow: 0px 0 30px rgba(1, 41, 112, 0.1);
     }
     .card-title {
       color: #012970;
       font-family: "Nunito", sans-serif;
-      font-weight: 500;
+      font-weight: 600;
     }
     .btn-primary {
       background-color: #4154f1;
@@ -51,6 +51,11 @@
     .btn-primary:hover {
       background-color: #5969f3;
       border-color: #5969f3;
+    }
+    .role-toggle-btn {
+      flex: 1;
+      font-weight: 600;
+      border-radius: 6px !important;
     }
     .logo span {
       font-size: 26px;
@@ -77,7 +82,7 @@
       <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
         <div class="container">
           <div class="row justify-content-center">
-            <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center">
+            <div class="col-lg-5 col-md-7 d-flex flex-column align-items-center justify-content-center">
 
               <div class="d-flex justify-content-center py-4">
                 <a href="/" class="logo d-flex align-items-center w-auto text-decoration-none">
@@ -86,13 +91,23 @@
                 </a>
               </div><!-- End Logo -->
 
-              <div class="card mb-3">
+              <div class="card mb-3 w-100">
 
-                <div class="card-body">
+                <div class="card-body p-4">
 
-                  <div class="pt-4 pb-2">
-                    <h5 class="card-title text-center pb-0 fs-4">Login to Your Account</h5>
-                    <p class="text-center small text-muted">Enter your Employee ID & password to login</p>
+                  <div class="pt-2 pb-3 text-center">
+                    <h5 class="card-title pb-0 fs-4 mb-1">Account Login</h5>
+                    <p class="small text-muted mb-0">Select your account type to proceed</p>
+                  </div>
+
+                  <!-- Role Selector Tabs: Customer vs Staff / Employee -->
+                  <div class="btn-group w-100 mb-4 p-1 bg-light rounded" role="group" aria-label="Role Switcher">
+                    <button type="button" class="btn role-toggle-btn {% if selected_role != 'staff' %}btn-primary text-white{% else %}btn-light text-secondary{% endif %}" id="btnRoleCustomer" onclick="selectRole('customer')">
+                      <i class="bi bi-person-fill me-1"></i> Customer
+                    </button>
+                    <button type="button" class="btn role-toggle-btn {% if selected_role == 'staff' %}btn-primary text-white{% else %}btn-light text-secondary{% endif %}" id="btnRoleStaff" onclick="selectRole('staff')">
+                      <i class="bi bi-person-badge-fill me-1"></i> Staff / Employee
+                    </button>
                   </div>
 
                   <!-- Display messages -->
@@ -108,30 +123,53 @@
                   <form class="row g-3 needs-validation" method="POST" novalidate>
                     {% csrf_token %}
 
+                    <input type="hidden" name="user_role" id="userRoleInput" value="{{ selected_role|default:'customer' }}">
+
                     <div class="col-12">
-                      <label for="yourUsername" class="form-label">Employee ID</label>
+                      <label for="yourUsername" class="form-label" id="usernameLabel">
+                        {% if selected_role == 'staff' %}Employee ID{% else %}Customer Email{% endif %}
+                      </label>
                       <div class="input-group has-validation">
-                        <span class="input-group-text" id="inputGroupPrepend"><i class="bi bi-hash"></i></span>
-                        <input type="text" name="username" class="form-control" id="yourUsername" placeholder="e.g. 5" required>
-                        <div class="invalid-feedback">Please enter your Employee ID.</div>
+                        <span class="input-group-text" id="inputGroupPrepend">
+                          <i class="bi {% if selected_role == 'staff' %}bi-hash{% else %}bi-envelope-at{% endif %}" id="usernameIcon"></i>
+                        </span>
+                        <input type="text" name="username" class="form-control" id="yourUsername" 
+                               placeholder="{% if selected_role == 'staff' %}e.g. 5{% else %}e.g. customer@email.com{% endif %}" required>
+                        <div class="invalid-feedback" id="usernameFeedback">
+                          {% if selected_role == 'staff' %}Please enter your Employee ID.{% else %}Please enter your Customer Email.{% endif %}
+                        </div>
                       </div>
                     </div>
 
                     <div class="col-12">
                       <label for="yourPassword" class="form-label">Password</label>
-                      <input type="password" name="password" class="form-control" id="yourPassword" required>
+                      <input type="password" name="password" class="form-control" id="yourPassword" placeholder="••••••••" required>
                       <div class="invalid-feedback">Please enter your password!</div>
                     </div>
 
-                    <div class="col-12">
+                    <div class="col-12 d-flex justify-content-between align-items-center">
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="remember" value="true" id="rememberMe">
-                        <label class="form-check-label text-muted" for="rememberMe">Remember me</label>
+                        <label class="form-check-label text-muted small" for="rememberMe">Remember me</label>
                       </div>
                     </div>
+
                     <div class="col-12">
-                      <button class="btn btn-primary w-100" type="submit">Login</button>
+                      <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit" id="submitBtn">
+                        {% if selected_role == 'staff' %}Login as Staff{% else %}Login as Customer{% endif %}
+                      </button>
                     </div>
+
+                    <!-- Customer Only Registration Link -->
+                    <div class="col-12 text-center pt-2" id="customerRegisterBox" style="{% if selected_role == 'staff' %}display: none;{% endif %}">
+                      <p class="small text-muted mb-0">Don't have a customer account? <a href="{% url 'register' %}" class="fw-bold">Register as Customer</a></p>
+                    </div>
+
+                    <!-- Staff Info Notice -->
+                    <div class="col-12 text-center pt-2" id="staffNoticeBox" style="{% if selected_role != 'staff' %}display: none;{% endif %}">
+                      <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i> Staff accounts are managed by store administrators. Self-registration is disabled for employees.</p>
+                    </div>
+
                   </form>
 
                 </div>
@@ -157,6 +195,46 @@
   <script src="{% static 'assets/js/main.js' %}"></script>
 
   <script>
+    function selectRole(role) {
+      document.getElementById('userRoleInput').value = role;
+      
+      const btnCust = document.getElementById('btnRoleCustomer');
+      const btnStaff = document.getElementById('btnRoleStaff');
+      const usernameLabel = document.getElementById('usernameLabel');
+      const usernameIcon = document.getElementById('usernameIcon');
+      const usernameInput = document.getElementById('yourUsername');
+      const usernameFeedback = document.getElementById('usernameFeedback');
+      const submitBtn = document.getElementById('submitBtn');
+      const custBox = document.getElementById('customerRegisterBox');
+      const staffBox = document.getElementById('staffNoticeBox');
+
+      if (role === 'staff') {
+        btnStaff.className = 'btn role-toggle-btn btn-primary text-white';
+        btnCust.className = 'btn role-toggle-btn btn-light text-secondary';
+
+        usernameLabel.innerText = 'Employee ID';
+        usernameIcon.className = 'bi bi-hash';
+        usernameInput.placeholder = 'e.g. 5';
+        usernameFeedback.innerText = 'Please enter your Employee ID.';
+        submitBtn.innerText = 'Login as Staff';
+
+        custBox.style.display = 'none';
+        staffBox.style.display = 'block';
+      } else {
+        btnCust.className = 'btn role-toggle-btn btn-primary text-white';
+        btnStaff.className = 'btn role-toggle-btn btn-light text-secondary';
+
+        usernameLabel.innerText = 'Customer Email';
+        usernameIcon.className = 'bi bi-envelope-at';
+        usernameInput.placeholder = 'e.g. customer@email.com';
+        usernameFeedback.innerText = 'Please enter your Customer Email.';
+        submitBtn.innerText = 'Login as Customer';
+
+        custBox.style.display = 'block';
+        staffBox.style.display = 'none';
+      }
+    }
+
     (function () {
       'use strict'
       var forms = document.querySelectorAll('.needs-validation')
