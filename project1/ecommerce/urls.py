@@ -7,7 +7,9 @@ app_name = 'ecommerce'
 urlpatterns = [
     # Top-Level Clean E-Commerce Routes
     path('catalog/', views.catalog_view, name='catalog'),
+    path('category/', views.catalog_view, name='category'),
     path('api/catalog/', views.api_catalog_vehicles, name='api_catalog_vehicles'),
+
     path('api/bodies/', views.api_vehicle_bodies, name='api_vehicle_bodies'),
     path('api/conditions/', views.api_vehicle_conditions, name='api_vehicle_conditions'),
     path('api/models/', views.api_vehicle_models, name='api_vehicle_models'),

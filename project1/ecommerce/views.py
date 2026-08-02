@@ -1,6 +1,8 @@
 import json
 from django.db import transaction
+from django.db.models import Max
 from django.shortcuts import render, redirect, get_object_or_404
+
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -73,6 +75,22 @@ def catalog_view(request):
     vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
     condition_tabs = VehicleConditionService.fetch_condition_tabs(active_condition=request.GET.get('condition', 'all'))
 
+    transmissions = list(VehicleInfo.objects.exclude(transmission__isnull=True).exclude(transmission='').values_list('transmission', flat=True).distinct().order_by('transmission'))
+    colors = list(VehicleInfo.objects.exclude(color__isnull=True).exclude(color='').values_list('color', flat=True).distinct().order_by('color'))
+    fuel_types = ['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'Flex Fuel']
+
+    avail_qs = Inventory.objects.filter(status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER])
+    condition_counts = {
+        'all': avail_qs.count(),
+        'excellent': avail_qs.filter(vehicle__condition__gte=40).count(),
+        'very_good': avail_qs.filter(vehicle__condition__range=(30, 39)).count(),
+        'good': avail_qs.filter(vehicle__condition__range=(20, 29)).count(),
+        'fair': avail_qs.filter(vehicle__condition__range=(1, 19)).count(),
+    }
+
+    price_stats = avail_qs.aggregate(Max('vehicle__mmr'))
+    max_price_db = price_stats['vehicle__mmr__max'] or 182000
+
     return render(request, 'ecommerce/catalog.html', {
         'customer': customer,
         'makes': makes,
@@ -81,13 +99,21 @@ def catalog_view(request):
         'cart_count': cart_count,
         'vehicle_bodies': vehicle_bodies,
         'condition_tabs': condition_tabs,
+        'condition_counts': condition_counts,
+        'max_price_db': max_price_db,
         'active_condition': request.GET.get('condition', 'all'),
+        'transmissions': transmissions,
+        'colors': colors,
+        'fuel_types': fuel_types,
     })
+
+
+
 
 
 def api_catalog_vehicles(request):
     """JSON API for searching and filtering inventory vehicles."""
-    vehicles, total_count = CatalogService.fetch_catalog_vehicles(
+    vehicles, total_count, total_pages, current_page, available_filters = CatalogService.fetch_catalog_vehicles(
         make_id=request.GET.get('make_id'),
         brand=request.GET.get('brand') or request.GET.get('make'),
         store_id=request.GET.get('store_id'),
@@ -102,9 +128,22 @@ def api_catalog_vehicles(request):
         color=request.GET.get('color'),
         interior=request.GET.get('interior'),
         state=request.GET.get('state'),
-        trim=request.GET.get('trim')
+        trim=request.GET.get('trim'),
+        sort=request.GET.get('sort'),
+        page=request.GET.get('page', 1),
+        page_size=request.GET.get('page_size', 24)
     )
-    return JsonResponse({'success': True, 'count': total_count, 'vehicles': vehicles})
+    return JsonResponse({
+        'success': True,
+        'count': total_count,
+        'total_pages': total_pages,
+        'current_page': current_page,
+        'vehicles': vehicles,
+        'filters': available_filters
+    })
+
+
+
 
 
 def api_vehicle_bodies(request):

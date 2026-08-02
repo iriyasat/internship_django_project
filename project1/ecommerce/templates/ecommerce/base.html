@@ -165,13 +165,38 @@
             color: #2563eb;
         }
 
-        /* Dark Hero Header for E-Commerce Pages */
+        /* Blue Gradient Hero Header for E-Commerce Pages */
         .ecom-page-header {
-            background: radial-gradient(circle at 80% 20%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+            background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%);
+            position: relative;
+            overflow: hidden;
             color: #fff;
-            padding: 48px 0;
+            padding: 56px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .ecom-page-header::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -10%;
+            width: 60vw; height: 60vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.35) 0%, transparent 65%);
+            pointer-events: none;
+        }
+        .ecom-page-header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%; left: -10%;
+            width: 40vw; height: 40vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 65%);
+            pointer-events: none;
+        }
+        .ecom-page-header .container {
+            position: relative;
+            z-index: 2;
+        }
+
 
         /* Sleek Dark Footer */
         .landing-footer {
@@ -201,8 +226,9 @@
 
         <div class="nav-tabs-wrapper d-none d-lg-flex">
             <a href="/" class="nav-tab-link">Home</a>
-            <a href="{% url 'ecommerce:catalog' %}" class="nav-tab-link">Browse Inventory</a>
+            <a href="{% url 'ecommerce:category' %}" class="nav-tab-link">Browse Inventory</a>
             <a href="{% url 'ecommerce:test_drive' %}" class="nav-tab-link">Book Appointment</a>
+
             <a href="{% url 'ecommerce:customer_orders' %}" class="nav-tab-link">My Orders</a>
             {% if user.is_authenticated %}
             <a href="{% url 'ecommerce:customer_profile' %}" class="nav-tab-link">My Profile</a>

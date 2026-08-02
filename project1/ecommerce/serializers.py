@@ -238,7 +238,7 @@ class VehicleConditionService:
 
 class CatalogService:
     @staticmethod
-    def fetch_catalog_vehicles(make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, limit=60):
+    def fetch_catalog_vehicles(make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, sort=None, page=1, page_size=24, limit=None):
         qs = Inventory.objects.select_related('vehicle__make', 'store', 'store__city', 'store__country').filter(
             status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
         )
@@ -332,7 +332,34 @@ class CatalogService:
                 pass
 
         total_count = qs.count()
-        sliced_qs = qs.order_by('-inventory_id')[:limit]
+
+        sort_field = '-inventory_id'
+        if sort == 'lowest-price':
+            sort_field = 'vehicle__mmr'
+        elif sort == 'highest-price':
+            sort_field = '-vehicle__mmr'
+        elif sort == 'lowest-mileage':
+            sort_field = 'vehicle__odometer'
+        elif sort == 'highest-mileage':
+            sort_field = '-vehicle__odometer'
+        elif sort == 'newest-year':
+            sort_field = '-vehicle__year'
+        elif sort == 'oldest-year':
+            sort_field = 'vehicle__year'
+
+        try:
+            page = int(page) if page else 1
+        except (ValueError, TypeError):
+            page = 1
+
+        try:
+            page_size = int(page_size) if page_size else (limit or 24)
+        except (ValueError, TypeError):
+            page_size = 24
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        sliced_qs = qs.order_by(sort_field)[start:end]
 
         vehicles = []
         for item in sliced_qs:
@@ -358,7 +385,36 @@ class CatalogService:
                 'country': item.store.country.country_name,
                 'image_url': v.image_url,
             })
-        return vehicles, total_count
+
+        from django.db.models import Count, Min, Max
+        price_stats = qs.aggregate(Min('vehicle__mmr'), Max('vehicle__mmr'))
+        available_filters = {
+            'min_price': price_stats['vehicle__mmr__min'] or 0,
+            'max_price': price_stats['vehicle__mmr__max'] or 182000,
+            'bodies': list(qs.values('vehicle__body').annotate(count=Count('inventory_id')).order_by('-count')),
+            'transmissions': [t for t in qs.values_list('vehicle__transmission', flat=True).distinct() if t],
+            'colors': [c for c in qs.values_list('vehicle__color', flat=True).distinct() if c],
+            'stores': list(qs.values('store__store_id', 'store__store_name', 'store__city__city_name').annotate(count=Count('inventory_id')).order_by('store__store_name')),
+            'conditions': {
+                'all': total_count,
+                'excellent': qs.filter(vehicle__condition__gte=40).count(),
+                'very_good': qs.filter(vehicle__condition__range=(30, 39)).count(),
+                'good': qs.filter(vehicle__condition__range=(20, 29)).count(),
+                'fair': qs.filter(vehicle__condition__range=(1, 19)).count(),
+                'new': qs.filter(vehicle__odometer__lte=VehicleConditionService.NEW_CAR_MAX_ODOMETER).count(),
+                'used': qs.filter(vehicle__odometer__gt=VehicleConditionService.NEW_CAR_MAX_ODOMETER).count(),
+            }
+        }
+
+
+
+
+
+        import math
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        return vehicles, total_count, total_pages, page, available_filters
+
+
 
 
 class WishlistService:
