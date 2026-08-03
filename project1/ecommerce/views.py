@@ -189,6 +189,14 @@ def api_vehicle_models(request):
     return JsonResponse({'success': True, 'count': len(models_list), 'models': models_list})
 
 
+def api_vehicle_trims(request):
+    """JSON API for fetching distinct vehicle trims for a selected brand/model via serializers.py."""
+    brand = request.GET.get('brand') or request.GET.get('make')
+    model = request.GET.get('model') or request.GET.get('q')
+    trims_list = CatalogService.fetch_vehicle_trims(brand=brand, model=model)
+    return JsonResponse({'success': True, 'count': len(trims_list), 'trims': trims_list})
+
+
 # ==============================================================================
 # 2. VEHICLE COMPARE VIEW
 # ==============================================================================

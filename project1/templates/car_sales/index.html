@@ -973,7 +973,7 @@
               <span>All Trim</span>
             </label>
             <div class="filter-select-dropdown__menu"> 
-              <div class="filter-select-dropdown__list">
+              <div class="filter-select-dropdown__list" id="heroTrimList">
                 <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Trim', 'all', 'All Trim')">
                   <span>All Trim</span>
                 </div>
@@ -1355,18 +1355,7 @@
         const modelListContainer = document.getElementById('heroModelList');
         if (!modelListContainer) return;
 
-        if (!brand || brand === 'all') {
-            modelListContainer.innerHTML = `
-                <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Model', 'all', 'All Model')">
-                    <span>All Model</span>
-                </div>
-            `;
-            const modelSpan = modelListContainer.closest('.filter-select-dropdown').querySelector('.filter-select-dropdown__text span');
-            if (modelSpan) modelSpan.innerText = 'All Model';
-            return;
-        }
-
-        fetch("{% url 'ecommerce:api_vehicle_models' %}?brand=" + encodeURIComponent(brand))
+        fetch("{% url 'ecommerce:api_vehicle_models' %}?brand=" + encodeURIComponent(brand || 'all'))
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.models) {
@@ -1383,8 +1372,38 @@
                         `;
                     });
                     modelListContainer.innerHTML = html;
-                    const modelSpan = modelListContainer.closest('.filter-select-dropdown').querySelector('.filter-select-dropdown__text span');
-                    if (modelSpan) modelSpan.innerText = 'All Model';
+                }
+            })
+            .catch(() => {});
+    }
+
+    let lastFetchedTrimKey = null;
+
+    function fetchTrimsForBrandAndModel(brand, model) {
+        const key = (brand || 'all') + '_' + (model || 'all');
+        if (key === lastFetchedTrimKey) return;
+        lastFetchedTrimKey = key;
+
+        const trimListContainer = document.getElementById('heroTrimList');
+        if (!trimListContainer) return;
+
+        fetch("{% url 'ecommerce:api_vehicle_trims' %}?brand=" + encodeURIComponent(brand || 'all') + "&model=" + encodeURIComponent(model || 'all'))
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.trims && data.trims.length > 0) {
+                    let html = `
+                        <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Trim', 'all', 'All Trim')">
+                            <span>All Trim</span>
+                        </div>
+                    `;
+                    data.trims.forEach(t => {
+                        html += `
+                            <div class="filter-checkbox" data-value="${t}" onclick="selectHeroOption(this, 'Trim', '${t}', '${t}')">
+                                <span>${t}</span>
+                            </div>
+                        `;
+                    });
+                    trimListContainer.innerHTML = html;
                 }
             })
             .catch(() => {});
@@ -1492,11 +1511,13 @@
         const activeBrandEl = document.querySelector('.filter-select-dropdown[data-name="Brand"] .filter-checkbox.active');
         const brand = (activeBrandEl && activeBrandEl.dataset.value !== 'all') ? activeBrandEl.dataset.value : '';
 
-        // Dynamically update models dropdown for selected brand
+        // Dynamically update models and trims dropdowns for selected brand/model
         fetchModelsForBrand(brand);
 
         const activeModelEl = document.querySelector('#heroModelList .filter-checkbox.active');
         const model = (activeModelEl && activeModelEl.dataset.value !== 'all') ? activeModelEl.dataset.value : '';
+
+        fetchTrimsForBrandAndModel(brand, model);
 
         const minInput = document.getElementById('priceMinInput');
         const maxInput = document.getElementById('priceMaxInput');

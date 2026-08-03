@@ -640,6 +640,26 @@ class CatalogService:
             cursor.execute(query, params)
             return [row[0] for row in cursor.fetchall()]
 
+    @staticmethod
+    def fetch_vehicle_trims(brand=None, model=None):
+        """Fetch distinct vehicle trims for a brand or model using Raw SQL."""
+        where_clauses = ["trim IS NOT NULL", "trim != ''"]
+        params = []
+
+        if brand and str(brand).lower() not in ['all', '']:
+            where_clauses.append("make_id IN (SELECT make_id FROM industry_info WHERE LOWER(make_name) LIKE %s)")
+            params.append(f"%{brand.lower()}%")
+        if model and str(model).lower() not in ['all', '']:
+            where_clauses.append("LOWER(vehicle_model) LIKE %s")
+            params.append(f"%{model.lower()}%")
+
+        where_sql = " WHERE " + " AND ".join(where_clauses)
+        query = f"SELECT DISTINCT trim FROM vehicle_info {where_sql} ORDER BY trim LIMIT 50"
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            return [row[0] for row in cursor.fetchall()]
+
 
 class VehicleDetailService:
     @staticmethod
