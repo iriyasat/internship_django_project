@@ -744,12 +744,12 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
         self.assertTemplateUsed(response, 'car_sales/login.html')
 
     def test_login_view_post_employee_id_success(self):
-        """POST with valid Employee ID and password should authenticate and redirect to home."""
+        """POST with valid Employee ID and password should authenticate and redirect to dashboard."""
         response = self.client.post(self.login_url, {
             'username': str(self.employee.employee_id),
             'password': 'CAr$@lse2014'
         })
-        self.assertRedirects(response, reverse('home'))
+        self.assertRedirects(response, reverse('dashboard'))
 
     def test_login_view_post_employee_id_failure(self):
         """POST with valid Employee ID but incorrect password should fail."""
@@ -945,5 +945,4 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
         self.assertEqual(del_resp.status_code, 200, "Level 2 failed to delete inventory.")
         self.assertFalse(Inventory.objects.filter(pk=inv_id).exists())
         self.client.logout()
-
 

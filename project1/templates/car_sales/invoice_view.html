@@ -393,8 +393,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const saleSelectRow    = document.getElementById('sale-select-row');
 
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
-  const isSuperuser = {% if request.user.is_superuser %}true{% else %}false{% endif %};
-  const canModifyInvoice = {% if can_delete or request.user.is_superuser %}true{% else %}false{% endif %};
+  const isSuperuser = {% if is_admin %}true{% else %}false{% endif %};
+  const canModifyInvoice = {% if can_delete or is_admin %}true{% else %}false{% endif; %};
   const currentEmployeeId = {{ current_employee_id|default:"null" }};
 
   let bootstrapModal = null;

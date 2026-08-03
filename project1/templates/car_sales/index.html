@@ -1,27 +1,10 @@
+{% extends 'ecommerce/base.html' %}
 {% load static humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Automobile | Premier Vehicle Marketplace & Management Platform</title>
-  <meta name="description" content="Explore thousands of verified vehicles across 170+ showroom locations with real-time inventory, store pickup, and home delivery.">
-  <meta name="keywords" content="car sales, e-commerce, vehicle inventory, test drive, automotive marketplace">
+{% block title %}Automobile | Premier Vehicle Marketplace & Management Platform{% endblock %}
 
-  <!-- Favicons -->
-  <link href="{% static 'assets/img/favicon.png' %}" rel="icon">
-  <link href="{% static 'assets/img/apple-touch-icon.png' %}" rel="apple-touch-icon">
-
-  <!-- Google Fonts & FontAwesome / Bootstrap Icons -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
-  <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
-
-  <style>
+{% block extra_css %}
+<style>
     :root {
       --primary: #3b82f6;
       --primary-dark: #1d4ed8;
@@ -212,6 +195,38 @@
       color: #fff;
     }
 
+    .hero-shell {
+      position: relative;
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      padding: 44px 42px;
+      border-radius: 40px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(135deg, #020617 0%, #0b1020 35%, #111827 70%, #1f2937 100%);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .hero-shell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(96, 165, 250, 0.24), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(244, 114, 182, 0.12), transparent 24%),
+        radial-gradient(circle at 72% 80%, rgba(56, 189, 248, 0.18), transparent 30%);
+      pointer-events: none;
+    }
+    .hero-shell::after {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
+
     .hero::before {
       content: '';
       position: absolute;
@@ -323,9 +338,27 @@
       font-size: 0.9rem;
       transition: all 0.25s ease;
     }
+    .menu-tab-style1 li a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
     .menu-tab-style1 li.active, .menu-tab-style1 li:hover {
       background: var(--primary);
       box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+    .menu-tab-style1 .tab-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
     }
 
     .search-cars__filters {
@@ -559,23 +592,233 @@
       margin-top: 2px;
     }
 
-    /* ─── BRANDS Showcase ─── */
+    /* ─── BRANDS SHOWCASE ─── */
+    .brands-showcase-section {
+      padding: 92px 6% 110px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .brands-showcase-section .title-section {
+      margin-top: 0;
+      margin-bottom: 42px;
+    }
+    .btn-line-style-2 {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      color: #0f172a !important;
+      background: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      transition: all 0.25s ease;
+    }
+    .btn-line-style-2:hover {
+      border-color: #3b82f6;
+      color: #3b82f6 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(59, 130, 246, 0.12);
+    }
+    .brands-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .out-brand-2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 190px;
+      padding: 26px 20px;
+      border-radius: 24px;
+      background: #ffffff;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      color: #0f172a;
+    }
+    .out-brand-2:hover {
+      transform: translateY(-4px);
+      border-color: rgba(59, 130, 246, 0.35);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+    .out-brand--img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    .out-brand-2 .h5 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+    .out-brand-2 .text-muted {
+      margin: 0;
+    }
+    @media (max-width: 1200px) {
+      .brands-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .brands-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .brands-showcase-section { padding: 72px 6% 88px; }
+    }
 
 
     /* ─── STATS BAND ─── */
     .stats-band {
-      background: linear-gradient(135deg, #020617, #0f172a, #1e293b);
-      padding: 80px 6%;
+      background: linear-gradient(135deg, #020617 0%, #0b1020 35%, #111827 70%, #1f2937 100%);
+      padding: 90px 6%;
       color: #fff;
     }
-    .band-stat .num {
-      font-size: clamp(2.4rem, 4vw, 3.6rem);
+    .stats-band .title-section h2 {
+      color: #fff;
+    }
+    .stats-band .stats-cta {
+      background: rgba(17, 24, 39, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #fff !important;
+      border-radius: 999px;
+      padding: 12px 22px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stats-band .stats-cta:hover {
+      background: rgba(31, 41, 55, 0.86);
+      color: #fff !important;
+    }
+    .stats-grid {
+      margin-top: 30px;
+    }
+    .stat-box {
+      height: 100%;
+      padding: 24px 22px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.86), rgba(55, 65, 81, 0.72));
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      text-align: center;
+    }
+    .stat-box .num {
+      font-size: clamp(2rem, 4vw, 3.4rem);
       font-weight: 900;
-      background: linear-gradient(135deg, #60a5fa, #f59e0b);
+      background: linear-gradient(135deg, #60a5fa, #c4b5fd, #f59e0b);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       display: block;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-box .label {
+      color: rgba(255, 255, 255, 0.78);
+      text-transform: uppercase;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .py-100 {
+      padding-top: 100px;
+      padding-bottom: 100px;
+    }
+    .title-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: -8px;
+    }
+    .title-section.mb-28 {
+      margin-bottom: 28px;
+    }
+    .title-section h2 {
+      color: #0f172a;
+      margin: 0;
+    }
+    .btn-blur {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      color: #fff !important;
+      backdrop-filter: blur(14px);
+    }
+    .btn-blur:hover {
+      background: linear-gradient(135deg, #111827, #1d4ed8);
+      color: #fff !important;
+    }
+    .card-box-style-5 {
+      display: block;
+      height: 100%;
+      padding: 20px;
+      border-radius: 24px;
+      background: #ffffff;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+      color: #0f172a;
+    }
+    .card-box-style-5:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+    .card-box-style-5 .image {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      margin-bottom: 16px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+    }
+    .card-box-style-5 .image img,
+    .card-box-style-5 .image svg {
+      max-height: 96px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    .card-box-style-5 .link {
+      margin-bottom: 6px;
+    }
+    .swiper-container.swiper-card-8 {
+      overflow: visible;
+    }
+    .swiper-card-8 .swiper-wrapper {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 30px;
+      width: 100% !important;
+      transform: none !important;
+    }
+    .swiper-card-8 .swiper-slide {
+      width: auto !important;
+      margin: 0 !important;
+      height: auto;
+    }
+    @media (max-width: 1200px) {
+      .swiper-card-8 .swiper-wrapper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 992px) {
+      .swiper-card-8 .swiper-wrapper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .swiper-card-8 .swiper-wrapper { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+      .py-100 { padding-top: 72px; padding-bottom: 72px; }
     }
 
     /* ─── MODULES ─── */
@@ -623,71 +866,22 @@
       .hero-badge { margin: 0 auto 24px; }
     }
   </style>
-</head>
+{% endblock %}
 
-<body>
-
-  <!-- ─── NAVBAR ─── -->
-  <nav class="landing-nav" id="landing-nav">
-    <a href="/" class="nav-logo">
-      <img src="{% static 'assets/img/logo.png' %}" alt="Logo">
-      <span class="logo-text">Automobile</span>
-    </a>
-
-    <div class="nav-tabs-wrapper d-none d-lg-flex">
-      <a href="/" class="nav-tab-link">Home</a>
-      <a href="{% url 'ecommerce:category' %}" class="nav-tab-link">Browse Inventory</a>
-      <a href="{% url 'ecommerce:test_drive' %}" class="nav-tab-link">Book Appointment</a>
-
-      <a href="{% url 'ecommerce:customer_orders' %}" class="nav-tab-link">My Orders</a>
-      {% if user.is_authenticated %}
-      <a href="{% url 'ecommerce:customer_profile' %}" class="nav-tab-link">My Profile</a>
-      {% endif %}
-    </div>
-
-    <div class="nav-actions">
-      <!-- Vehicle Compare Link -->
-      <a href="{% url 'ecommerce:compare' %}" id="nav-compare-link" class="position-relative text-dark fs-5 px-2" title="Vehicle Comparison">
-          <i class="fa-solid fa-code-compare text-success"></i>
-          <span class="badge-count" id="nav-compare-count">0</span>
-      </a>
-
-      <!-- Wishlist Link -->
-      <a href="{% url 'ecommerce:wishlist' %}" class="position-relative text-dark fs-5 px-2" title="Saved Wishlist">
-          <i class="fa-regular fa-heart text-danger"></i>
-          <span class="badge-count" id="nav-wishlist-count">{% if wishlist_count %}{{ wishlist_count }}{% else %}0{% endif %}</span>
-      </a>
-
-      <!-- Shopping Cart Link -->
-      <a href="{% url 'ecommerce:cart' %}" class="position-relative text-dark fs-5 px-2 me-1" title="Shopping Cart">
-          <i class="fa-solid fa-cart-shopping text-warning"></i>
-          <span class="badge-count" id="nav-cart-count">{% if cart_count %}{{ cart_count }}{% else %}0{% endif %}</span>
-      </a>
-
-      {% if user.is_authenticated %}
-        <a href="/logout/" class="btn-nav-login">
-          <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> Log Out
-        </a>
-      {% else %}
-        <a href="/login/" class="btn-nav-login">
-          <i class="fa-solid fa-right-to-bracket me-1"></i> Sign In
-        </a>
-      {% endif %}
-    </div>
-  </nav>
-
+{% block content %}
   <!-- ─── HERO ─── -->
   <section class="hero py-5">
-    <div class="search-cars container margin-top-auto margin-bottom-auto text-center">
+    <div class="hero-shell">
+      <div class="search-cars container margin-top-auto margin-bottom-auto text-center">
       <h1 class="search-cars__title text-center wow fadeInUp" data-wow-delay="0.1s" style="visibility: visible; animation-delay: 0.1s; animation-name: fadeInUp;">Find Your Dream Car Today!</h1>
-      <p class="h7 text-white font-weight-500 mb-36 text-center wow fadeInUp" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: fadeInUp;">Discover the perfect car for you with a wide selection at great prices.</p>
+      <p class="h7 text-secondary font-weight-500 mb-36 text-center wow fadeInUp" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: fadeInUp;">Discover the perfect car for you with a wide selection at great prices.</p>
       
       <div class="flat-tabs mb-16 wow fadeInUp" data-wow-delay="0.5s" style="visibility: visible; animation-delay: 0.5s; animation-name: fadeInUp;">
         <div class="overflow-x-auto">
           <ul class="menu-tab menu-tab-style1 text-white margin-auto" id="heroConditionTabs">
             {% for tab in condition_tabs %}
               <li class="{% if tab.is_active %}active{% endif %}" data-condition="{{ tab.id }}">
-                <a href="{% url 'ecommerce:catalog' %}?condition={{ tab.id }}" class="text-white font-weight-600 text-decoration-none" onclick="selectHeroConditionTab(event, '{{ tab.id }}')">
+                <a href="{{ tab.url }}" class="text-white font-weight-600 text-decoration-none" onclick="selectHeroConditionTab(event, '{{ tab.id }}')">
                   {{ tab.name }}
                 </a>
               </li>
@@ -1000,80 +1194,120 @@
         </div>
       </div>
     </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="py-100">
+    <div class="container wow fadeIn" data-wow-delay="0.1s" style="visibility: visible; animation-delay: 0.1s; animation-name: fadeIn;">
+      <div class="title-section mb-28 wow fadeInDown" data-wow-delay="0.1s" style="visibility: visible; animation-delay: 0.1s; animation-name: fadeInDown;">
+        <h2>Browse By Type</h2>
+        <a href="{% url 'ecommerce:catalog' %}" class="btn btn-line-style-2 effect-line-primary btn-large hover-fill-white">
+          Check All Car Type
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.125 0C6.51803 0 4.94714 0.476523 3.611 1.36931C2.27485 2.2621 1.23344 3.53105 0.618482 5.0157C0.00352044 6.50035 -0.157382 8.13401 0.156123 9.71011C0.469628 11.2862 1.24346 12.7339 2.37976 13.8702C3.51606 15.0065 4.9638 15.7804 6.5399 16.0939C8.11599 16.4074 9.74966 16.2465 11.2343 15.6315C12.719 15.0166 13.9879 13.9752 14.8807 12.639C15.7735 11.3029 16.25 9.73197 16.25 8.125C16.2477 5.97081 15.391 3.90551 13.8677 2.38227C12.3445 0.85903 10.2792 0.00227486 8.125 0ZM11.6922 8.56719L9.19219 11.0672C9.07492 11.1845 8.91586 11.2503 8.75 11.2503C8.58415 11.2503 8.42509 11.1845 8.30782 11.0672C8.19054 10.9499 8.12466 10.7909 8.12466 10.625C8.12466 10.4591 8.19054 10.3001 8.30782 10.1828L9.74141 8.75H5C4.83424 8.75 4.67527 8.68415 4.55806 8.56694C4.44085 8.44973 4.375 8.29076 4.375 8.125C4.375 7.95924 4.44085 7.80027 4.55806 7.68306C4.67527 7.56585 4.83424 7.5 5 7.5H9.74141L8.30782 6.06719C8.19054 5.94991 8.12466 5.79085 8.12466 5.625C8.12466 5.45915 8.19054 5.30009 8.30782 5.18281C8.42509 5.06554 8.58415 4.99965 8.75 4.99965C8.91586 4.99965 9.07492 5.06554 9.19219 5.18281L11.6922 7.68281C11.7503 7.74086 11.7964 7.80979 11.8279 7.88566C11.8593 7.96154 11.8755 8.04287 11.8755 8.125C11.8755 8.20713 11.8593 8.28846 11.8279 8.36434C11.7964 8.44021 11.7503 8.50914 11.6922 8.56719Z" fill="#1C1C1C"></path>
+          </svg>
+        </a>
+      </div>
+      <div class="swiper-container swiper-card-8 wow fadeIn" data-wow-delay="0.2s">
+        <div class="swiper-wrapper">
+          {% for body_item in vehicle_bodies|slice:":8" %}
+            <div class="swiper-slide" role="group" aria-label="{{ forloop.counter }} / 8">
+              <a href="{{ body_item.url }}" class="card-box-style-5 wow fadeIn" data-wow-delay="0.1s">
+                <div class="image">
+                  {% if body_item.image_url %}
+                    <img src="{{ body_item.image_url }}" alt="{{ body_item.display_name }}" onerror="this.onerror=null;this.src='/static/assets/img/card.jpg'">
+                  {% else %}
+                    {{ body_item.svg|safe }}
+                  {% endif %}
+                </div>
+                <div class="content">
+                  <p class="h4 mb-4 link">{{ body_item.display_name }}</p>
+                  <p class="text-sm text-muted">{{ body_item.count|intcomma }} Vehicles</p>
+                </div>
+              </a>
+            </div>
+          {% empty %}
+            <div class="swiper-slide" role="group" aria-label="1 / 1">
+              <a href="{% url 'ecommerce:catalog' %}?body=Electric" class="card-box-style-5 wow fadeIn" data-wow-delay="0.1s">
+                <div class="image"><span class="h4 mb-0">EV</span></div>
+                <div class="content">
+                  <p class="h4 mb-4 link">Electric</p>
+                  <p class="text-sm text-muted">32 Vehicles</p>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="swiper-pagination pagination-dark pagination-style pagination-swiper-card-8 mt-38" style="display: none;"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ─── BRANDS BAR ─── -->
 
 
   <!-- ─── STATS BAND ─── -->
-  <section class="stats-band text-center">
-    <div class="row g-4 justify-content-center">
-      <div class="col-md-3 col-6">
-        <span class="num">{{ inventory_count|default:"434,369" }}</span>
-        <small class="text-light text-uppercase fw-bold">Vehicles Listed</small>
+  <section class="stats-band">
+    <div class="container">
+      <div class="title-section mb-40">
+        <h2>Platform Stats</h2>
       </div>
-      <div class="col-md-3 col-6">
-        <span class="num">{{ store_count|default:"173" }}</span>
-        <small class="text-light text-uppercase fw-bold">Dealership Showrooms</small>
-      </div>
-      <div class="col-md-3 col-6">
-        <span class="num">{{ customer_count|default:"50,001" }}</span>
-        <small class="text-light text-uppercase fw-bold">Verified Customers</small>
-      </div>
-      <div class="col-md-3 col-6">
-        <span class="num">100%</span>
-        <small class="text-light text-uppercase fw-bold">Real-Time Data</small>
+
+      <div class="row g-4 stats-grid justify-content-center">
+        <div class="col-lg-4 col-md-6 col-12">
+          <div class="stat-box">
+            <span class="num">{{ sold_inventory_count|intcomma }}</span>
+            <div class="label">Vehicles Sold</div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-12">
+          <div class="stat-box">
+            <span class="num">{{ store_count|intcomma }}</span>
+            <div class="label">Dealership Showrooms</div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-12">
+          <div class="stat-box">
+            <span class="num">{{ customer_count|intcomma }}</span>
+            <div class="label">Verified Customers</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── MODULES GRID FOR STAFF ─── -->
-  <section class="modules-section">
-    <div class="section-title-wrap">
-      <span class="section-label">Staff & Dealership Modules</span>
-      <h2 class="section-title">Internal Showroom Management</h2>
-    </div>
+  <section class="brands-showcase-section">
+    <div class="container">
+      <div class="title-section">
+        <h2>Explore Our Brands</h2>
+        <a href="{% url 'ecommerce:catalog' %}" class="btn btn-line-style-2 effect-line-primary btn-large hover-fill-white">
+          View All Brand
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.125 0C6.51803 0 4.94714 0.476523 3.611 1.36931C2.27485 2.2621 1.23344 3.53105 0.618482 5.0157C0.00352044 6.50035 -0.157382 8.13401 0.156123 9.71011C0.469628 11.2862 1.24346 12.7339 2.37976 13.8702C3.51606 15.0065 4.9638 15.7804 6.5399 16.0939C8.11599 16.4074 9.74966 16.2465 11.2343 15.6315C12.719 15.0166 13.9879 13.9752 14.8807 12.639C15.7735 11.3029 16.25 9.73197 16.25 8.125C16.2477 5.97081 15.391 3.90551 13.8677 2.38227C12.3445 0.85903 10.2792 0.00227486 8.125 0ZM11.6922 8.56719L9.19219 11.0672C9.07492 11.1845 8.91586 11.2503 8.75 11.2503C8.58415 11.2503 8.42509 11.1845 8.30782 11.0672C8.19054 10.9499 8.12466 10.7909 8.12466 10.625C8.12466 10.4591 8.19054 10.3001 8.30782 10.1828L9.74141 8.75H5C4.83424 8.75 4.67527 8.68415 4.55806 8.56694C4.44085 8.44973 4.375 8.29076 4.375 8.125C4.375 7.95924 4.44085 7.80027 4.55806 7.68306C4.67527 7.56585 4.83424 7.5 5 7.5H9.74141L8.30782 6.06719C8.19054 5.94991 8.12466 5.79085 8.12466 5.625C8.12466 5.45915 8.19054 5.30009 8.30782 5.18281C8.42509 5.06554 8.58415 4.99965 8.75 4.99965C8.91586 4.99965 9.07492 5.06554 9.19219 5.18281L11.6922 7.68281C11.7503 7.74086 11.7964 7.80979 11.8279 7.88566C11.8593 7.96154 11.8755 8.04287 11.8755 8.125C11.8755 8.20713 11.8593 8.28846 11.8279 8.36434C11.7964 8.44021 11.7503 8.50914 11.6922 8.56719Z" fill="#1C1C1C"></path>
+          </svg>
+        </a>
+      </div>
 
-    <div class="modules-grid">
-      <a href="/dashboard/" class="module-pill">
-        <span class="icon text-primary"><i class="fa-solid fa-gauge-high"></i></span>
-        Dashboard
-      </a>
-      <a href="/employees/" class="module-pill">
-        <span class="icon text-warning"><i class="fa-solid fa-user-gear"></i></span>
-        Employees
-      </a>
-      <a href="/customers/" class="module-pill">
-        <span class="icon text-success"><i class="fa-solid fa-users"></i></span>
-        Customers
-      </a>
-      <a href="/sales/" class="module-pill">
-        <span class="icon text-info"><i class="fa-solid fa-file-invoice-dollar"></i></span>
-        Sales
-      </a>
-      <a href="/vehicles/" class="module-pill">
-        <span class="icon text-primary"><i class="fa-solid fa-car"></i></span>
-        Vehicles
-      </a>
-      <a href="/stores/" class="module-pill">
-        <span class="icon text-danger"><i class="fa-solid fa-store"></i></span>
-        Stores
-      </a>
+      <div class="brands-grid wow fadeIn" data-wow-delay="0.2s">
+        {% for brand in brand_showcase %}
+          <a href="{% url 'ecommerce:catalog' %}?brand={{ brand.make_name|urlencode }}" class="out-brand-2">
+            <img class="out-brand--img mb-8" src="{{ brand.logo_url }}" alt="{{ brand.make_name }}">
+            <p class="h5">{{ brand.make_name }}</p>
+            <p class="text-muted text-sm">{{ brand.vehicle_count|intcomma }} Vehicles</p>
+          </a>
+        {% empty %}
+          <a href="{% url 'ecommerce:catalog' %}" class="out-brand-2">
+            <p class="h5 mb-2">View Catalog</p>
+            <p class="text-muted text-sm mb-0">No brand data available</p>
+          </a>
+        {% endfor %}
+      </div>
     </div>
   </section>
+{% endblock %}
 
-  <!-- ─── FOOTER ─── -->
-  <footer class="landing-footer">
-    <p class="mb-0">
-      © 2026 Automobile &nbsp;|&nbsp;
-      <a href="{% url 'ecommerce:catalog' %}">Vehicle Catalog</a>
-      <a href="{% url 'ecommerce:test_drive' %}">Book Test Drive</a>
-      <a href="/dashboard/">Staff Dashboard</a>
-      <a href="/login/">Sign In</a>
-    </p>
-  </footer>
-
-  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+{% block extra_js %}
   <script>
     function toggleAdvancedFilters() {
         const panel = document.getElementById('advancedFilters');
@@ -1215,6 +1449,34 @@
         onHeroFilterChange();
     }
 
+    let heroMatchesTimer = null;
+    let heroMatchesRequestId = 0;
+
+    function refreshHeroMatchesCount(queryString) {
+        const matchesText = document.getElementById('heroMatchesText');
+        if (!matchesText) return;
+
+        if (heroMatchesTimer) {
+            clearTimeout(heroMatchesTimer);
+        }
+
+        heroMatchesTimer = setTimeout(() => {
+            const requestId = ++heroMatchesRequestId;
+            const params = new URLSearchParams(queryString);
+            params.set('count_only', '1');
+
+            fetch("{% url 'ecommerce:api_catalog_vehicles' %}?" + params.toString())
+                .then(res => res.json())
+                .then(data => {
+                    if (requestId !== heroMatchesRequestId) return;
+                    if (data.success && typeof data.count === 'number') {
+                        matchesText.innerText = "Show " + data.count.toLocaleString() + " Matches";
+                    }
+                })
+                .catch(() => {});
+        }, 150);
+    }
+
     function onHeroFilterChange() {
         const activeTabLi = document.querySelector('#heroConditionTabs li.active');
         let condition = 'all';
@@ -1291,46 +1553,8 @@
             searchBtn.href = "{% url 'ecommerce:catalog' %}" + (queryString ? "?" + queryString : "");
         }
 
-        fetch("{% url 'ecommerce:api_catalog_vehicles' %}?" + queryString)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && matchesText) {
-                    matchesText.innerText = "Show " + data.count.toLocaleString() + " Matches";
-                }
-            })
-            .catch(() => {});
+        refreshHeroMatchesCount(queryString);
     }
-
-    const COMPARE_STORAGE_KEY = "compare_inventory_ids";
-
-    function getCompareInventoryIds() {
-        try {
-            const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || "[]");
-            if (!Array.isArray(parsed)) return [];
-            return parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isInteger(id) && id > 0);
-        } catch (e) {
-            return [];
-        }
-    }
-
-    function updateCompareBadge() {
-        const countEl = document.getElementById("nav-compare-count");
-        if (countEl) countEl.innerText = String(getCompareInventoryIds().length);
-    }
-
-    const compareNavLink = document.getElementById("nav-compare-link");
-    if (compareNavLink) {
-        compareNavLink.addEventListener("click", function (e) {
-            const ids = getCompareInventoryIds();
-            if (ids.length === 0) return;
-            e.preventDefault();
-            window.location.href = `{% url 'ecommerce:compare' %}?ids=${ids.join(",")}`;
-        });
-    }
-
-    updateCompareBadge();
 
     function toggleWishlistGlobal(vehicleId, btn) {
         fetch("{% url 'ecommerce:api_toggle_wishlist' %}", {
@@ -1372,6 +1596,12 @@
         }
         return cookieValue;
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const heroSearchBtn = document.getElementById('heroSearchBtn');
+        if (heroSearchBtn) {
+            onHeroFilterChange();
+        }
+    });
   </script>
-</body>
-</html>
+{% endblock %}

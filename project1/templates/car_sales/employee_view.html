@@ -65,7 +65,7 @@
         <div class="card-body pt-3">
           <h5 class="card-title">
             Employee Registry <span>| Live Query & CRUD Interface</span>
-            {% if request.user.is_staff or request.user.is_superuser %}
+            {% if request.user.is_staff or is_admin %}
             <button class="btn btn-primary btn-sm float-end" id="add-btn" data-bs-toggle="modal" data-bs-target="#crudModal">
               <i class="bi bi-person-plus-fill me-1"></i> Add Employee
             </button>
@@ -117,7 +117,7 @@
                   <th>Store</th>
                   <th>Address</th>
                   <th>Date of Joining</th>
-                  {% if request.user.is_staff or request.user.is_superuser %}
+                  {% if request.user.is_staff or is_admin %}
                   <th>Actions</th>
                   {% endif %}
                 </tr>
@@ -147,7 +147,7 @@
 </section>
 
 <!-- CRUD Modal -->
-{% if request.user.is_staff or request.user.is_superuser %}
+{% if request.user.is_staff or is_admin %}
 <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let pageSize = parseInt(pageSizeSelect.value);
   let searchQuery = '';
   let currentRecords = [];
-  const isStaff = {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %};
+  const isStaff = {% if request.user.is_staff or is_admin %}true{% else %}false{% endif %};
 
   // Parse URL query parameter for search
   const urlParams = new URLSearchParams(window.location.search);

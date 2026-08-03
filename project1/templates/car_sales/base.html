@@ -74,12 +74,12 @@
             {% if request.user.is_authenticated %}
             <li class="dropdown-header">
               <h6>{% if employee_profile %}{{ employee_profile.first_name }} {{ employee_profile.last_name }}{% else %}{{ request.user.get_full_name|default:request.user.username }}{% endif %}</h6>
-              <span>{% if employee_profile and employee_profile.employee_role %}{{ employee_profile.employee_role.role_name }}{% elif request.user.is_superuser %}System Administrator{% else %}Employee{% endif %}</span>
+              <span>{% if employee_profile and employee_profile.employee_role %}{{ employee_profile.employee_role.role_name }}{% elif is_admin %}System Administrator{% else %}Employee{% endif %}</span>
             </li>
             <li>
               <hr class="dropdown-divider">
             </li>
-            {% if request.user.is_superuser %}
+            {% if is_admin %}
             <li>
               <a class="dropdown-item d-flex align-items-center" href="/admin-panel/">
                 <i class="bi bi-gear"></i>

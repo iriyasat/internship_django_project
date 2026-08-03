@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let searchQuery = '';
   let currentRecords = [];
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
-  const canModifySale = {% if can_delete or request.user.is_superuser %}true{% else %}false{% endif %};
+  const canModifySale = {% if can_delete or is_admin %}true{% else %}false{% endif %};
 
   // Parse URL query parameter for search
   const urlParams = new URLSearchParams(window.location.search);

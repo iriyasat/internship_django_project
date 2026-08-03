@@ -138,6 +138,8 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Authentication Settings
 LOGIN_URL = 'login'
@@ -150,5 +152,4 @@ AUTHENTICATION_BACKENDS = [
 FORMAT_MODULE_PATH = [
     'project1.formats',
 ]
-
 

@@ -4,6 +4,8 @@ from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import connections
+from django.db.models import Count
+from django.db.models import Count
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -23,6 +25,7 @@ from .serializers import *
 from .auth import get_employee_profile
 
 from .utils import get_user_filters, is_manager as check_is_manager, get_employee_level as _get_employee_level, can_delete
+from project1.workspaces import is_car_sales_admin_user, is_car_sales_workspace_user
 
 
 from .permissions import LEVEL_CRUD_DISPATCH, LEVEL_RECORD_DISPATCH
@@ -41,7 +44,7 @@ def is_staff_user(request):
     """Check if request user is an Employee/Staff member or Superuser."""
     if not request.user.is_authenticated:
         return False
-    if request.user.is_staff or request.user.is_superuser:
+    if is_car_sales_workspace_user(request.user):
         return True
     profile = get_employee_profile(request)
     return profile is not None
@@ -98,7 +101,7 @@ def check_record_permission(request, model_class, record):
     """Row-level visibility check — dispatches to dedicated level handler in permissions.py."""
     if not request.user.is_authenticated:
         return False
-    if request.user.is_superuser:
+    if is_car_sales_admin_user(request.user):
         return True
 
     profile = get_employee_profile(request)
@@ -121,8 +124,11 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
     if not request.user.is_authenticated:
         return False, "Authentication required."
 
-    if request.user.is_superuser:
+    if is_car_sales_admin_user(request.user):
         return True, None
+
+    if not is_staff_user(request):
+        return False, "Permission denied. This action is restricted to the car sales workspace."
 
     if action == 'GET':
         return True, None
@@ -160,17 +166,44 @@ dashboard_view = home_view
 
 def index_view(request):
     inventory_count = Inventory.objects.count()
-    available_inventory_count = Inventory.objects.filter(status=Inventory.StatusChoices.AVAILABLE).count()
+    available_inventory_count = Inventory.objects.filter(
+        status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
+    ).count()
+    sold_inventory_count = Inventory.objects.filter(
+        status=Inventory.StatusChoices.SOLD
+    ).count()
     store_count = Store.objects.count()
     customer_count = Customer.objects.count()
     makes = IndustryInfo.objects.all().order_by('make_name')[:12]
+    brand_showcase = []
+    brand_rows = (
+        Inventory.objects.filter(
+            status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER],
+            vehicle__make__isnull=False,
+        )
+        .values('vehicle__make__make_name')
+        .annotate(vehicle_count=Count('inventory_id'))
+        .order_by('-vehicle_count', 'vehicle__make__make_name')[:12]
+    )
+    for row in brand_rows:
+        make_name = row['vehicle__make__make_name']
+        slug = ''.join(ch for ch in make_name.lower() if ch.isalnum())
+        if 'mercedes' in slug:
+            slug = 'mercedes'
+        elif 'landrover' in slug:
+            slug = 'landrover'
+        brand_showcase.append({
+            'make_name': make_name,
+            'vehicle_count': row['vehicle_count'],
+            'logo_url': f"/static/logos/{slug}.png",
+        })
     stores = Store.objects.select_related('city', 'country').all().order_by('store_name')[:15]
     
     # Query top available vehicles from inventory database
     featured_inventory = Inventory.objects.select_related(
         'vehicle__make', 'store', 'store__city'
     ).filter(
-        status=Inventory.StatusChoices.AVAILABLE
+        status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
     ).order_by('-inventory_id')[:8]
 
     # Fetch dynamic vehicle body categories and condition tabs from DB via ecommerce serializers
@@ -185,9 +218,11 @@ def index_view(request):
     return render(request, 'car_sales/index.html', {
         'inventory_count': inventory_count,
         'available_inventory_count': available_inventory_count,
+        'sold_inventory_count': sold_inventory_count,
         'store_count': store_count,
         'customer_count': customer_count,
         'makes': makes,
+        'brand_showcase': brand_showcase,
         'stores': stores,
         'featured_inventory': featured_inventory,
         'vehicle_bodies': vehicle_bodies,
@@ -197,7 +232,7 @@ def index_view(request):
 @login_required
 def employee_view(request):
     profile = get_employee_profile(request)
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     is_manager = check_is_manager(profile.employee_id) if profile else False
     if not (is_admin or is_manager):
         return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
@@ -219,14 +254,14 @@ def employee_view(request):
 
 @login_required
 def country_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/country_view.html', {'active_tab': 'countries'})
 
 @login_required
 def city_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     _, countries = CountrySerializer.fetch(limit=-1)
@@ -238,7 +273,7 @@ def city_view(request):
 @login_required
 def store_view(request):
     profile = get_employee_profile(request)
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     is_manager = check_is_manager(profile.employee_id) if profile else False
     if not (is_admin or is_manager):
         return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
@@ -252,34 +287,36 @@ def store_view(request):
 
 @login_required
 def role_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/role_view.html', {'active_tab': 'roles'})
 
 @login_required
 def hierarchy_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/hierarchy_view.html', {'active_tab': 'hierarchy'})
 
 @login_required
 def status_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/status_view.html', {'active_tab': 'statuses'})
 
 @login_required
 def industry_view(request):
-    is_admin = request.user.is_authenticated
+    is_admin = is_car_sales_admin_user(request.user)
     if not is_admin:
         return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
     return render(request, 'car_sales/industry_view.html', {'active_tab': 'industry'})
 
 @login_required
 def vehicle_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     _, makes = IndustryInfoSerializer.fetch(limit=-1)
     return render(request, 'car_sales/vehicle_view.html', {
         'active_tab': 'vehicles',
@@ -288,6 +325,8 @@ def vehicle_view(request):
 
 @login_required
 def customer_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     _, cities = CitySerializer.fetch(limit=-1)
     _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/customer_view.html', {
@@ -298,6 +337,8 @@ def customer_view(request):
 
 @login_required
 def selling_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     profile = get_employee_profile(request)
     store_id, employee_id = get_user_filters(request, profile)
     _, employees = EmployeeSerializer.fetch(limit=-1, store_id=store_id, employee_id=employee_id)
@@ -310,6 +351,8 @@ def selling_view(request):
 
 @login_required
 def budget_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     profile = get_employee_profile(request)
     store_id, employee_id = get_user_filters(request, profile)
     _, employees = EmployeeSerializer.fetch(limit=-1, store_id=store_id, employee_id=employee_id)
@@ -329,7 +372,7 @@ def budget_view(request):
 
 @staff_member_required(login_url='login')
 def admin_panel_view(request):
-    if not request.user.is_superuser:
+    if not is_car_sales_admin_user(request.user):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
     stats = {
@@ -522,6 +565,8 @@ def inventory_api(request, pk=None):
 
 @login_required
 def inventory_api_page_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     _, vehicles = VehicleInfoSerializer.fetch(limit=1000)
     _, stores = StoreSerializer.fetch(limit=-1)
     _, employees = EmployeeSerializer.fetch(limit=-1)
@@ -570,7 +615,7 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         store_id, employee_id = None, None
         if store_field or employee_field:
             profile = get_employee_profile(request)
-            if profile and not request.user.is_superuser:
+            if profile and not is_car_sales_admin_user(request.user):
                 allowed_stores, allowed_employees = get_user_filters(request, profile)
                 if store_field:
                     store_id = allowed_stores
@@ -721,6 +766,8 @@ def budget_api(request, pk=None):
 def budget_stats_api(request):
     if not request.user.is_authenticated:
         return Response({"status": False, "message": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+    if not is_staff_user(request):
+        return Response({"status": False, "message": "Permission denied. This action is restricted to the car sales workspace."}, status=status.HTTP_403_FORBIDDEN)
     year = request.GET.get('budget_year')
     stats_data = EmployeeBudgetSerializer.fetch_stats(year)
     return Response({"status": True, **stats_data}, status=status.HTTP_200_OK)
@@ -737,6 +784,8 @@ def employee_api(request, pk=None):
 
 @login_required
 def invoice_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access this page.")
     profile = get_employee_profile(request)
     store_id, employee_id = get_user_filters(request, profile)
     _, stores = StoreSerializer.fetch(limit=-1, store_id=store_id)
@@ -839,7 +888,7 @@ def invoice_api(request, pk=None):
 
 @login_required
 def documentation_view(request):
-    if not request.user.is_superuser:
+    if not is_car_sales_admin_user(request.user):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
     base_url = request.build_absolute_uri('/')[:-1]

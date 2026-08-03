@@ -1,5 +1,7 @@
 from django.db import models
+from django.conf import settings
 import datetime
+from pathlib import Path
 
 class TruncatedDateTimeField(models.DateTimeField):
     """
@@ -161,12 +163,26 @@ class VehicleInfo(models.Model):
 
     @property
     def image_url(self):
-        """Return the brand PNG logo path."""
+        """Return the best matching vehicle image path from static/cars/."""
         import re
-        PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
+        IMAGE_EXTENSIONS = ('.webp', '.png', '.jpg', '.jpeg')
         make_name = self.make.make_name if self.make else 'automobile'
-        slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
-        png_slug = PNG_ALIASES.get(slug, slug)
+        make_slug = re.sub(r'[^a-z0-9]', '', make_name.lower())
+        model_slug = re.sub(r'[^a-z0-9]', '', (self.vehicle_model or '').lower())
+
+        image_dir = Path(settings.BASE_DIR) / 'static' / 'cars'
+        for stem in filter(None, (
+            f"{make_slug}-{model_slug}" if model_slug else None,
+            model_slug or None,
+            make_slug or None,
+        )):
+            for extension in IMAGE_EXTENSIONS:
+                candidate = image_dir / f"{stem}{extension}"
+                if candidate.exists():
+                    return f"/static/cars/{candidate.name}"
+
+        PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
+        png_slug = PNG_ALIASES.get(make_slug, make_slug)
         return f"/static/logos/{png_slug}.png"
 
     class Meta:

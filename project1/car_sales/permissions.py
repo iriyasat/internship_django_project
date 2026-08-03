@@ -10,6 +10,7 @@ Single source of truth for:
 """
 
 from django.db import connections
+from project1.workspaces import is_car_sales_admin_user
 
 # Master admin-only models reserved exclusively for Django Superusers
 ADMIN_ONLY_MODELS = {'Country', 'City', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo'}
@@ -281,7 +282,7 @@ def employee_context(request):
     from .auth import get_employee_profile
     profile = get_employee_profile(request)
 
-    if request.user.is_superuser:
+    if is_car_sales_admin_user(request.user):
         return {
             'employee_profile': profile,
             'access_level': 'global',

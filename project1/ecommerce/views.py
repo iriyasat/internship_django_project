@@ -6,6 +6,8 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.core.files.storage import default_storage
+from project1.workspaces import get_workspace_for_user, is_customer_workspace_user
 
 from .models import Order
 from .db import (
@@ -17,7 +19,7 @@ from .db import (
 from .serializers import (
     CatalogService, WishlistService, CartService, TestDriveService, OrderService,
     VehicleBodyService, VehicleBodySerializer, VehicleConditionService, VehicleConditionSerializer,
-    VehicleDetailService,
+    VehicleDetailService, _resolve_vehicle_image_url,
     WishlistModelSerializer, CartItemModelSerializer, TestDriveBookingModelSerializer,
     OrderModelSerializer, PaymentTransactionModelSerializer
 )
@@ -27,6 +29,10 @@ from .serializers import (
 # Strictly secure helper to get current authenticated customer record
 def get_customer_from_request(request):
     if not (hasattr(request, 'user') and request.user.is_authenticated):
+        return None
+    if request.user.is_superuser or request.user.is_staff:
+        return None
+    if not is_customer_workspace_user(request.user):
         return None
 
     with connection.cursor() as cursor:
@@ -64,52 +70,15 @@ def get_customer_from_request(request):
                 cust.phone = row[2]
                 return cust
 
-        # 3. Create new customer record
-        try:
-            email = request.user.email or f"{request.user.username}@customer.com"
-            cursor.execute(
-                "INSERT INTO customer (email, password, phone) VALUES (%s, %s, %s)",
-                [email, request.user.password or "securepass", "+1-555-0199"]
-            )
-            new_id = cursor.lastrowid
-            cursor.execute(
-                """INSERT INTO customer_info
-                   (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                [
-                    new_id,
-                    request.user.first_name or "Customer",
-                    request.user.last_name or str(new_id),
-                    "Active", "Registered Address", 1, 1
-                ]
-            )
-            cursor.execute(
-                "SELECT customer_id, email, phone FROM customer WHERE customer_id = %s",
-                [new_id]
-            )
-            row = cursor.fetchone()
-            if row:
-                from car_sales.models import Customer as CustomerModel
-                cust = CustomerModel()
-                cust.customer_id = row[0]
-                cust.email = row[1]
-                cust.phone = row[2]
-                return cust
-        except Exception:
-            # Fallback: try email lookup again
-            cursor.execute(
-                "SELECT customer_id, email, phone FROM customer WHERE email = %s",
-                [request.user.email]
-            )
-            row = cursor.fetchone()
-            if row:
-                from car_sales.models import Customer as CustomerModel
-                cust = CustomerModel()
-                cust.customer_id = row[0]
-                cust.email = row[1]
-                cust.phone = row[2]
-                return cust
+    return None
 
+
+def _require_customer_workspace(request, json_mode=False):
+    if not is_customer_workspace_user(request.user):
+        if json_mode:
+            return JsonResponse({'success': False, 'error': 'Permission denied. This action is restricted to the customer workspace.'}, status=403)
+        messages.error(request, "Permission denied. This page is restricted to the customer workspace.")
+        return redirect('dashboard' if get_workspace_for_user(request.user) == 'car_sales' else 'home')
     return None
 
 
@@ -157,26 +126,33 @@ def vehicle_detail_view(request, inventory_id):
 
 def api_catalog_vehicles(request):
     """JSON API for searching and filtering inventory vehicles."""
-    vehicles, total_count, total_pages, current_page, available_filters = CatalogService.fetch_catalog_vehicles(
-        make_id=request.GET.get('make_id'),
-        brand=request.GET.get('brand') or request.GET.get('make'),
-        store_id=request.GET.get('store_id'),
-        search_q=request.GET.get('q'),
-        min_price=request.GET.get('min_price'),
-        max_price=request.GET.get('max_price'),
-        min_miles=request.GET.get('min_miles'),
-        max_miles=request.GET.get('max_miles'),
-        body=request.GET.get('body'),
-        condition=request.GET.get('condition'),
-        transmission=request.GET.get('transmission'),
-        color=request.GET.get('color'),
-        interior=request.GET.get('interior'),
-        state=request.GET.get('state'),
-        trim=request.GET.get('trim'),
-        sort=request.GET.get('sort'),
-        page=request.GET.get('page', 1),
-        page_size=request.GET.get('page_size', 24)
-    )
+    filter_kwargs = {
+        'make_id': request.GET.get('make_id'),
+        'brand': request.GET.get('brand') or request.GET.get('make'),
+        'store_id': request.GET.get('store_id'),
+        'search_q': request.GET.get('q'),
+        'min_price': request.GET.get('min_price'),
+        'max_price': request.GET.get('max_price'),
+        'min_miles': request.GET.get('min_miles'),
+        'max_miles': request.GET.get('max_miles'),
+        'body': request.GET.get('body'),
+        'condition': request.GET.get('condition'),
+        'transmission': request.GET.get('transmission'),
+        'color': request.GET.get('color'),
+        'interior': request.GET.get('interior'),
+        'state': request.GET.get('state'),
+        'trim': request.GET.get('trim'),
+        'sort': request.GET.get('sort'),
+        'page': request.GET.get('page', 1),
+        'page_size': request.GET.get('page_size', 24)
+    }
+
+    count_only = str(request.GET.get('count_only', '')).lower() in ['1', 'true', 'yes']
+    if count_only:
+        count = CatalogService.fetch_catalog_count(**filter_kwargs)
+        return JsonResponse({'success': True, 'count': count})
+
+    vehicles, total_count, total_pages, current_page, available_filters = CatalogService.fetch_catalog_vehicles(**filter_kwargs)
 
     vehicles_only = str(request.GET.get('vehicles_only', '')).lower() in ['1', 'true', 'yes']
     if vehicles_only:
@@ -342,6 +318,9 @@ def wishlist_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to access your saved wishlist.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     wishlist_items = WishlistService.fetch_customer_wishlist(customer) if customer else []
@@ -356,6 +335,9 @@ def api_toggle_wishlist(request):
     """Add or remove a vehicle from customer's wishlist."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
@@ -386,6 +368,9 @@ def cart_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to view your shopping cart.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     cart_items, total_price = CartService.fetch_customer_cart_items(customer) if customer else ([], 0)
@@ -401,6 +386,9 @@ def api_add_to_cart(request):
     """Add an inventory item to customer's cart."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
@@ -424,6 +412,9 @@ def api_remove_from_cart(request):
     """Remove an item from customer's cart."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
@@ -451,6 +442,9 @@ def test_drive_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to schedule or view your test drive bookings.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     bookings = TestDriveService.fetch_customer_bookings(customer) if customer else []
@@ -524,6 +518,9 @@ def api_book_test_drive(request):
     """Schedule a pre-purchase test drive."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
@@ -579,6 +576,9 @@ def checkout_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to proceed to checkout.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if customer:
@@ -643,6 +643,9 @@ def api_submit_order(request):
     """Submit a new online order."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
@@ -678,34 +681,66 @@ def customer_orders_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to view your order history.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     orders = []
     if customer:
+        order_table = connection.ops.quote_name(ORDER_TABLE)
         with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT o.order_id, o.total_amount, o.order_status, o.fulfillment_type,
-                       o.created_at, v.vehicle_model, m.make_name, s.store_name
+                       o.created_at, v.vehicle_model, m.make_name, s.store_name,
+                       o.payment_preference, e.first_name, e.last_name
                 FROM {order_table} o
                 LEFT JOIN inventory i ON o.inventory_id = i.inventory_id
                 LEFT JOIN vehicle_info v ON i.vehicle_id = v.id
                 LEFT JOIN industry_info m ON v.make_id = m.make_id
                 LEFT JOIN store s ON o.store_id = s.store_id
+                LEFT JOIN employee e ON o.assigned_employee_id = e.employee_id
                 WHERE o.customer_id = %s
                 ORDER BY o.order_id DESC
-            """.format(order_table=ORDER_TABLE), [customer.customer_id])
+            """.format(order_table=order_table), [customer.customer_id])
             order_rows = cursor.fetchall()
 
         class _Obj:
             def __init__(self, **kw): self.__dict__.update(kw)
-        STATUS_MAP = {1: 'Needs Approval', 2: 'Approved', 3: 'Partially Paid', 4: 'Paid', 5: 'Fulfilled', 6: 'Rejected', 7: 'Cancelled'}
+        STATUS_MAP = {
+            'NEEDS_APPROVAL': 'Needs Approval',
+            'APPROVED': 'Approved',
+            'PARTIALLY_PAID': 'Partially Paid',
+            'PAID': 'Paid',
+            'FULFILLED': 'Fulfilled',
+            'REJECTED': 'Rejected',
+            'CANCELLED': 'Cancelled',
+        }
+        PAYMENT_MAP = {
+            'ONLINE_CARD': 'Online Card (Upfront)',
+            'STORE_PAYMENT': 'Pay Upfront at Store (Cash/Card)',
+            'CASH_ON_DELIVERY': 'Cash on Delivery (COD)',
+            'FINANCING': 'Financing / Bank Transfer',
+        }
         for r in order_rows:
+            vehicle_model = r[5]
+            make_name = r[6]
             orders.append(_Obj(
-                order_id=r[0], total_amount=r[1],
-                order_status=r[2], get_order_status_display=lambda s=r[2]: STATUS_MAP.get(s, str(s)),
-                fulfillment_type=r[3], created_at=r[4],
-                inventory=_Obj(vehicle=_Obj(vehicle_model=r[5], make=_Obj(make_name=r[6]))),
-                store=_Obj(store_name=r[7])
+                order_id=r[0],
+                total_amount=r[1],
+                order_status=r[2],
+                get_order_status_display=STATUS_MAP.get(r[2], str(r[2])),
+                fulfillment_type=r[3],
+                created_at=r[4],
+                get_payment_preference_display=PAYMENT_MAP.get(r[8], r[8]),
+                assigned_employee=f"{(r[9] or '').strip()} {(r[10] or '').strip()}".strip() or None,
+                invoice=None,
+                inventory=_Obj(vehicle=_Obj(
+                    vehicle_model=vehicle_model,
+                    make=_Obj(make_name=make_name),
+                    image_url=_resolve_vehicle_image_url(make_name, vehicle_model),
+                )),
+                store=_Obj(store_name=r[7]),
             ))
     return render(request, 'ecommerce/customer_orders.html', {
         'customer': customer,
@@ -722,6 +757,9 @@ def customer_profile_view(request):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to view your customer profile.")
         return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
 
@@ -736,9 +774,10 @@ def customer_profile_view(request):
     countries = []
 
     if customer:
+        order_table = connection.ops.quote_name(ORDER_TABLE)
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address,
+                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address, ci.profile_picture,
                        c.city_id, c.city_name, co.country_id, co.country_name
                 FROM customer_info ci
                 LEFT JOIN city c ON ci.city_id = c.city_id
@@ -746,14 +785,18 @@ def customer_profile_view(request):
                 WHERE ci.customer_id = %s
             """, [customer.customer_id])
             ci_row = cursor.fetchone()
+            profile_picture = ci_row[4] if ci_row and ci_row[4] else None
+            profile_picture_url = f"/media/{profile_picture}" if profile_picture else None
             customer_info = _Obj(
                 firstname=ci_row[0], lastname=ci_row[1],
                 customer_status=ci_row[2], customer_address=ci_row[3],
-                city=_Obj(city_id=ci_row[4], city_name=ci_row[5]),
-                country=_Obj(country_id=ci_row[6], country_name=ci_row[7])
+                profile_picture=profile_picture,
+                profile_picture_url=profile_picture_url,
+                city=_Obj(city_id=ci_row[5], city_name=ci_row[6]),
+                country=_Obj(country_id=ci_row[7], country_name=ci_row[8])
             ) if ci_row else None
 
-            cursor.execute(f"SELECT COUNT(*) FROM {ORDER_TABLE} WHERE customer_id = %s", [customer.customer_id])
+            cursor.execute(f"SELECT COUNT(*) FROM {order_table} WHERE customer_id = %s", [customer.customer_id])
             orders_count = cursor.fetchone()[0]
 
             cursor.execute(f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s", [customer.customer_id])
@@ -784,22 +827,38 @@ def api_update_customer_profile(request):
     """API endpoint to update customer profile info."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
 
     customer = get_customer_from_request(request)
     if not customer:
         return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
 
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        data = request.POST
+    data = request.POST
+    if not data:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
 
     phone = data.get('phone')
     firstname = data.get('firstname')
     lastname = data.get('lastname')
+    customer_status = data.get('customer_status')
     customer_address = data.get('customer_address')
     city_id = data.get('city_id')
     country_id = data.get('country_id')
+    profile_picture = request.FILES.get('profile_picture')
+
+    profile_picture_path = None
+    if profile_picture:
+        allowed_types = {'image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'}
+        if profile_picture.content_type not in allowed_types:
+            return JsonResponse({'success': False, 'error': 'Invalid image format. Allowed: PNG, JPG, JPEG, SVG.'}, status=400)
+        if profile_picture.size > 4 * 1024 * 1024:
+            return JsonResponse({'success': False, 'error': 'Image size must be 4 MB or smaller.'}, status=400)
+        profile_picture_path = default_storage.save(f"profile_pics/{profile_picture.name}", profile_picture)
 
     try:
         with connection.cursor() as cursor:
@@ -822,9 +881,11 @@ def api_update_customer_profile(request):
                 params = []
                 if firstname: updates.append("firstname = %s"); params.append(firstname)
                 if lastname: updates.append("lastname = %s"); params.append(lastname)
+                if customer_status: updates.append("customer_status = %s"); params.append(customer_status)
                 if customer_address: updates.append("customer_address = %s"); params.append(customer_address)
                 if city_id: updates.append("city_id = %s"); params.append(city_id)
                 if country_id: updates.append("country_id = %s"); params.append(country_id)
+                if profile_picture_path: updates.append("profile_picture = %s"); params.append(profile_picture_path)
                 if updates:
                     params.append(customer.customer_id)
                     cursor.execute(
@@ -835,16 +896,17 @@ def api_update_customer_profile(request):
                 # Insert new record
                 cursor.execute("""
                     INSERT INTO customer_info
-                        (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id, profile_picture)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, [
                     customer.customer_id,
                     firstname or request.user.first_name or 'Customer',
                     lastname or request.user.last_name or str(customer.customer_id),
-                    'Active',
+                    customer_status or 'Active',
                     customer_address or 'Registered Address',
                     city_id or 1,
-                    country_id or 1
+                    country_id or 1,
+                    profile_picture_path
                 ])
 
         return JsonResponse({'success': True, 'message': 'Profile updated successfully!'})

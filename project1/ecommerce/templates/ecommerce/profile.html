@@ -1,144 +1,157 @@
 {% extends 'ecommerce/base.html' %}
+{% load static %}
 
 {% block title %}My Profile & Account Settings | Automobile{% endblock %}
 
+{% block extra_css %}
+<style>
+    .profile-card { border: 1px solid #e2e8f0; }
+    .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .profile-grid .full { grid-column: span 2; }
+    .upload-preview--avatar img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; }
+    .upload-input { display: none; }
+    @media (max-width: 991.98px) {
+        .profile-grid { grid-template-columns: 1fr; }
+        .profile-grid .full { grid-column: auto; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- Dark Hero Header -->
 <div class="ecom-page-header mb-5">
     <div class="container">
         <h1 class="fw-extrabold display-5 mb-2">My Customer Profile</h1>
-        <p class="text-secondary mb-0">Manage your personal information, contact address, and view your platform activity.</p>
+        <p class="text-secondary mb-0">Edit customer and customer_info linked fields only.</p>
     </div>
 </div>
 
-
 <div class="container mb-5">
-    <div class="row g-4">
-        
-        <!-- Left Stats & Info Card -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4 text-center">
-                <div class="mb-3 position-relative d-inline-block mx-auto">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 100px; height: 100px; font-size: 2.5rem;">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
-                </div>
-
-                <h4 class="fw-bold text-dark mb-1">
-                    {% if customer_info %}{{ customer_info.firstname }} {{ customer_info.lastname }}{% else %}Customer #{{ customer.customer_id }}{% endif %}
-                </h4>
-                <p class="text-muted small mb-3"><i class="fa-solid fa-envelope text-primary me-1"></i> {{ customer.email }}</p>
-                
-                <div>
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-2 rounded-pill fw-bold">
-                        <i class="fa-solid fa-circle-check me-1"></i> Active Verified Customer
-                    </span>
-                </div>
+    <form id="profile-update-form" class="card profile-card border-0 shadow-sm rounded-4 p-4 bg-white" enctype="multipart/form-data">
+        <h4 class="fw-bold mb-3">Customer</h4>
+        <div class="profile-grid mb-4">
+            <div>
+                <label class="form-label small fw-semibold text-muted mb-1">Customer ID</label>
+                <input type="text" class="form-control rounded-3 bg-light" value="{{ customer.customer_id }}" readonly>
             </div>
-
-            <!-- Quick Metrics -->
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Activity Summary</h6>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="text-muted small"><i class="fa-solid fa-box-archive text-info me-2"></i> Total Vehicle Orders</span>
-                    <span class="fw-bold text-dark fs-6">{{ orders_count }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <span class="text-muted small"><i class="fa-solid fa-heart text-danger me-2"></i> Saved Wishlist Cars</span>
-                    <span class="fw-bold text-dark fs-6">{{ wishlist_count }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <span class="text-muted small"><i class="fa-solid fa-calendar-check text-success me-2"></i> Scheduled Test Drives</span>
-                    <span class="fw-bold text-dark fs-6">{{ test_drives_count }}</span>
-                </div>
+            <div>
+                <label class="form-label small fw-semibold text-muted mb-1">Email</label>
+                <input type="email" class="form-control rounded-3 bg-light" value="{{ customer.email }}" readonly>
+            </div>
+            <div class="full">
+                <label for="phone" class="form-label small fw-semibold text-muted mb-1">Phone</label>
+                <input type="text" id="phone" name="phone" class="form-control rounded-3" value="{{ customer.phone|default:'' }}" placeholder="Phone">
             </div>
         </div>
 
-        <!-- Right Edit Form Card -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="fa-solid fa-user-pen text-primary me-2"></i> Edit Account Profile & Address</h5>
-                
-                <form id="profile-update-form" class="d-grid gap-3">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">First Name</label>
-                            <input type="text" name="firstname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.firstname }}{% endif %}" placeholder="First Name" required>
+        <h4 class="fw-bold mb-3">Customer Info</h4>
+        <div class="profile-grid mb-4">
+            <div class="full">
+                <div class="upload-section mb-18">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="upload-preview upload-preview--avatar">
+                            <img id="avatarPreview"
+                                 src="{% if customer_info and customer_info.profile_picture_url %}{{ customer_info.profile_picture_url }}{% else %}{% static 'assets/img/profile-img.jpg' %}{% endif %}"
+                                 alt="Avatar Preview">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Last Name</label>
-                            <input type="text" name="lastname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.lastname }}{% endif %}" placeholder="Last Name" required>
-                        </div>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Customer Email (Login ID)</label>
-                            <input type="email" class="form-control rounded-3 bg-light" value="{{ customer.email }}" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Phone Number</label>
-                            <input type="text" name="phone" class="form-control rounded-3" value="{{ customer.phone|default:'' }}" placeholder="+1-555-0199">
+                        <div class="upload-content flex-grow-1">
+                            <p class="fw-semibold mb-1">Upload File</p>
+                            <p class="text-xs text-secondary mb-2">PNG, JPG, JPEG, SVG. Max size 4 MB.</p>
+                            <div class="d-flex align-items-center gap-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill upload-btn" data-target="avatarInput">Choose File</button>
+                                <input type="file" id="avatarInput" name="profile_picture" accept="image/png,image/jpeg,image/jpg,image/svg+xml" class="upload-input">
+                                <span class="text-xs text-muted file-name" data-target="avatarInput">No file chosen</span>
+                            </div>
                         </div>
                     </div>
-
-                    <div>
-                        <label class="form-label small fw-semibold text-muted mb-1">Delivery / Residential Address</label>
-                        <input type="text" name="customer_address" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_address }}{% endif %}" placeholder="Street Address, Apt / Suite">
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">City</label>
-                            <select name="city_id" class="form-select rounded-3">
-                                {% for c in cities %}
-                                    <option value="{{ c.city_id }}" {% if customer_info and customer_info.city_id == c.city_id %}selected{% endif %}>{{ c.city_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted mb-1">Country</label>
-                            <select name="country_id" class="form-select rounded-3">
-                                {% for co in countries %}
-                                    <option value="{{ co.country_id }}" {% if customer_info and customer_info.country_id == co.country_id %}selected{% endif %}>{{ co.country_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4 py-2 shadow-sm">
-                            <i class="fa-solid fa-floppy-disk me-2"></i> Save Profile Changes
-                        </button>
-                    </div>
-                </form>
+                </div>
+            </div>
+            <div>
+                <label for="firstname" class="form-label small fw-semibold text-muted mb-1">First Name</label>
+                <input type="text" id="firstname" name="firstname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.firstname }}{% endif %}">
+            </div>
+            <div>
+                <label for="lastname" class="form-label small fw-semibold text-muted mb-1">Last Name</label>
+                <input type="text" id="lastname" name="lastname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.lastname }}{% endif %}">
+            </div>
+            <div class="full">
+                <label for="customer_status" class="form-label small fw-semibold text-muted mb-1">Customer Status</label>
+                <input type="text" id="customer_status" name="customer_status" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_status }}{% else %}Active{% endif %}">
+            </div>
+            <div class="full">
+                <label for="customer_address" class="form-label small fw-semibold text-muted mb-1">Customer Address</label>
+                <input type="text" id="customer_address" name="customer_address" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_address }}{% endif %}">
+            </div>
+            <div>
+                <label for="city_id" class="form-label small fw-semibold text-muted mb-1">City</label>
+                <select id="city_id" name="city_id" class="form-select rounded-3">
+                    {% for c in cities %}
+                        <option value="{{ c.city_id }}" {% if customer_info and customer_info.city and customer_info.city.city_id == c.city_id %}selected{% endif %}>{{ c.city_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="country_id" class="form-label small fw-semibold text-muted mb-1">Country</label>
+                <select id="country_id" name="country_id" class="form-select rounded-3">
+                    {% for co in countries %}
+                        <option value="{{ co.country_id }}" {% if customer_info and customer_info.country and customer_info.country.country_id == co.country_id %}selected{% endif %}>{{ co.country_name }}</option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
 
-    </div>
+        <div>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">Save Profile Changes</button>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    document.querySelectorAll('.upload-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            const input = document.getElementById(target);
+            if (input) input.click();
+        });
+    });
+
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const fileNameLabel = document.querySelector('.file-name[data-target="avatarInput"]');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            fileNameLabel.textContent = file ? file.name : 'No file chosen';
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                avatarPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     document.getElementById('profile-update-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        const data = {
-            firstname: this.firstname.value,
-            lastname: this.lastname.value,
-            phone: this.phone.value,
-            customer_address: this.customer_address.value,
-            city_id: this.city_id.value,
-            country_id: this.country_id.value
-        };
+        const formData = new FormData();
+        formData.append('firstname', document.getElementById('firstname').value);
+        formData.append('lastname', document.getElementById('lastname').value);
+        formData.append('customer_status', document.getElementById('customer_status').value);
+        formData.append('phone', document.getElementById('phone').value);
+        formData.append('customer_address', document.getElementById('customer_address').value);
+        formData.append('city_id', document.getElementById('city_id').value);
+        formData.append('country_id', document.getElementById('country_id').value);
+        if (avatarInput && avatarInput.files && avatarInput.files[0]) {
+            formData.append('profile_picture', avatarInput.files[0]);
+        }
 
         fetch("{% url 'ecommerce:api_update_customer_profile' %}", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
                 "X-CSRFToken": getCookie("csrftoken")
             },
-            body: JSON.stringify(data)
+            body: formData
         })
         .then(res => res.json())
         .then(data => {

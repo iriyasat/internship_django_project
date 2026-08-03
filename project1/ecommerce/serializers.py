@@ -20,6 +20,35 @@ from .db import (
 )
 
 
+def _slugify_make(value):
+    return ''.join(ch for ch in str(value or '').lower() if ch.isalnum())
+
+
+def _resolve_vehicle_image_url(make_name, vehicle_model=None):
+    """Resolve a local vehicle image from static/cars, falling back to the brand logo."""
+    from pathlib import Path
+    from django.conf import settings
+
+    image_dir = Path(settings.BASE_DIR) / 'static' / 'cars'
+    make_slug = _slugify_make(make_name)
+    model_slug = _slugify_make(vehicle_model)
+    logo_alias = 'mercedes' if 'mercedes' in make_slug else ('landrover' if 'landrover' in make_slug else make_slug)
+
+    for stem in filter(None, (
+        f"{make_slug}-{model_slug}" if make_slug and model_slug else None,
+        model_slug or None,
+        make_slug or None,
+        f"{logo_alias}-{model_slug}" if logo_alias and model_slug and logo_alias != make_slug else None,
+        logo_alias or None,
+    )):
+        for ext in ('.webp', '.png', '.jpg', '.jpeg'):
+            candidate = image_dir / f"{stem}{ext}"
+            if candidate.exists():
+                return f"/static/cars/{candidate.name}"
+
+    return f"/static/logos/{logo_alias}.png"
+
+
 # ------------------------------------------------------------------------------
 # REST Framework Model Serializers
 # ------------------------------------------------------------------------------
@@ -95,6 +124,7 @@ class VehicleBodySerializer(serializers.Serializer):
     count = serializers.IntegerField(default=0)
     url = serializers.CharField()
     svg = serializers.CharField()
+    image_url = serializers.CharField(required=False, allow_blank=True)
 
 
 class VehicleBodyService:
@@ -141,23 +171,55 @@ class VehicleBodyService:
             return cls.BODY_SVG_MAP['wagon']
         return cls.BODY_SVG_MAP['sedan']
 
+    @staticmethod
+    def _get_car_image_urls():
+        from pathlib import Path
+        from django.conf import settings
+
+        image_dir = Path(settings.BASE_DIR) / 'static' / 'cars'
+        urls = []
+        for pattern in ('*.jpg', '*.jpeg', '*.png', '*.webp'):
+            urls.extend(f"/static/cars/{path.name}" for path in image_dir.glob(pattern))
+        return urls
+
+    @staticmethod
+    def _resolve_body_image_url(body_name):
+        """Pick a representative inventory vehicle image for a body type."""
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT m.make_name, v.vehicle_model
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                WHERE i.status IN (2, 4) AND v.body IS NOT NULL AND LOWER(v.body) = LOWER(%s)
+                ORDER BY i.inventory_id DESC
+                LIMIT 1
+            """, [body_name])
+            row = cursor.fetchone()
+
+        if row:
+            make_name, vehicle_model = row
+            return _resolve_vehicle_image_url(make_name, vehicle_model)
+        return ''
+
     @classmethod
     def fetch_vehicle_bodies(cls):
         # RAW SQL Execution
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT body, COUNT(id) as count
-                FROM vehicle_info
-                WHERE body IS NOT NULL AND body != ''
-                GROUP BY body
+                SELECT v.body, COUNT(i.inventory_id) as count
+                FROM inventory i
+                JOIN vehicle_info v ON i.vehicle_id = v.id
+                WHERE i.status IN (2, 4)
+                  AND v.body IS NOT NULL
+                  AND v.body != ''
+                GROUP BY v.body
                 ORDER BY count DESC
             """)
             db_bodies = [{'body': row[0], 'count': row[1]} for row in cursor.fetchall()]
 
         body_list = []
         seen = set()
-
-        featured_names = ['Electric', 'Sedan', 'SUV', 'Pickup Truck', 'Access Cab', 'Luxury', 'Hatchback', 'Crossover', 'Convertible', 'Coupe', 'Minivan', 'Wagon']
 
         for item in db_bodies:
             raw_body = item['body'].strip()
@@ -171,18 +233,8 @@ class VehicleBodyService:
                     'display_name': display_name,
                     'count': count,
                     'url': f"/catalog/?body={display_name}",
-                    'svg': cls.get_svg_for_body(display_name)
-                })
-
-        for fname in featured_names:
-            if fname not in seen:
-                seen.add(fname)
-                body_list.append({
-                    'name': fname,
-                    'display_name': fname,
-                    'count': 0,
-                    'url': f"/catalog/?body={fname}",
-                    'svg': cls.get_svg_for_body(fname)
+                    'svg': cls.get_svg_for_body(display_name),
+                    'image_url': cls._resolve_body_image_url(raw_body),
                 })
 
         serializer = VehicleBodySerializer(body_list, many=True)
@@ -204,14 +256,14 @@ class VehicleConditionService:
     def fetch_condition_tabs(cls, active_condition='all'):
         # RAW SQL Execution
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (1, 4)")
+            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (2, 4)")
             all_count = cursor.fetchone()[0]
 
             cursor.execute("""
                 SELECT COUNT(*)
                 FROM inventory i
                 JOIN vehicle_info v ON i.vehicle_id = v.id
-                WHERE i.status IN (1, 4) AND v.odometer <= %s
+                WHERE i.status IN (2, 4) AND v.odometer <= %s
             """, [cls.NEW_CAR_MAX_ODOMETER])
             new_count = cursor.fetchone()[0]
 
@@ -219,7 +271,7 @@ class VehicleConditionService:
                 SELECT COUNT(*)
                 FROM inventory i
                 JOIN vehicle_info v ON i.vehicle_id = v.id
-                WHERE i.status IN (1, 4) AND v.odometer > %s
+                WHERE i.status IN (2, 4) AND v.odometer > %s
             """, [cls.NEW_CAR_MAX_ODOMETER])
             used_count = cursor.fetchone()[0]
 
@@ -259,9 +311,9 @@ class VehicleConditionService:
 
 class CatalogService:
     @staticmethod
-    def fetch_catalog_vehicles(make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, sort=None, page=1, page_size=24, limit=None):
+    def _build_catalog_filters(make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, **kwargs):
         params = []
-        where_clauses = ["i.status IN (1, 4)"]
+        where_clauses = ["i.status IN (2, 4)"]
 
         if make_id and str(make_id).isdigit():
             where_clauses.append("v.make_id = %s")
@@ -369,6 +421,36 @@ class CatalogService:
             except (ValueError, TypeError):
                 pass
 
+        return where_clauses, params
+
+    @classmethod
+    def fetch_catalog_count(cls, **filters):
+        where_clauses, params = cls._build_catalog_filters(**filters)
+        where_sql = " WHERE " + " AND ".join(where_clauses)
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM inventory i
+            JOIN vehicle_info v ON i.vehicle_id = v.id
+            LEFT JOIN industry_info m ON v.make_id = m.make_id
+            JOIN store s ON i.store_id = s.store_id
+            JOIN city c ON s.city_id = c.city_id
+            JOIN country co ON s.country_id = co.country_id
+            {where_sql}
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(count_sql, params)
+            return cursor.fetchone()[0]
+
+    @classmethod
+    def fetch_catalog_vehicles(cls, make_id=None, brand=None, store_id=None, search_q=None, min_price=None, max_price=None, min_miles=None, max_miles=None, body=None, condition=None, transmission=None, color=None, interior=None, state=None, trim=None, sort=None, page=1, page_size=24, limit=None, **kwargs):
+        where_clauses, params = cls._build_catalog_filters(
+            make_id=make_id, brand=brand, store_id=store_id, search_q=search_q,
+            min_price=min_price, max_price=max_price, min_miles=min_miles,
+            max_miles=max_miles, body=body, condition=condition,
+            transmission=transmission, color=color, interior=interior,
+            state=state, trim=trim
+        )
         where_sql = " WHERE " + " AND ".join(where_clauses)
 
         # Count total query
@@ -441,9 +523,7 @@ class CatalogService:
 
             
             # Resolve image URL
-            m_slug = str(m_name or '').lower().replace(' ', '').replace('-', '') if m_name else 'toyota'
-            logo_alias = 'mercedes' if 'mercedes' in m_slug else ('landrover' if 'landrover' in m_slug else m_slug)
-            img_url = f"/static/logos/{logo_alias}.png"
+            img_url = _resolve_vehicle_image_url(m_name, v_model)
 
             vehicles.append({
                 'inventory_id': inv_id,
@@ -501,22 +581,22 @@ class CatalogService:
             cursor.execute("SELECT DISTINCT color FROM vehicle_info WHERE color IS NOT NULL AND color != '' ORDER BY color")
             colors = [r[0] for r in cursor.fetchall()]
 
-            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (1, 4)")
+            cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (2, 4)")
             cnt_all = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition >= 40")
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.condition >= 40")
             cnt_excellent = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 30 AND 39")
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.condition BETWEEN 30 AND 39")
             cnt_very_good = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 20 AND 29")
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.condition BETWEEN 20 AND 29")
             cnt_good = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4) AND v.condition BETWEEN 1 AND 19")
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.condition BETWEEN 1 AND 19")
             cnt_fair = cursor.fetchone()[0]
 
-            cursor.execute("SELECT MAX(v.mmr) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (1, 4)")
+            cursor.execute("SELECT MAX(v.mmr) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4)")
             max_p = cursor.fetchone()[0] or 182000
 
         vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
@@ -610,6 +690,7 @@ class VehicleDetailService:
         brand_slug = re.sub(r'[^a-z0-9]', '', str(make_name or '').lower())
         png_slug = PNG_ALIASES.get(brand_slug, brand_slug)
         brand_logo_url = f"/static/logos/{png_slug}.png"
+        vehicle_image_url = _resolve_vehicle_image_url(make_name, v_model)
 
         # Build mock objects that templates expect
         class _Obj(dict):
@@ -625,7 +706,8 @@ class VehicleDetailService:
             transmission=v_trans, color=v_color, interior=v_interior,
             state=v_state, condition=v_cond, odometer=v_odo, mmr=v_mmr, vin=v_vin,
             make_id=make_id,
-            make=_Obj(make_name=make_name)
+            make=_Obj(make_name=make_name),
+            image_url=vehicle_image_url
         )
         store = _Obj(
             store_id=s_id, store_name=s_name,
@@ -646,40 +728,95 @@ class VehicleDetailService:
             vehicle=vehicle, store=store, employee=employee
         )
 
-        # Similar vehicles raw SQL
+        # Similar vehicles raw SQL (price-range first, then diversified by brand)
+        import random
+        target_cards = 16
+        base_price = int(v_mmr or 0)
+        min_price = max(0, int(base_price * 0.8))
+        max_price = int(base_price * 1.2) if base_price else 0
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT i.inventory_id, v.vehicle_model, v.trim, v.mmr, m.make_name, s.store_name, c.city_name
+                SELECT i.inventory_id, v.vehicle_model, v.trim, v.mmr, v.odometer, m.make_name, s.store_name, c.city_name
                 FROM inventory i
                 JOIN vehicle_info v ON i.vehicle_id = v.id
                 LEFT JOIN industry_info m ON v.make_id = m.make_id
                 JOIN store s ON i.store_id = s.store_id
                 JOIN city c ON s.city_id = c.city_id
-                WHERE i.status IN (1, 4) AND v.make_id = %s AND i.inventory_id != %s
-                LIMIT 4
-            """, [make_id, inventory_id])
+                WHERE i.status IN (2, 4)
+                  AND i.inventory_id != %s
+                  AND (
+                    (%s > 0 AND v.mmr BETWEEN %s AND %s)
+                    OR (%s <= 0)
+                  )
+                ORDER BY ABS(COALESCE(v.mmr, 0) - %s) ASC, RAND()
+                LIMIT 80
+            """, [inventory_id, base_price, min_price, max_price, base_price, base_price])
             sim_rows = cursor.fetchall()
+            if len(sim_rows) < target_cards:
+                existing_ids = [inventory_id] + [row[0] for row in sim_rows]
+                placeholders = ', '.join(['%s'] * len(existing_ids))
+                topup_limit = max(0, target_cards * 3 - len(sim_rows))
+                cursor.execute(f"""
+                    SELECT i.inventory_id, v.vehicle_model, v.trim, v.mmr, v.odometer, m.make_name, s.store_name, c.city_name
+                    FROM inventory i
+                    JOIN vehicle_info v ON i.vehicle_id = v.id
+                    LEFT JOIN industry_info m ON v.make_id = m.make_id
+                    JOIN store s ON i.store_id = s.store_id
+                    JOIN city c ON s.city_id = c.city_id
+                    WHERE i.status IN (2, 4)
+                      AND i.inventory_id NOT IN ({placeholders})
+                    ORDER BY ABS(COALESCE(v.mmr, 0) - %s) ASC, RAND()
+                    LIMIT %s
+                """, [*existing_ids, base_price, topup_limit])
+                sim_rows.extend(cursor.fetchall())
+
+        rows_by_brand = {}
+        for row in sim_rows:
+            brand_key = str(row[5] or 'unknown').strip().lower()
+            rows_by_brand.setdefault(brand_key, []).append(row)
+
+        brand_keys = list(rows_by_brand.keys())
+        diversified_rows = []
+        while len(diversified_rows) < target_cards and any(rows_by_brand.get(k) for k in brand_keys):
+            random.shuffle(brand_keys)
+            for brand in brand_keys:
+                if rows_by_brand.get(brand):
+                    diversified_rows.append(rows_by_brand[brand].pop(0))
+                    if len(diversified_rows) >= target_cards:
+                        break
+
+        if len(diversified_rows) < target_cards:
+            selected_ids = {row[0] for row in diversified_rows}
+            for row in sim_rows:
+                if row[0] not in selected_ids:
+                    diversified_rows.append(row)
+                    selected_ids.add(row[0])
+                    if len(diversified_rows) >= target_cards:
+                        break
 
         similar_inventory = []
-        for r in sim_rows:
-            inv_i, v_mod, v_tr, v_pr, m_nm, s_nm, c_nm = r
-            m_slg = re.sub(r'[^a-z0-9]', '', str(m_nm or '').lower())
-            l_alias = PNG_ALIASES.get(m_slg, m_slg)
+        for r in diversified_rows:
+            inv_i, v_mod, v_tr, v_pr, v_odo_sim, m_nm, s_nm, c_nm = r
             similar_inventory.append({
                 'inventory_id': inv_i,
-                'vehicle': {'vehicle_model': v_mod, 'trim': v_tr, 'mmr': v_pr, 'make': {'make_name': m_nm}, 'image_url': f"/static/logos/{l_alias}.png"},
+                'vehicle': {
+                    'vehicle_model': v_mod,
+                    'trim': v_tr,
+                    'mmr': v_pr,
+                    'odometer': v_odo_sim,
+                    'make': {'make_name': m_nm},
+                    'image_url': _resolve_vehicle_image_url(m_nm, v_mod)
+                },
                 'store': {'store_name': s_nm, 'city': {'city_name': c_nm}}
             })
-
-        rate = 0.0789 / 12
-        monthly_payment = round((v_mmr * rate * (1 + rate)**72) / ((1 + rate)**72 - 1), 2) if v_mmr else 245
+        similar_inventory_groups = [similar_inventory[i:i + 4] for i in range(0, len(similar_inventory), 4)]
 
         return {
             'inventory': inventory,
             'vehicle': vehicle,
             'brand_logo_url': brand_logo_url,
             'similar_inventory': similar_inventory,
-            'monthly_payment': monthly_payment,
+            'similar_inventory_groups': similar_inventory_groups,
         }
 
 
