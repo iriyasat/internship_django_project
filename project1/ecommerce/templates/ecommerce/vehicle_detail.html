@@ -31,26 +31,6 @@
     .detail-gallery-main img:hover {
         transform: scale(1.02);
     }
-    .detail-gallery-thumb {
-        border-radius: 12px;
-        overflow: hidden;
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        height: 100px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .detail-gallery-thumb:hover, .detail-gallery-thumb.active {
-        border-color: #0d6efd;
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
-    }
-    .detail-gallery-thumb img {
-        max-height: 80px;
-        object-fit: contain;
-    }
     .spec-badge-box {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -175,33 +155,6 @@
                             <span class="badge {% if inventory.status == 4 %}bg-success{% else %}bg-primary{% endif %} rounded-pill px-3 py-2">{{ inventory.get_status_display }}</span>
                         </div>
                     </div>
-
-                    <!-- Gallery Thumbnails (Hidden) -->
-                    <!--
-                    <div class="row g-2">
-                        <div class="col-3">
-                            <div class="detail-gallery-thumb active" onclick="switchMainImage('{{ vehicle.image_url }}', this)">
-                                <img src="{{ vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="Thumb 1">
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="detail-gallery-thumb" onclick="switchMainImage('/static/assets/img/card.jpg', this)">
-                                <img src="/static/assets/img/card.jpg" alt="Thumb 2">
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="detail-gallery-thumb" onclick="switchMainImage('{{ brand_logo_url }}', this)">
-                                <img src="{{ brand_logo_url }}" alt="Thumb 3">
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="detail-gallery-thumb d-flex flex-column align-items-center justify-content-center bg-light text-muted">
-                                <i class="fa-solid fa-images fs-4 mb-1"></i>
-                                <span class="small fw-bold">3 Photos</span>
-                            </div>
-                        </div>
-                    </div>
-                    -->
 
                 </div>
 
@@ -467,12 +420,4 @@
     </div>
 </main>
 
-<script>
-    function switchMainImage(src, element) {
-        document.getElementById('main-detail-image').src = src;
-        document.querySelectorAll('.detail-gallery-thumb').forEach(el => el.classList.remove('active'));
-        if (element) element.classList.add('active');
-    }
-
-</script>
 {% endblock %}
