@@ -246,6 +246,25 @@
 
     <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script>
+        // Global API Logger Interceptor for Browser Console
+        (function() {
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+                const response = await originalFetch.apply(this, args);
+                if (url && url.includes('/api/')) {
+                    try {
+                        const clone = response.clone();
+                        const data = await clone.json();
+                        console.log(`🚀 [API Data] ${url}:`, data);
+                    } catch (e) {
+                        console.log(`🚀 [API Request] ${url} Status: ${response.status}`);
+                    }
+                }
+                return response;
+            };
+        })();
+
         const nav = document.getElementById('landing-nav');
         if (nav) {
             const syncNavState = () => nav.classList.toggle('scrolled', window.scrollY > 20);
