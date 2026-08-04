@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db import connections
+from django.db import connection, connections
 from django.db.models import Count
 from django.db.models import Count
 
+from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -29,6 +30,17 @@ from project1.workspaces import is_car_sales_admin_user, is_car_sales_workspace_
 
 
 from .permissions import LEVEL_CRUD_DISPATCH, LEVEL_RECORD_DISPATCH
+
+
+def safe_format_time(dt):
+    if not dt:
+        return "12:00 AM"
+    try:
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        return timezone.localtime(dt).strftime('%I:%M %p')
+    except Exception:
+        return dt.strftime('%I:%M %p')
 
 
 def _in_scope(value, allowed):
@@ -231,11 +243,9 @@ def index_view(request):
 
 @login_required
 def employee_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and store administrators can access this page.")
     profile = get_employee_profile(request)
-    is_admin = is_car_sales_admin_user(request.user)
-    is_manager = check_is_manager(profile.employee_id) if profile else False
-    if not (is_admin or is_manager):
-        return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
         
     store_id, _ = get_user_filters(request, profile)
     _, roles = EmployeeRoleSerializer.fetch(limit=-1)
@@ -254,16 +264,14 @@ def employee_view(request):
 
 @login_required
 def country_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     return render(request, 'car_sales/country_view.html', {'active_tab': 'countries'})
 
 @login_required
 def city_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/city_view.html', {
         'active_tab': 'cities',
@@ -272,11 +280,10 @@ def city_view(request):
 
 @login_required
 def store_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     profile = get_employee_profile(request)
-    is_admin = is_car_sales_admin_user(request.user)
-    is_manager = check_is_manager(profile.employee_id) if profile else False
-    if not (is_admin or is_manager):
-        return HttpResponseForbidden("Permission denied. Only managers and administrators can access this page.")
+    store_id, _ = get_user_filters(request, profile)
     _, cities = CitySerializer.fetch(limit=-1)
     _, countries = CountrySerializer.fetch(limit=-1)
     return render(request, 'car_sales/store_view.html', {
@@ -287,30 +294,26 @@ def store_view(request):
 
 @login_required
 def role_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     return render(request, 'car_sales/role_view.html', {'active_tab': 'roles'})
 
 @login_required
 def hierarchy_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     return render(request, 'car_sales/hierarchy_view.html', {'active_tab': 'hierarchy'})
 
 @login_required
 def status_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     return render(request, 'car_sales/status_view.html', {'active_tab': 'statuses'})
 
 @login_required
 def industry_view(request):
-    is_admin = is_car_sales_admin_user(request.user)
-    if not is_admin:
-        return HttpResponseForbidden("Permission denied. Only administrators can access this page.")
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access this page.")
     return render(request, 'car_sales/industry_view.html', {'active_tab': 'industry'})
 
 @login_required
@@ -896,3 +899,381 @@ def documentation_view(request):
         'active_tab': 'documentation',
         'base_url': base_url,
     })
+
+
+@login_required
+def employee_messages_view(request):
+    """
+    Employee / Admin Messages view:
+    - Reads single-record chat threads (message_id = 1).
+    - Unaccepted chats (employee_id IS NULL) can be accepted once by any store employee.
+    - Accepted chats (employee_id = current_employee.employee_id) can be replied to continuously anytime!
+    """
+    profile = get_employee_profile(request)
+    allowed_stores, allowed_employees = get_user_filters(request, profile)
+    is_admin = is_car_sales_admin_user(request.user)
+
+    store_id = profile.store_id if profile and getattr(profile, 'store_id', None) else None
+    if not store_id and allowed_stores:
+        store_id = allowed_stores[0] if isinstance(allowed_stores, (list, tuple)) else allowed_stores
+    if not store_id:
+        store_id = 1
+
+    store_name = "Store Branch Messages"
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT store_name FROM store WHERE store_id = %s", [store_id])
+        s_row = cursor.fetchone()
+        if s_row:
+            store_name = s_row[0]
+
+    current_emp_id = profile.employee_id if profile else None
+
+    class _Obj:
+        def __init__(self, **kw): self.__dict__.update(kw)
+
+    unaccepted_threads = []
+    accepted_threads = []
+
+    with connection.cursor() as cursor:
+        if is_admin and not profile:
+            # Superuser (no employee profile) - fetches all unaccepted messages across all stores
+            cursor.execute("""
+                SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
+                       c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
+                       s.store_id, s.store_name
+                FROM customer_message cm
+                JOIN customer c ON cm.customer_id = c.customer_id
+                LEFT JOIN customer_info ci ON c.customer_id = ci.customer_id
+                JOIN store s ON cm.store_id = s.store_id
+                WHERE cm.employee_id IS NULL
+                ORDER BY cm.message_id DESC
+            """)
+            for r in cursor.fetchall():
+                msg_id = r[0]
+                full_raw_txt = r[1] or ''
+                cust_id = r[4]
+                cust_name = f"{(r[5] or '').strip()} {(r[6] or '').strip()}".strip() or f"Customer #{cust_id}"
+                lines = [line.strip() for line in full_raw_txt.split('\n') if line.strip()]
+                msg_list = []
+                last_msg = ""
+                for line in lines:
+                    is_rep = line.startswith('[Reply from ')
+                    clean = line.split(']: ', 1)[1] if is_rep and ']: ' in line else line
+                    last_msg = clean
+                    msg_list.append(_Obj(message_id=msg_id, message=clean, created_at=r[2], is_reply=is_rep, sender_name="Staff" if is_rep else cust_name))
+
+                unaccepted_threads.append(_Obj(
+                    message_id=msg_id,
+                    customer=_Obj(id=cust_id, name=cust_name, email=r[7], phone=r[8]),
+                    store=_Obj(id=r[9], name=r[10]),
+                    last_message=last_msg,
+                    created_at=r[2],
+                    messages=msg_list
+                ))
+
+            # Fetch all accepted messages across all stores for superuser overview
+            cursor.execute("""
+                SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
+                       c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
+                       s.store_id, s.store_name,
+                       e.employee_id, e.first_name, e.last_name
+                FROM customer_message cm
+                JOIN customer c ON cm.customer_id = c.customer_id
+                LEFT JOIN customer_info ci ON c.customer_id = ci.customer_id
+                JOIN store s ON cm.store_id = s.store_id
+                LEFT JOIN employee e ON cm.employee_id = e.employee_id
+                WHERE cm.employee_id IS NOT NULL
+                ORDER BY cm.message_id DESC
+            """)
+            for r in cursor.fetchall():
+                msg_id = r[0]
+                full_raw_txt = r[1] or ''
+                cust_id = r[4]
+                cust_name = f"{(r[5] or '').strip()} {(r[6] or '').strip()}".strip() or f"Customer #{cust_id}"
+                default_emp_name = f"{(r[12] or '').strip()} {(r[13] or '').strip()}".strip() if r[11] else "Staff"
+                lines = [line.strip() for line in full_raw_txt.split('\n') if line.strip()]
+                msg_list = []
+                assigned_emp = default_emp_name
+                last_msg = ""
+                for line in lines:
+                    if line.startswith('[Reply from '):
+                        is_rep = True
+                        parts = line.split(']: ', 1)
+                        if len(parts) == 2:
+                            p_name = parts[0].replace('[Reply from ', '').strip()
+                            if p_name: assigned_emp = p_name
+                            clean = parts[1]
+                        else: clean = line
+                        s_label = assigned_emp
+                    else:
+                        is_rep = False
+                        clean = line
+                        s_label = cust_name
+                    last_msg = clean
+                    msg_list.append(_Obj(message_id=msg_id, message=clean, created_at=r[2], is_reply=is_rep, sender_name=s_label))
+
+                accepted_threads.append(_Obj(
+                    message_id=msg_id,
+                    customer=_Obj(id=cust_id, name=cust_name, email=r[7], phone=r[8]),
+                    store=_Obj(id=r[9], name=r[10]),
+                    employee=_Obj(id=r[11], name=assigned_emp),
+                    last_message=last_msg,
+                    created_at=r[2],
+                    messages=msg_list
+                ))
+        else:
+            # Regular Store Employee
+            # 1. Unaccepted chat threads for this employee's store
+            cursor.execute("""
+                SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
+                       c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
+                       s.store_id, s.store_name
+                FROM customer_message cm
+                JOIN customer c ON cm.customer_id = c.customer_id
+                LEFT JOIN customer_info ci ON c.customer_id = ci.customer_id
+                JOIN store s ON cm.store_id = s.store_id
+                WHERE cm.store_id = %s AND cm.employee_id IS NULL
+                ORDER BY cm.message_id DESC
+            """, [store_id])
+            for r in cursor.fetchall():
+                msg_id = r[0]
+                full_raw_txt = r[1] or ''
+                cust_id = r[4]
+                cust_name = f"{(r[5] or '').strip()} {(r[6] or '').strip()}".strip() or f"Customer #{cust_id}"
+                lines = [line.strip() for line in full_raw_txt.split('\n') if line.strip()]
+                msg_list = []
+                last_msg = ""
+                for line in lines:
+                    is_rep = line.startswith('[Reply from ')
+                    clean = line.split(']: ', 1)[1] if is_rep and ']: ' in line else line
+                    last_msg = clean
+                    msg_list.append(_Obj(message_id=msg_id, message=clean, created_at=r[2], is_reply=is_rep, sender_name="Staff" if is_rep else cust_name))
+
+                unaccepted_threads.append(_Obj(
+                    message_id=msg_id,
+                    customer=_Obj(id=cust_id, name=cust_name, email=r[7], phone=r[8]),
+                    store=_Obj(id=r[9], name=r[10]),
+                    last_message=last_msg,
+                    created_at=r[2],
+                    messages=msg_list
+                ))
+
+            # 2. Accepted chat threads for THIS specific employee ONLY
+            if current_emp_id:
+                cursor.execute("""
+                    SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
+                           c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
+                           s.store_id, s.store_name,
+                           e.employee_id, e.first_name, e.last_name
+                    FROM customer_message cm
+                    JOIN customer c ON cm.customer_id = c.customer_id
+                    LEFT JOIN customer_info ci ON c.customer_id = ci.customer_id
+                    JOIN store s ON cm.store_id = s.store_id
+                    JOIN employee e ON cm.employee_id = e.employee_id
+                    WHERE cm.employee_id = %s
+                    ORDER BY cm.message_id DESC
+                """, [current_emp_id])
+                for r in cursor.fetchall():
+                    msg_id = r[0]
+                    full_raw_txt = r[1] or ''
+                    cust_id = r[4]
+                    cust_name = f"{(r[5] or '').strip()} {(r[6] or '').strip()}".strip() or f"Customer #{cust_id}"
+                    default_emp_name = f"{(r[12] or '').strip()} {(r[13] or '').strip()}".strip() if r[11] else "Staff"
+                    lines = [line.strip() for line in full_raw_txt.split('\n') if line.strip()]
+                    msg_list = []
+                    assigned_emp = default_emp_name
+                    fallback_time_str = safe_format_time(r[3] or r[2])
+                    last_msg_time = fallback_time_str
+                    for line in lines:
+                        msg_time = fallback_time_str
+                        if line.startswith('[Reply from '):
+                            is_rep = True
+                            parts = line.split(']: ', 1)
+                            header_part = parts[0].replace('[Reply from ', '').strip()
+                            clean = parts[1] if len(parts) == 2 else line
+                            if '|' in header_part:
+                                h_name, h_time = header_part.rsplit('|', 1)
+                                assigned_emp = h_name.strip() or assigned_emp
+                                msg_time = h_time.strip()
+                            else:
+                                assigned_emp = header_part or assigned_emp
+                            s_label = assigned_emp
+                        elif line.startswith('[TIME: '):
+                            is_rep = False
+                            parts = line.split('] ', 1)
+                            if len(parts) == 2:
+                                msg_time = parts[0].replace('[TIME: ', '').strip()
+                                clean = parts[1]
+                            else:
+                                clean = line
+                            s_label = cust_name
+                        else:
+                            is_rep = False
+                            clean = line
+                            s_label = cust_name
+
+                        last_msg = clean
+                        last_msg_time = msg_time
+                        msg_list.append(_Obj(message_id=msg_id, message=clean, created_at=r[2], is_reply=is_rep, sender_name=s_label, msg_time=msg_time))
+
+                    accepted_threads.append(_Obj(
+                        message_id=msg_id,
+                        customer=_Obj(id=cust_id, name=cust_name, email=r[7], phone=r[8]),
+                        store=_Obj(id=r[9], name=r[10]),
+                        employee=_Obj(id=r[11], name=assigned_emp),
+                        last_message=last_msg,
+                        last_time_str=last_msg_time,
+                        created_at=r[3] or r[2],
+                        messages=msg_list
+                    ))
+
+    return render(request, 'car_sales/employee_messages.html', {
+        'active_tab': 'messages',
+        'employee_profile': profile,
+        'store_name': store_name,
+        'is_admin': is_admin,
+        'unaccepted_messages': unaccepted_threads,
+        'accepted_messages': accepted_threads,
+        'unaccepted_count': len(unaccepted_threads),
+    })
+
+
+@login_required
+@api_view(['POST'])
+def api_accept_customer_message(request, pk):
+    """Assigns the customer message thread to the logged in employee."""
+    profile = get_employee_profile(request)
+    if not profile:
+        return Response({'status': False, 'message': 'Only store employees can accept messages.'}, status=400)
+
+    try:
+        from car_sales.models import CustomerMessage
+        msg = CustomerMessage.objects.get(pk=pk)
+        if msg.employee_id and msg.employee_id != profile.employee_id:
+            return Response({'status': False, 'message': 'This chat has already been accepted by another employee.'}, status=400)
+
+        msg.employee_id = profile.employee_id
+        msg.save()
+
+        return Response({'status': True, 'message': f'Chat #{msg.message_id} accepted successfully.'})
+    except CustomerMessage.DoesNotExist:
+        return Response({'status': False, 'message': 'Message not found.'}, status=404)
+    except Exception as e:
+        return Response({'status': False, 'message': str(e)}, status=400)
+
+
+@login_required
+@api_view(['POST'])
+def api_reply_customer_message(request, pk):
+    """Sends a reply from the employee to the customer by appending to the single chat record."""
+    profile = get_employee_profile(request)
+    if not profile:
+        return Response({'status': False, 'message': 'Only store employees can reply to messages.'}, status=400)
+
+    reply_text = request.data.get('message', '').strip()
+    if not reply_text:
+        return Response({'status': False, 'message': 'Reply content cannot be empty.'}, status=400)
+
+    try:
+        from car_sales.models import CustomerMessage
+        parent_msg = CustomerMessage.objects.get(pk=pk)
+
+        # Set employee_id if not set yet
+        if not parent_msg.employee_id:
+            parent_msg.employee_id = profile.employee_id
+        elif parent_msg.employee_id != profile.employee_id:
+            return Response({'status': False, 'message': 'You must accept this chat before replying.'}, status=403)
+
+        # Append reply text directly into the single chat record with local timestamp
+        now_time = timezone.localtime(timezone.now()).strftime('%I:%M %p')
+        parent_msg.message = f"{parent_msg.message}\n[Reply from {profile.first_name} {profile.last_name} | {now_time}]: {reply_text}"
+        parent_msg.updated_at = timezone.now()
+        parent_msg.save()
+
+        return Response({'status': True, 'message': 'Reply sent to customer successfully!', 'reply_id': parent_msg.message_id})
+    except CustomerMessage.DoesNotExist:
+        return Response({'status': False, 'message': 'Message not found.'}, status=404)
+    except Exception as e:
+        return Response({'status': False, 'message': str(e)}, status=400)
+
+
+@api_view(['GET'])
+def api_poll_chat_message(request, pk):
+    """Returns the latest parsed message bubbles with line timestamps for chat thread #pk in real time."""
+    try:
+        from car_sales.models import CustomerMessage
+        msg = CustomerMessage.objects.get(pk=pk)
+        lines = [line.strip() for line in (msg.message or '').split('\n') if line.strip()]
+
+        cust_name = "Customer"
+        if msg.customer_id:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT ci.firstname, ci.lastname, c.email
+                    FROM customer c
+                    LEFT JOIN customer_info ci ON c.customer_id = ci.customer_id
+                    WHERE c.customer_id = %s
+                """, [msg.customer_id])
+                crow = cursor.fetchone()
+                if crow:
+                    cust_name = f"{(crow[0] or '').strip()} {(crow[1] or '').strip()}".strip() or f"Customer #{msg.customer_id}"
+
+        default_emp_name = "Store Staff"
+        if msg.employee:
+            default_emp_name = f"{(msg.employee.first_name or '').strip()} {(msg.employee.last_name or '').strip()}".strip() or "Store Staff"
+
+        msg_list = []
+        assigned_emp = default_emp_name
+        is_seen = bool(msg.employee_id)
+        seen_time = safe_format_time(msg.updated_at) if msg.updated_at else safe_format_time(msg.created_at)
+        fallback_time_str = safe_format_time(msg.created_at)
+
+        for line in lines:
+            msg_time = fallback_time_str
+            is_reply = False
+            clean_txt = line
+            sender_label = cust_name
+
+            if line.startswith('[Reply from '):
+                is_reply = True
+                parts = line.split(']: ', 1)
+                header_part = parts[0].replace('[Reply from ', '').strip()
+                clean_txt = parts[1] if len(parts) == 2 else line
+
+                if '|' in header_part:
+                    h_name, h_time = header_part.rsplit('|', 1)
+                    assigned_emp = h_name.strip() or assigned_emp
+                    msg_time = h_time.strip()
+                else:
+                    assigned_emp = header_part or assigned_emp
+
+                sender_label = assigned_emp
+            elif line.startswith('[TIME: '):
+                is_reply = False
+                parts = line.split('] ', 1)
+                if len(parts) == 2:
+                    msg_time = parts[0].replace('[TIME: ', '').strip()
+                    clean_txt = parts[1]
+                sender_label = cust_name
+
+            msg_list.append({
+                'message': clean_txt,
+                'is_reply': is_reply,
+                'sender_name': sender_label,
+                'time': msg_time,
+                'is_seen': is_seen,
+                'seen_time': seen_time
+            })
+
+        return Response({
+            'status': True,
+            'message_id': msg.message_id,
+            'customer_name': cust_name,
+            'assigned_employee': assigned_emp,
+            'updated_at': seen_time,
+            'messages': msg_list
+        })
+    except CustomerMessage.DoesNotExist:
+        return Response({'status': False, 'message': 'Chat thread not found.'}, status=404)
+    except Exception as e:
+        return Response({'status': False, 'message': str(e)}, status=400)

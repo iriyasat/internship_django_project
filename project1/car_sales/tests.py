@@ -865,7 +865,7 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
                 'password': 'CAr$@lse2014'
             })
             self.assertRedirects(
-                login_resp, reverse('home'),
+                login_resp, reverse('dashboard'),
                 msg_prefix=f"Level {lvl_num} ({role_title}) failed to log in successfully."
             )
 

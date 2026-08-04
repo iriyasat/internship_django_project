@@ -873,6 +873,7 @@ class WishlistService:
                         self.vehicle_model = model
                         self.mmr = price
                         self.make = make_obj
+                        self.image_url = _resolve_vehicle_image_url(make_obj.make_name, model)
                 self.vehicle = _Vehicle(self.vehicle_id, model, price, _Make(make_name))
 
         return [_WishlistItem(r) for r in rows]
@@ -954,6 +955,7 @@ class CartService:
                 class _Vehicle:
                     def __init__(self, model, price, make_obj):
                         self.vehicle_model = model; self.mmr = price; self.make = make_obj
+                        self.image_url = _resolve_vehicle_image_url(make_obj.make_name, model)
                 class _Store:
                     def __init__(self, name): self.store_name = name
                 class _Inv:
@@ -1089,8 +1091,8 @@ class TestDriveService:
                 self.vehicle = _Vehicle(self.vehicle_id, model, _Make(make_name))
                 self.store = _Store(store_name)
                 self.assigned_employee = _Emp(emp_first, emp_last) if self.assigned_employee_id else None
-                STATUS_MAP = {1: 'Scheduled', 2: 'Completed', 3: 'Cancelled'}
-                self.status_display = STATUS_MAP.get(self.status, str(self.status))
+                STATUS_MAP = {1: 'Scheduled', 2: 'Completed', 3: 'Cancelled', 'SCHEDULED': 'Scheduled', 'COMPLETED': 'Completed', 'CANCELLED': 'Cancelled'}
+                self.status_display = STATUS_MAP.get(self.status, str(self.status).replace('_', ' ').title())
 
         return [_Booking(r) for r in rows]
 
@@ -1109,8 +1111,8 @@ class TestDriveService:
 
             cursor.execute("""
                 INSERT INTO {test_drive_table}
-                    (customer_id, vehicle_id, store_id, booking_date, booking_time, notes, status, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, 1, NOW())
+                    (customer_id, vehicle_id, store_id, booking_date, booking_time, notes, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 'SCHEDULED', NOW(), NOW())
             """.format(test_drive_table=TEST_DRIVE_TABLE), [customer.customer_id, vehicle_id, store_id, booking_date_str, booking_time_str, notes])
             booking_id = cursor.lastrowid
 

@@ -1,11 +1,65 @@
 {% extends 'ecommerce/base.html' %}
 {% load static %}
 
-{% block title %}My Profile & Account Settings | Automobile{% endblock %}
+{% block title %}My Profile & Orders | Automobile{% endblock %}
 
 {% block extra_css %}
 <style>
-    .profile-card { border: 1px solid #e2e8f0; }
+    .profile-hero-card {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .profile-avatar-wrapper {
+        position: relative;
+        width: 110px;
+        height: 110px;
+    }
+    .profile-avatar-img {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #ffffff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .profile-nav-tabs .nav-link {
+        color: #64748b;
+        font-weight: 600;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 24px;
+        border-radius: 0;
+        transition: all 0.2s ease;
+    }
+    .profile-nav-tabs .nav-link:hover {
+        color: var(--primary);
+    }
+    .profile-nav-tabs .nav-link.active {
+        color: var(--primary);
+        background: transparent;
+        border-bottom-color: var(--primary);
+        font-weight: 700;
+    }
+    .stat-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 20px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
     .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .profile-grid .full { grid-column: span 2; }
     .upload-preview--avatar img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; }
@@ -18,96 +72,372 @@
 {% endblock %}
 
 {% block content %}
+<!-- Dark Page Banner -->
 <div class="ecom-page-header mb-5">
     <div class="container">
-        <h1 class="fw-extrabold display-5 mb-2">My Customer Profile</h1>
-        <p class="text-secondary mb-0">Edit customer and customer_info linked fields only.</p>
+        <div>
+            <h1 class="fw-extrabold display-5 mb-2">My Customer Account</h1>
+            <p class="text-secondary mb-0">Manage your profile details, order history, and account preferences.</p>
+        </div>
     </div>
 </div>
 
 <div class="container mb-5">
-    <form id="profile-update-form" class="card profile-card border-0 shadow-sm rounded-4 p-4 bg-white" enctype="multipart/form-data">
-        <h4 class="fw-bold mb-3">Customer</h4>
-        <div class="profile-grid mb-4">
-            <div>
-                <label class="form-label small fw-semibold text-muted mb-1">Customer ID</label>
-                <input type="text" class="form-control rounded-3 bg-light" value="{{ customer.customer_id }}" readonly>
+    <!-- Main Customer Header Card -->
+    <div class="card profile-hero-card rounded-4 text-white p-4 mb-4 shadow-sm">
+        <div class="row align-items-center g-4">
+            <div class="col-auto">
+                <div class="profile-avatar-wrapper">
+                    <img id="headerAvatar"
+                         src="{% if customer_info and customer_info.profile_picture_url %}{{ customer_info.profile_picture_url }}{% else %}{% static 'assets/img/profile-img.jpg' %}{% endif %}"
+                         alt="Customer Avatar" class="profile-avatar-img">
+                </div>
             </div>
-            <div>
-                <label class="form-label small fw-semibold text-muted mb-1">Email</label>
-                <input type="email" class="form-control rounded-3 bg-light" value="{{ customer.email }}" readonly>
+            <div class="col">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <h3 class="fw-extrabold mb-0">
+                        {% if customer_info and customer_info.firstname %}
+                            {{ customer_info.firstname }} {{ customer_info.lastname }}
+                        {% else %}
+                            Customer #{{ customer.customer_id }}
+                        {% endif %}
+                    </h3>
+                    <span class="badge bg-success px-3 py-1 rounded-pill text-capitalize fs-7">
+                        <i class="fa-solid fa-circle-check me-1"></i> {{ customer_info.customer_status|default:"Active" }}
+                    </span>
+                </div>
+                <p class="text-slate-300 mb-2 small"><i class="fa-solid fa-envelope me-1 text-primary"></i> {{ customer.email }}</p>
+                <div class="d-flex flex-wrap align-items-center gap-3 text-xs text-slate-400">
+                    {% if customer.phone %}
+                        <span><i class="fa-solid fa-phone me-1 text-slate-300"></i> {{ customer.phone }}</span>
+                    {% endif %}
+                    {% if customer_info and customer_info.city %}
+                        <span><i class="fa-solid fa-location-dot me-1 text-slate-300"></i> {{ customer_info.city.city_name }}{% if customer_info.country %}, {{ customer_info.country.country_name }}{% endif %}</span>
+                    {% endif %}
+                </div>
             </div>
-            <div class="full">
-                <label for="phone" class="form-label small fw-semibold text-muted mb-1">Phone</label>
-                <input type="text" id="phone" name="phone" class="form-control rounded-3" value="{{ customer.phone|default:'' }}" placeholder="Phone">
+            <div class="col-md-auto text-md-end">
+                <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3 py-2 fw-semibold" onclick="switchProfileTab('edit')">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit Profile
+                </button>
             </div>
         </div>
+    </div>
 
-        <h4 class="fw-bold mb-3">Customer Info</h4>
-        <div class="profile-grid mb-4">
-            <div class="full">
-                <div class="upload-section mb-18">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="upload-preview upload-preview--avatar">
-                            <img id="avatarPreview"
-                                 src="{% if customer_info and customer_info.profile_picture_url %}{{ customer_info.profile_picture_url }}{% else %}{% static 'assets/img/profile-img.jpg' %}{% endif %}"
-                                 alt="Avatar Preview">
+    <!-- Quick Stats Cards Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card d-flex align-items-center gap-3 cursor-pointer" onclick="switchProfileTab('orders')">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="fa-solid fa-box-archive"></i>
+                </div>
+                <div>
+                    <span class="text-muted text-xs text-uppercase fw-bold">Total Orders</span>
+                    <h3 class="fw-extrabold text-dark mb-0">{{ orders_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'ecommerce:wishlist' %}" class="text-decoration-none">
+                <div class="stat-card d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="fa-solid fa-heart"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted text-xs text-uppercase fw-bold">Wishlist Saved</span>
+                        <h3 class="fw-extrabold text-dark mb-0">{{ wishlist_count }}</h3>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'ecommerce:test_drive' %}" class="text-decoration-none">
+                <div class="stat-card d-flex align-items-center gap-3">
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted text-xs text-uppercase fw-bold">Test Drives</span>
+                        <h3 class="fw-extrabold text-dark mb-0">{{ test_drives_count }}</h3>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+        <div class="border-bottom bg-light px-3">
+            <ul class="nav profile-nav-tabs" id="profileTabList" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link {% if active_tab != 'orders' and active_tab != 'edit' %}active{% endif %}" id="tab-btn-overview" onclick="switchProfileTab('overview')">
+                        <i class="fa-solid fa-user me-2"></i> Profile Overview
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link {% if active_tab == 'orders' %}active{% endif %}" id="tab-btn-orders" onclick="switchProfileTab('orders')">
+                        <i class="fa-solid fa-bag-shopping me-2"></i> My Orders <span class="badge bg-primary rounded-pill ms-1">{{ orders_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item d-none">
+                    <button class="nav-link {% if active_tab == 'edit' %}active{% endif %}" id="tab-btn-edit" onclick="switchProfileTab('edit')">
+                        <i class="fa-solid fa-user-pen me-2"></i> Edit Profile Settings
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Tab 1: Profile Overview -->
+            <div id="tab-pane-overview" class="profile-tab-pane {% if active_tab != 'orders' and active_tab != 'edit' %}{% else %}d-none{% endif %}">
+                <div class="mb-4">
+                    <h4 class="fw-bold mb-0">Personal & Account Details</h4>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Customer ID</small>
+                            <span class="fw-bold text-dark fs-6">#{{ customer.customer_id }}</span>
                         </div>
-                        <div class="upload-content flex-grow-1">
-                            <p class="fw-semibold mb-1">Upload File</p>
-                            <p class="text-xs text-secondary mb-2">PNG, JPG, JPEG, SVG. Max size 4 MB.</p>
-                            <div class="d-flex align-items-center gap-3">
-                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill upload-btn" data-target="avatarInput">Choose File</button>
-                                <input type="file" id="avatarInput" name="profile_picture" accept="image/png,image/jpeg,image/jpg,image/svg+xml" class="upload-input">
-                                <span class="text-xs text-muted file-name" data-target="avatarInput">No file chosen</span>
-                            </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Email Address</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer.email }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">First Name</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer_info.firstname|default:"Not Provided" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Last Name</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer_info.lastname|default:"Not Provided" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Phone Number</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer.phone|default:"Not Provided" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Account Status</small>
+                            <span class="badge bg-success rounded-pill px-3 py-1 fs-6">{{ customer_info.customer_status|default:"Active" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Street Address</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer_info.customer_address|default:"No address on file" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">City</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer_info.city.city_name|default:"Not Specified" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <small class="text-uppercase text-muted fw-bold d-block mb-1">Country</small>
+                            <span class="fw-bold text-dark fs-6">{{ customer_info.country.country_name|default:"Not Specified" }}</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div>
-                <label for="firstname" class="form-label small fw-semibold text-muted mb-1">First Name</label>
-                <input type="text" id="firstname" name="firstname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.firstname }}{% endif %}">
-            </div>
-            <div>
-                <label for="lastname" class="form-label small fw-semibold text-muted mb-1">Last Name</label>
-                <input type="text" id="lastname" name="lastname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.lastname }}{% endif %}">
-            </div>
-            <div class="full">
-                <label for="customer_status" class="form-label small fw-semibold text-muted mb-1">Customer Status</label>
-                <input type="text" id="customer_status" name="customer_status" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_status }}{% else %}Active{% endif %}">
-            </div>
-            <div class="full">
-                <label for="customer_address" class="form-label small fw-semibold text-muted mb-1">Customer Address</label>
-                <input type="text" id="customer_address" name="customer_address" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_address }}{% endif %}">
-            </div>
-            <div>
-                <label for="city_id" class="form-label small fw-semibold text-muted mb-1">City</label>
-                <select id="city_id" name="city_id" class="form-select rounded-3">
-                    {% for c in cities %}
-                        <option value="{{ c.city_id }}" {% if customer_info and customer_info.city and customer_info.city.city_id == c.city_id %}selected{% endif %}>{{ c.city_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="country_id" class="form-label small fw-semibold text-muted mb-1">Country</label>
-                <select id="country_id" name="country_id" class="form-select rounded-3">
-                    {% for co in countries %}
-                        <option value="{{ co.country_id }}" {% if customer_info and customer_info.country and customer_info.country.country_id == co.country_id %}selected{% endif %}>{{ co.country_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
 
-        <div>
-            <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">Save Profile Changes</button>
+            <!-- Tab 2: My Orders -->
+            <div id="tab-pane-orders" class="profile-tab-pane {% if active_tab == 'orders' %}{% else %}d-none{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">My Vehicle Order History</h4>
+                    <a href="{% url 'ecommerce:catalog' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                        <i class="fa-solid fa-plus me-1"></i> Place New Order
+                    </a>
+                </div>
+
+                {% if orders %}
+                    <div class="d-grid gap-3">
+                        {% for o in orders %}
+                        <div class="card border rounded-4 p-4 bg-white shadow-xs">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-3 mb-3">
+                                <div>
+                                    <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold mb-1">Order #{{ o.order_id }}</span>
+                                    <small class="text-muted ms-2"><i class="fa-solid fa-calendar me-1"></i> {{ o.created_at|date:"Y-m-d H:i" }}</small>
+                                </div>
+                                <div class="mt-2 mt-md-0">
+                                    {% if o.order_status == 'FULFILLED' %}
+                                        <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-check me-1"></i> {{ o.get_order_status_display }}</span>
+                                    {% elif o.order_status == 'NEEDS_APPROVAL' %}
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-hourglass-half me-1"></i> {{ o.get_order_status_display }}</span>
+                                    {% elif o.order_status == 'APPROVED' or o.order_status == 'PAID' or o.order_status == 'PARTIALLY_PAID' %}
+                                        <span class="badge bg-info text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-thumbs-up me-1"></i> {{ o.get_order_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-xmark me-1"></i> {{ o.get_order_status_display }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row align-items-center g-3">
+                                <div class="col-md-2 bg-white p-2 rounded-3 border d-flex align-items-center justify-content-center" style="height: 90px;">
+                                    <img src="{{ o.inventory.vehicle.image_url }}" class="mw-100 mh-100 object-fit-contain" style="max-height: 70px;" alt="{{ o.inventory.vehicle.vehicle_model }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-uppercase fw-bold text-muted">{{ o.inventory.vehicle.make.make_name }}</small>
+                                    <h5 class="fw-extrabold text-dark mb-1">{{ o.inventory.vehicle.vehicle_model }}</h5>
+                                    <p class="small text-muted mb-1"><i class="fa-solid fa-store text-primary me-1"></i> Showroom: {{ o.store.store_name }}</p>
+                                    <p class="small text-muted mb-0"><i class="fa-solid fa-user me-1"></i> Sales Specialist: {{ o.assigned_employee|default:"Pending Staff Assignment" }}</p>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <small class="text-muted d-block">Total Amount</small>
+                                    <h4 class="fw-extrabold text-primary mb-1">${{ o.total_amount }}</h4>
+                                    <small class="badge bg-light text-dark border px-2 py-1 mb-2">{{ o.get_payment_preference_display }}</small>
+                                    {% if o.invoice %}
+                                        <div class="mt-1">
+                                            <small class="text-muted">Invoice #{{ o.invoice.invoice_id }} [{{ o.invoice.get_payment_status_display }}]</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="card border-0 bg-light rounded-4 p-5 text-center">
+                        <i class="fa-solid fa-box-open display-1 text-muted mb-3"></i>
+                        <h4 class="fw-bold">No Order History Found</h4>
+                        <p class="text-muted">Place your first vehicle order directly from our online catalog.</p>
+                        <div>
+                            <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                                <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab 3: Edit Profile Form -->
+            <div id="tab-pane-edit" class="profile-tab-pane {% if active_tab == 'edit' %}{% else %}d-none{% endif %}">
+                <form id="profile-update-form" enctype="multipart/form-data">
+                    <h4 class="fw-bold mb-3">Customer Credentials</h4>
+                    <div class="profile-grid mb-4">
+                        <div>
+                            <label class="form-label small fw-semibold text-muted mb-1">Customer ID</label>
+                            <input type="text" class="form-control rounded-3 bg-light" value="{{ customer.customer_id }}" readonly>
+                        </div>
+                        <div>
+                            <label class="form-label small fw-semibold text-muted mb-1">Email</label>
+                            <input type="email" class="form-control rounded-3 bg-light" value="{{ customer.email }}" readonly>
+                        </div>
+                        <div class="full">
+                            <label for="phone" class="form-label small fw-semibold text-muted mb-1">Phone Number</label>
+                            <input type="text" id="phone" name="phone" class="form-control rounded-3" value="{{ customer.phone|default:'' }}" placeholder="Phone Number">
+                        </div>
+                        <div>
+                            <label for="password" class="form-label small fw-semibold text-muted mb-1">New Password</label>
+                            <input type="password" id="password" name="password" class="form-control rounded-3" placeholder="Leave blank to keep current password">
+                        </div>
+                        <div>
+                            <label for="confirm_password" class="form-label small fw-semibold text-muted mb-1">Confirm New Password</label>
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-control rounded-3" placeholder="Confirm new password">
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bold mb-3">Customer Personal Info</h4>
+                    <div class="profile-grid mb-4">
+                        <div class="full">
+                            <div class="upload-section mb-18">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="upload-preview upload-preview--avatar">
+                                        <img id="avatarPreview"
+                                             src="{% if customer_info and customer_info.profile_picture_url %}{{ customer_info.profile_picture_url }}{% else %}{% static 'assets/img/profile-img.jpg' %}{% endif %}"
+                                             alt="Avatar Preview">
+                                    </div>
+                                    <div class="upload-content flex-grow-1">
+                                        <p class="fw-semibold mb-1">Profile Photo</p>
+                                        <p class="text-xs text-secondary mb-2">PNG, JPG, JPEG, SVG. Max size 4 MB.</p>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill upload-btn" data-target="avatarInput">Choose File</button>
+                                            <input type="file" id="avatarInput" name="profile_picture" accept="image/png,image/jpeg,image/jpg,image/svg+xml" class="upload-input">
+                                            <span class="text-xs text-muted file-name" data-target="avatarInput">No file chosen</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="firstname" class="form-label small fw-semibold text-muted mb-1">First Name</label>
+                            <input type="text" id="firstname" name="firstname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.firstname }}{% endif %}" placeholder="First Name">
+                        </div>
+                        <div>
+                            <label for="lastname" class="form-label small fw-semibold text-muted mb-1">Last Name</label>
+                            <input type="text" id="lastname" name="lastname" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.lastname }}{% endif %}" placeholder="Last Name">
+                        </div>
+                        <div class="full">
+                            <label for="customer_status" class="form-label small fw-semibold text-muted mb-1">Customer Status</label>
+                            <input type="text" id="customer_status" name="customer_status" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_status }}{% else %}Active{% endif %}">
+                        </div>
+                        <div class="full">
+                            <label for="customer_address" class="form-label small fw-semibold text-muted mb-1">Customer Address</label>
+                            <input type="text" id="customer_address" name="customer_address" class="form-control rounded-3" value="{% if customer_info %}{{ customer_info.customer_address }}{% endif %}" placeholder="Address">
+                        </div>
+                        <div>
+                            <label for="city_id" class="form-label small fw-semibold text-muted mb-1">City</label>
+                            <select id="city_id" name="city_id" class="form-select rounded-3">
+                                <option value="">Select City</option>
+                                {% for c in cities %}
+                                    <option value="{{ c.city_id }}" {% if customer_info and customer_info.city and customer_info.city.city_id == c.city_id %}selected{% endif %}>{{ c.city_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="country_id" class="form-label small fw-semibold text-muted mb-1">Country</label>
+                            <select id="country_id" name="country_id" class="form-select rounded-3">
+                                <option value="">Select Country</option>
+                                {% for co in countries %}
+                                    <option value="{{ co.country_id }}" {% if customer_info and customer_info.country and customer_info.country.country_id == co.country_id %}selected{% endif %}>{{ co.country_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">
+                            <i class="fa-solid fa-floppy-disk me-2"></i> Save Profile Changes
+                        </button>
+                        <button type="button" class="btn btn-light rounded-pill px-4 py-2 fw-semibold" onclick="switchProfileTab('overview')">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    function switchProfileTab(tabName) {
+        document.querySelectorAll('.profile-tab-pane').forEach(el => el.classList.add('d-none'));
+        document.querySelectorAll('.profile-nav-tabs .nav-link').forEach(el => el.classList.remove('active'));
+
+        const targetPane = document.getElementById('tab-pane-' + tabName);
+        const targetBtn = document.getElementById('tab-btn-' + tabName);
+
+        if (targetPane) targetPane.classList.remove('d-none');
+        if (targetBtn) targetBtn.classList.add('active');
+
+        if (history.replaceState) {
+            history.replaceState(null, null, '?tab=' + tabName);
+        }
+    }
+
     document.querySelectorAll('.upload-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             const target = this.getAttribute('data-target');
@@ -118,7 +448,9 @@
 
     const avatarInput = document.getElementById('avatarInput');
     const avatarPreview = document.getElementById('avatarPreview');
+    const headerAvatar = document.getElementById('headerAvatar');
     const fileNameLabel = document.querySelector('.file-name[data-target="avatarInput"]');
+
     if (avatarInput) {
         avatarInput.addEventListener('change', function() {
             const file = this.files && this.files[0];
@@ -126,7 +458,8 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                avatarPreview.src = e.target.result;
+                if (avatarPreview) avatarPreview.src = e.target.result;
+                if (headerAvatar) headerAvatar.src = e.target.result;
             };
             reader.readAsDataURL(file);
         });
@@ -139,6 +472,8 @@
         formData.append('lastname', document.getElementById('lastname').value);
         formData.append('customer_status', document.getElementById('customer_status').value);
         formData.append('phone', document.getElementById('phone').value);
+        formData.append('password', document.getElementById('password').value);
+        formData.append('confirm_password', document.getElementById('confirm_password').value);
         formData.append('customer_address', document.getElementById('customer_address').value);
         formData.append('city_id', document.getElementById('city_id').value);
         formData.append('country_id', document.getElementById('country_id').value);
@@ -163,5 +498,20 @@
             }
         });
     });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 </script>
 {% endblock %}

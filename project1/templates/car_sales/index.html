@@ -201,7 +201,7 @@
       margin: 0 auto;
       padding: 44px 42px;
       border-radius: 40px;
-      overflow: hidden;
+      overflow: visible;
       border: 1px solid rgba(255, 255, 255, 0.12);
       background: linear-gradient(135deg, #020617 0%, #0b1020 35%, #111827 70%, #1f2937 100%);
       box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
@@ -212,6 +212,7 @@
       content: '';
       position: absolute;
       inset: 0;
+      border-radius: 40px;
       background:
         radial-gradient(circle at 18% 20%, rgba(96, 165, 250, 0.24), transparent 28%),
         radial-gradient(circle at 82% 18%, rgba(244, 114, 182, 0.12), transparent 24%),
@@ -362,6 +363,9 @@
     }
 
     .search-cars__filters {
+      position: relative;
+      z-index: 10;
+      overflow: visible;
       background: #ffffff;
       border-radius: 20px;
       padding: 16px 20px;
@@ -374,6 +378,8 @@
     .search-cars__select-wrapper {
       flex: 1;
       min-width: 160px;
+      position: relative;
+      overflow: visible;
     }
     .filter-select-dropdown {
       position: relative;
@@ -383,6 +389,12 @@
       text-align: left;
       cursor: pointer;
       background: #fff;
+      z-index: 10;
+      transition: z-index 0.1s ease;
+    }
+    .filter-select-dropdown:has(.filter-select-dropdown__toggle:checked),
+    .filter-select-dropdown.is-open {
+      z-index: 1100;
     }
     .search-cars__label {
       display: block;
@@ -405,15 +417,26 @@
     .filter-select-dropdown__menu {
       display: none;
       position: absolute;
-      top: 105%; left: 0; right: 0;
+      top: calc(100% + 6px); 
+      left: 0; 
+      right: 0;
+      width: 100%;
+      min-width: 0;
       background: #ffffff;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #cbd5e1;
       border-radius: 14px;
-      padding: 12px;
-      z-index: 100;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      max-height: 220px;
+      padding: 6px 8px;
+      z-index: 1200;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+      max-height: 190px;
       overflow-y: auto;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE & Edge */
+    }
+    .filter-select-dropdown__menu::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+      width: 0;
+      height: 0;
     }
     .filter-select-dropdown__toggle:checked ~ .filter-select-dropdown__menu {
       display: block;
@@ -422,10 +445,21 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 0;
-      font-size: 0.88rem;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
       color: #334155;
       cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .filter-checkbox:hover {
+      background: #f1f5f9;
+      color: var(--primary);
+    }
+    .filter-checkbox.active {
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
     }
 
     .search-cars__filter.style2 {
@@ -672,12 +706,36 @@
 
     /* ─── STATS BAND ─── */
     .stats-band {
-      background: linear-gradient(135deg, #020617 0%, #0b1020 35%, #111827 70%, #1f2937 100%);
+      background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%) !important;
+      position: relative;
+      overflow: hidden;
       padding: 90px 6%;
-      color: #fff;
+      color: #fff !important;
+    }
+    .stats-band::before {
+      content: '';
+      position: absolute;
+      top: -30%; right: -10%;
+      width: 70vw; height: 70vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.35) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .stats-band::after {
+      content: '';
+      position: absolute;
+      bottom: -20%; left: -10%;
+      width: 50vw; height: 50vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .stats-band .container {
+      position: relative;
+      z-index: 2;
     }
     .stats-band .title-section h2 {
-      color: #fff;
+      color: #fff !important;
     }
     .stats-band .stats-cta {
       background: rgba(17, 24, 39, 0.72);
@@ -705,9 +763,9 @@
       height: 100%;
       padding: 24px 22px;
       border-radius: 22px;
-      background: linear-gradient(135deg, rgba(17, 24, 39, 0.86), rgba(55, 65, 81, 0.72));
-      border: 1px solid rgba(255, 255, 255, 0.10);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.86), rgba(55, 65, 81, 0.72)) !important;
+      border: 1px solid rgba(255, 255, 255, 0.10) !important;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24) !important;
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       text-align: center;
@@ -724,9 +782,9 @@
       margin-bottom: 8px;
     }
     .stat-box .label {
-      color: rgba(255, 255, 255, 0.78);
+      color: rgba(255, 255, 255, 0.85) !important;
       text-transform: uppercase;
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       font-weight: 700;
       letter-spacing: 0.08em;
     }
@@ -1623,6 +1681,28 @@
         if (heroSearchBtn) {
             onHeroFilterChange();
         }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.filter-select-dropdown')) {
+                document.querySelectorAll('.filter-select-dropdown__toggle').forEach(t => t.checked = false);
+                document.querySelectorAll('.filter-select-dropdown').forEach(d => d.classList.remove('is-open'));
+            }
+        });
+
+        // Ensure only one dropdown is open at a time and elevate active z-index
+        document.querySelectorAll('.filter-select-dropdown__toggle').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const currentDropdown = e.target.closest('.filter-select-dropdown');
+                document.querySelectorAll('.filter-select-dropdown__toggle').forEach(t => {
+                    if (t !== e.target) t.checked = false;
+                });
+                document.querySelectorAll('.filter-select-dropdown').forEach(d => d.classList.remove('is-open'));
+                if (e.target.checked && currentDropdown) {
+                    currentDropdown.classList.add('is-open');
+                }
+            });
+        });
     });
   </script>
 {% endblock %}

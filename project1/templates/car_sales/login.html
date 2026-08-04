@@ -156,7 +156,7 @@
 
                     <div class="col-12">
                       <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit" id="submitBtn">
-                        {% if selected_role == 'staff' %}Login as Staff{% else %}Login as Customer{% endif %}
+                        {% if selected_role == 'staff' %}Login as Staff{% elif selected_role == 'customer' %}Login as Customer{% endif %}
                       </button>
                     </div>
 
@@ -220,7 +220,7 @@
 
         custBox.style.display = 'none';
         staffBox.style.display = 'block';
-      } else {
+      } else if (role === 'customer'){
         btnCust.className = 'btn role-toggle-btn btn-primary text-white';
         btnStaff.className = 'btn role-toggle-btn btn-light text-secondary';
 
@@ -232,6 +232,9 @@
 
         custBox.style.display = 'block';
         staffBox.style.display = 'none';
+      }
+      else{
+        console.log('Invalid role');
       }
     }
 

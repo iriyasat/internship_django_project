@@ -100,41 +100,41 @@
 {% block content %}
 <main class="flex-grow-1">
 
-    <!-- Breadcrumb Header -->
-    <div class="vehicle-detail-header">
+    <!-- Dark Hero Header -->
+    <div class="ecom-page-header mb-5">
         <div class="container">
-            <nav aria-label="breadcrumb" class="mb-2">
+            <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none text-muted">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none text-muted">Vehicle Directory</a></li>
-                    <li class="breadcrumb-item active text-primary fw-semibold" aria-current="page">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }}</li>
+                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'ecommerce:catalog' %}" class="text-decoration-none">Vehicle Directory</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }}</li>
                 </ol>
             </nav>
 
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="{{ brand_logo_url }}" alt="{{ vehicle.make.make_name }}" style="height: 42px; width: 60px; object-fit: contain;">
+                    <img src="{{ brand_logo_url }}" alt="{{ vehicle.make.make_name }}" style="height: 42px; width: 60px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">
                     <div>
-                        <h1 class="h2 fw-extrabold mb-1 text-dark">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} {% if vehicle.trim %}<span class="text-muted fs-4 fw-normal">{{ vehicle.trim }}</span>{% endif %}</h1>
-                        <div class="d-flex align-items-center gap-3 text-muted small">
-                            <span><i class="fa-solid fa-location-dot text-danger me-1"></i> {{ inventory.store.store_name }} ({{ inventory.store.city.city_name }})</span>
-                            <span><i class="fa-solid fa-barcode text-primary me-1"></i> VIN: <strong class="text-dark">{{ vehicle.vin }}</strong></span>
-                        </div>
+                        <h1 class="fw-extrabold display-5 mb-1">{{ vehicle.make.make_name }} {{ vehicle.vehicle_model }} {% if vehicle.trim %}<span class="text-slate-300 fs-4 fw-normal">({{ vehicle.trim }})</span>{% endif %}</h1>
+                        <p class="mb-0 text-slate-300">
+                            <i class="fa-solid fa-location-dot text-primary me-1"></i> {{ inventory.store.store_name }} ({{ inventory.store.city.city_name }})
+                            <span class="mx-2">•</span>
+                            <i class="fa-solid fa-barcode text-info me-1"></i> VIN: <strong>{{ vehicle.vin }}</strong>
+                        </p>
                     </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-outline-success rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="addToCompareGlobal({{ inventory.inventory_id }}, true)">
+                    <button class="btn btn-outline-light rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="addToCompareGlobal({{ inventory.inventory_id }}, true)">
                         <i class="fa-solid fa-code-compare me-1"></i> Compare
                     </button>
-                    <button class="btn btn-outline-secondary rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="toggleWishlistGlobal({{ vehicle.id }}, this)">
+                    <button class="btn btn-outline-light rounded-pill px-3 py-2 btn-sm fw-semibold" onclick="toggleWishlistGlobal({{ vehicle.id }}, this)">
                         <i class="fa-regular fa-heart me-1 text-danger"></i> Wishlist
                     </button>
-                    <a href="{% url 'ecommerce:catalog' %}" class="btn btn-outline-primary rounded-pill px-3 py-2 btn-sm fw-semibold">
+                    <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-3 py-2 btn-sm fw-bold">
                         <i class="fa-solid fa-arrow-left me-1"></i> Back to Catalog
                     </a>
                 </div>
-
             </div>
         </div>
     </div>
@@ -349,21 +349,13 @@
                 <!-- Vehicle Inquiry Form -->
                 <div class="card border-0 shadow-sm rounded-4 p-4">
                     <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-paper-plane text-primary me-2"></i> Send Dealer Inquiry</h5>
-                    <form onsubmit="event.preventDefault(); alert('Thank you! Your inquiry has been sent to {{ inventory.store.store_name }}.');">
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm rounded-3" placeholder="Your Name" required>
-                        </div>
-                        <div class="mb-2">
-                            <input type="email" class="form-control form-control-sm rounded-3" placeholder="Email Address" required>
-                        </div>
-                        <div class="mb-2">
-                            <input type="tel" class="form-control form-control-sm rounded-3" placeholder="Phone Number">
-                        </div>
+                    <form id="dealerInquiryForm">
                         <div class="mb-3">
-                            <textarea class="form-control form-control-sm rounded-3" rows="3" placeholder="I am interested in vehicle #INV-{{ inventory.inventory_id }}..."></textarea>
+                            <label for="inquiryMessage" class="form-label small fw-bold text-muted text-uppercase mb-1">Your Message to {{ inventory.store.store_name }}</label>
+                            <textarea id="inquiryMessage" class="form-control rounded-3" rows="3" placeholder="I am interested in vehicle #INV-{{ inventory.inventory_id }}..." required>I am interested in vehicle #INV-{{ inventory.inventory_id }} ({{ inventory.vehicle.make.make_name }} {{ inventory.vehicle.vehicle_model }}).</textarea>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100 fw-bold py-2">
-                            Send Vehicle Inquiry
+                            <i class="fa-solid fa-paper-plane me-1"></i> Send Vehicle Inquiry
                         </button>
                     </form>
                 </div>
@@ -420,4 +412,52 @@
     </div>
 </main>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dealerInquiryForm = document.getElementById('dealerInquiryForm');
+    if (dealerInquiryForm) {
+        dealerInquiryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const msgText = document.getElementById('inquiryMessage').value;
+
+            fetch("{% url 'ecommerce:api_send_customer_message' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({
+                    inventory_id: "{{ inventory.inventory_id }}",
+                    store_id: "{{ inventory.store.store_id }}",
+                    message: msgText
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert(data.error || "Failed to send inquiry. Please log in first.");
+                }
+            });
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
 {% endblock %}

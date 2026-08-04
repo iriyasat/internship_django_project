@@ -204,9 +204,13 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%);
     position: relative;
     overflow: hidden;
-    color: #fff;
-    padding: 56px 0;
+    color: #ffffff;
+    min-height: 160px;
+    padding: 44px 0;
+    display: flex;
+    align-items: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
 }
 .ecom-page-header::before {
     content: '';
@@ -229,6 +233,38 @@ h1, h2, h3, h4, h5, h6 {
 .ecom-page-header .container {
     position: relative;
     z-index: 2;
+}
+
+.ecom-page-header h1, .ecom-page-header .h1 {
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 2.25rem !important; /* Standardized 36px heading size */
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.25 !important;
+    color: #ffffff !important;
+    margin-bottom: 0.4rem !important;
+}
+
+.ecom-page-header p {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 1.025rem !important; /* Standardized subtitle size */
+    font-weight: 400 !important;
+    color: rgba(226, 232, 240, 0.88) !important;
+    line-height: 1.5 !important;
+    margin-bottom: 0 !important;
+}
+
+.ecom-page-header .breadcrumb-item, 
+.ecom-page-header .breadcrumb-item a {
+    color: rgba(203, 213, 225, 0.85) !important;
+    font-size: 0.875rem !important;
+}
+.ecom-page-header .breadcrumb-item.active {
+    color: #60a5fa !important;
+    font-weight: 600 !important;
+}
+.ecom-page-header .breadcrumb-item + .breadcrumb-item::before {
+    color: rgba(148, 163, 184, 0.6) !important;
 }
 
 /* ─── Vehicle Card Component (Style 9 Grid) ─── */
@@ -534,27 +570,55 @@ h1, h2, h3, h4, h5, h6 {
 }
 .landing-footer a:hover { color: #60a5fa; }
 
-.footer.bg-primary {
-    background: linear-gradient(135deg, #020617 0%, #0b1020 35%, #111827 70%, #1f2937 100%) !important;
-    color: rgba(226, 232, 240, 0.78);
-    position: relative;
+footer,
+.footer,
+footer.footer,
+.footer.radius-40,
+footer.radius-40 {
+    background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%) !important;
+    color: #ffffff !important;
+    position: relative !important;
+    overflow: hidden !important;
 }
-.footer.bg-primary::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 32%),
-        radial-gradient(circle at bottom left, rgba(96, 165, 250, 0.10), transparent 30%);
-    pointer-events: none;
+footer::before,
+.footer::before,
+footer.footer::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    top: -30% !important; right: -10% !important;
+    width: 70vw !important; height: 70vw !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.35) 0%, transparent 65%) !important;
+    pointer-events: none !important;
 }
-.footer.bg-primary > * {
-    position: relative;
-    z-index: 1;
+footer::after,
+.footer::after,
+footer.footer::after {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    bottom: -20% !important; left: -10% !important;
+    width: 50vw !important; height: 50vw !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 65%) !important;
+    pointer-events: none !important;
+}
+footer > *,
+.footer > * {
+    position: relative !important;
+    z-index: 2 !important;
 }
 .footer.radius-40 {
-    border-radius: 40px 40px 0 0;
-    overflow: hidden;
+    border-radius: 40px 40px 0 0 !important;
+    overflow: hidden !important;
+}
+.footer-top,
+.footer-bottom,
+.footer-top-inner,
+.footer-contact,
+.footer-bottom-inner {
+    background: transparent !important;
 }
 .footer-top { padding: 56px 0 36px; }
 .footer-top-inner {
@@ -652,8 +716,25 @@ h1, h2, h3, h4, h5, h6 {
 }
 .footer-bottom-inner {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    text-align: center;
     gap: 16px;
     flex-wrap: wrap;
+}
+.footer-bottom-left {
+    width: 100%;
+    text-align: center;
+}
+.footer-bottom-links {
+    list-style: none !important;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.footer-bottom-links li {
+    list-style: none !important;
+    list-style-type: none !important;
 }

@@ -17,6 +17,9 @@ urlpatterns = [
     path('api/conditions/', views.api_vehicle_conditions, name='api_vehicle_conditions'),
     path('api/models/', views.api_vehicle_models, name='api_vehicle_models'),
     path('api/trims/', views.api_vehicle_trims, name='api_vehicle_trims'),
+    path('api/messages/send/', views.api_send_customer_message, name='api_send_customer_message'),
+    path('api/messages/superuser/', views.api_send_superuser_message, name='api_send_superuser_message'),
+    path('messages/', views.customer_messages_view, name='customer_messages'),
 
     path('wishlist/', views.wishlist_view, name='wishlist'),
     path('api/wishlist/toggle/', views.api_toggle_wishlist, name='api_toggle_wishlist'),

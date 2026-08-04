@@ -46,6 +46,10 @@ urlpatterns = [
 
     # Documentation URL
     path('documentation/', documentation_view, name='documentation'),
+    path('employee/messages/', employee_messages_view, name='employee_messages'),
+    path('api/employee/messages/<int:pk>/accept/', api_accept_customer_message, name='api_accept_customer_message'),
+    path('api/employee/messages/<int:pk>/reply/', api_reply_customer_message, name='api_reply_customer_message'),
+    path('api/employee/messages/<int:pk>/poll/', api_poll_chat_message, name='api_poll_chat_message'),
 ]
 
 # Dynamically register the 10 CRUD API endpoints to avoid boilerplate code

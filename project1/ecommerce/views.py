@@ -3,6 +3,19 @@ from django.db import connection
 
 from django.shortcuts import render, redirect
 
+from django.utils import timezone
+
+def safe_format_time(dt):
+    if not dt:
+        return "12:00 AM"
+    try:
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        return timezone.localtime(dt).strftime('%I:%M %p')
+    except Exception:
+        return dt.strftime('%I:%M %p')
+
+
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -296,7 +309,7 @@ def compare_view(request):
                 'store_name': store_name or '',
                 'city': city_name or '',
                 'country': country_name or '',
-                'image_url': f"/static/logos/{logo_alias}.png",
+                'image_url': _resolve_vehicle_image_url(make_name, model),
             }
 
         compare_vehicles = [row_map[i] for i in selected_ids if i in row_map]
@@ -685,75 +698,11 @@ def api_submit_order(request):
 
 
 def customer_orders_view(request):
-    """View order history strictly for logged in customer."""
+    """View order history — redirects to merged profile page orders tab."""
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to view your order history.")
         return redirect('login')
-    gate = _require_customer_workspace(request)
-    if gate:
-        return gate
-
-    customer = get_customer_from_request(request)
-    orders = []
-    if customer:
-        order_table = connection.ops.quote_name(ORDER_TABLE)
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT o.order_id, o.total_amount, o.order_status, o.fulfillment_type,
-                       o.created_at, v.vehicle_model, m.make_name, s.store_name,
-                       o.payment_preference, e.first_name, e.last_name
-                FROM {order_table} o
-                LEFT JOIN inventory i ON o.inventory_id = i.inventory_id
-                LEFT JOIN vehicle_info v ON i.vehicle_id = v.id
-                LEFT JOIN industry_info m ON v.make_id = m.make_id
-                LEFT JOIN store s ON o.store_id = s.store_id
-                LEFT JOIN employee e ON o.assigned_employee_id = e.employee_id
-                WHERE o.customer_id = %s
-                ORDER BY o.order_id DESC
-            """.format(order_table=order_table), [customer.customer_id])
-            order_rows = cursor.fetchall()
-
-        class _Obj:
-            def __init__(self, **kw): self.__dict__.update(kw)
-        STATUS_MAP = {
-            'NEEDS_APPROVAL': 'Needs Approval',
-            'APPROVED': 'Approved',
-            'PARTIALLY_PAID': 'Partially Paid',
-            'PAID': 'Paid',
-            'FULFILLED': 'Fulfilled',
-            'REJECTED': 'Rejected',
-            'CANCELLED': 'Cancelled',
-        }
-        PAYMENT_MAP = {
-            'ONLINE_CARD': 'Online Card (Upfront)',
-            'STORE_PAYMENT': 'Pay Upfront at Store (Cash/Card)',
-            'CASH_ON_DELIVERY': 'Cash on Delivery (COD)',
-            'FINANCING': 'Financing / Bank Transfer',
-        }
-        for r in order_rows:
-            vehicle_model = r[5]
-            make_name = r[6]
-            orders.append(_Obj(
-                order_id=r[0],
-                total_amount=r[1],
-                order_status=r[2],
-                get_order_status_display=STATUS_MAP.get(r[2], str(r[2])),
-                fulfillment_type=r[3],
-                created_at=r[4],
-                get_payment_preference_display=PAYMENT_MAP.get(r[8], r[8]),
-                assigned_employee=f"{(r[9] or '').strip()} {(r[10] or '').strip()}".strip() or None,
-                invoice=None,
-                inventory=_Obj(vehicle=_Obj(
-                    vehicle_model=vehicle_model,
-                    make=_Obj(make_name=make_name),
-                    image_url=_resolve_vehicle_image_url(make_name, vehicle_model),
-                )),
-                store=_Obj(store_name=r[7]),
-            ))
-    return render(request, 'ecommerce/customer_orders.html', {
-        'customer': customer,
-        'orders': orders
-    })
+    return redirect('/profile/?tab=orders')
 
 
 # ==============================================================================
@@ -761,7 +710,7 @@ def customer_orders_view(request):
 # ==============================================================================
 
 def customer_profile_view(request):
-    """Customer profile management page."""
+    """Customer profile management & merged order history page."""
     if not request.user.is_authenticated:
         messages.info(request, "Please log in to view your customer profile.")
         return redirect('login')
@@ -780,6 +729,7 @@ def customer_profile_view(request):
     test_drives_count = 0
     cities = []
     countries = []
+    orders = []
 
     if customer:
         order_table = connection.ops.quote_name(ORDER_TABLE)
@@ -796,12 +746,14 @@ def customer_profile_view(request):
             profile_picture = ci_row[4] if ci_row and ci_row[4] else None
             profile_picture_url = f"/media/{profile_picture}" if profile_picture else None
             customer_info = _Obj(
-                firstname=ci_row[0], lastname=ci_row[1],
-                customer_status=ci_row[2], customer_address=ci_row[3],
+                firstname=ci_row[0] if ci_row else '',
+                lastname=ci_row[1] if ci_row else '',
+                customer_status=ci_row[2] if ci_row else 'Active',
+                customer_address=ci_row[3] if ci_row else '',
                 profile_picture=profile_picture,
                 profile_picture_url=profile_picture_url,
-                city=_Obj(city_id=ci_row[5], city_name=ci_row[6]),
-                country=_Obj(country_id=ci_row[7], country_name=ci_row[8])
+                city=_Obj(city_id=ci_row[5], city_name=ci_row[6]) if ci_row and ci_row[5] else None,
+                country=_Obj(country_id=ci_row[7], country_name=ci_row[8]) if ci_row and ci_row[7] else None
             ) if ci_row else None
 
             cursor.execute(f"SELECT COUNT(*) FROM {order_table} WHERE customer_id = %s", [customer.customer_id])
@@ -819,6 +771,60 @@ def customer_profile_view(request):
             cursor.execute("SELECT country_id, country_name FROM country ORDER BY country_name")
             countries = [_Obj(country_id=r[0], country_name=r[1]) for r in cursor.fetchall()]
 
+            # Fetch Order Details
+            cursor.execute("""
+                SELECT o.order_id, o.total_amount, o.order_status, o.fulfillment_type,
+                       o.created_at, v.vehicle_model, m.make_name, s.store_name,
+                       o.payment_preference, e.first_name, e.last_name
+                FROM {order_table} o
+                LEFT JOIN inventory i ON o.inventory_id = i.inventory_id
+                LEFT JOIN vehicle_info v ON i.vehicle_id = v.id
+                LEFT JOIN industry_info m ON v.make_id = m.make_id
+                LEFT JOIN store s ON o.store_id = s.store_id
+                LEFT JOIN employee e ON o.assigned_employee_id = e.employee_id
+                WHERE o.customer_id = %s
+                ORDER BY o.order_id DESC
+            """.format(order_table=order_table), [customer.customer_id])
+            order_rows = cursor.fetchall()
+
+            STATUS_MAP = {
+                'NEEDS_APPROVAL': 'Needs Approval',
+                'APPROVED': 'Approved',
+                'PARTIALLY_PAID': 'Partially Paid',
+                'PAID': 'Paid',
+                'FULFILLED': 'Fulfilled',
+                'REJECTED': 'Rejected',
+                'CANCELLED': 'Cancelled',
+            }
+            PAYMENT_MAP = {
+                'ONLINE_CARD': 'Online Card (Upfront)',
+                'STORE_PAYMENT': 'Pay Upfront at Store (Cash/Card)',
+                'CASH_ON_DELIVERY': 'Cash on Delivery (COD)',
+                'FINANCING': 'Financing / Bank Transfer',
+            }
+            for r in order_rows:
+                vehicle_model = r[5]
+                make_name = r[6]
+                orders.append(_Obj(
+                    order_id=r[0],
+                    total_amount=r[1],
+                    order_status=r[2],
+                    get_order_status_display=STATUS_MAP.get(r[2], str(r[2])),
+                    fulfillment_type=r[3],
+                    created_at=r[4],
+                    get_payment_preference_display=PAYMENT_MAP.get(r[8], r[8]),
+                    assigned_employee=f"{(r[9] or '').strip()} {(r[10] or '').strip()}".strip() or None,
+                    invoice=None,
+                    inventory=_Obj(vehicle=_Obj(
+                        vehicle_model=vehicle_model,
+                        make=_Obj(make_name=make_name),
+                        image_url=_resolve_vehicle_image_url(make_name, vehicle_model),
+                    )),
+                    store=_Obj(store_name=r[7]),
+                ))
+
+    active_tab = request.GET.get('tab', 'overview')
+
     return render(request, 'ecommerce/profile.html', {
         'customer': customer,
         'customer_info': customer_info,
@@ -827,6 +833,8 @@ def customer_profile_view(request):
         'test_drives_count': test_drives_count,
         'cities': cities,
         'countries': countries,
+        'orders': orders,
+        'active_tab': active_tab,
     })
 
 
@@ -851,6 +859,15 @@ def api_update_customer_profile(request):
             data = {}
 
     phone = data.get('phone')
+    password = (data.get('password') or '').strip()
+    confirm_password = (data.get('confirm_password') or '').strip()
+
+    if password or confirm_password:
+        if password != confirm_password:
+            return JsonResponse({'success': False, 'error': 'New Password and Confirm Password do not match.'}, status=400)
+        if len(password) < 6:
+            return JsonResponse({'success': False, 'error': 'New Password must be at least 6 characters long.'}, status=400)
+
     firstname = data.get('firstname')
     lastname = data.get('lastname')
     customer_status = data.get('customer_status')
@@ -875,6 +892,20 @@ def api_update_customer_profile(request):
                     "UPDATE customer SET phone = %s WHERE customer_id = %s",
                     [phone, customer.customer_id]
                 )
+
+            if password:
+                cursor.execute(
+                    "UPDATE customer SET password = %s WHERE customer_id = %s",
+                    [password, customer.customer_id]
+                )
+                if hasattr(request, 'user') and request.user.is_authenticated:
+                    try:
+                        request.user.set_password(password)
+                        request.user.save()
+                        from django.contrib.auth import update_session_auth_hash
+                        update_session_auth_hash(request, request.user)
+                    except Exception:
+                        pass
 
             # Check if customer_info record exists
             cursor.execute(
@@ -918,5 +949,239 @@ def api_update_customer_profile(request):
                 ])
 
         return JsonResponse({'success': True, 'message': 'Profile updated successfully!'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@require_POST
+def api_send_customer_message(request):
+    """API endpoint for customers to send messages to a dealership store."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required. Please log in to send a message.'}, status=401)
+    gate = _require_customer_workspace(request, json_mode=True)
+    if gate:
+        return gate
+
+    customer = get_customer_from_request(request)
+    if not customer:
+        return JsonResponse({'success': False, 'error': 'Customer profile not found.'}, status=400)
+
+    data = request.POST
+    if not data:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+
+    inventory_id = data.get('inventory_id')
+    store_id = data.get('store_id')
+    message_text = (data.get('message') or data.get('message_text') or '').strip()
+
+    if not message_text:
+        return JsonResponse({'success': False, 'error': 'Message content cannot be empty.'}, status=400)
+
+    employee_id = None
+    if inventory_id:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT store_id, employee_id FROM inventory WHERE inventory_id = %s", [inventory_id])
+            inv_row = cursor.fetchone()
+            if inv_row:
+                store_id = store_id or inv_row[0]
+                employee_id = inv_row[1]
+
+    if not store_id:
+        return JsonResponse({'success': False, 'error': 'Target store is required.'}, status=400)
+
+    try:
+        from car_sales.models import CustomerMessage
+        now_time = timezone.localtime(timezone.now()).strftime('%I:%M %p')
+        timestamped_line = f"[TIME: {now_time}] {message_text}"
+
+        existing_msg = CustomerMessage.objects.filter(
+            customer_id=customer.customer_id,
+            store_id=int(store_id)
+        ).order_by('message_id').first()
+
+        if existing_msg:
+            existing_msg.message = f"{existing_msg.message}\n{timestamped_line}"
+            existing_msg.updated_at = timezone.now()
+            existing_msg.save()
+            msg = existing_msg
+        else:
+            msg = CustomerMessage.objects.create(
+                customer_id=customer.customer_id,
+                store_id=int(store_id),
+                employee_id=int(employee_id) if employee_id else None,
+                message=timestamped_line
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Your message has been sent successfully!',
+            'message_id': msg.message_id
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+def customer_messages_view(request):
+    """View customer messages grouped into single-record chat threads with precise line timestamps."""
+    if not request.user.is_authenticated:
+        messages.info(request, "Please log in to view your messages.")
+        return redirect('login')
+    gate = _require_customer_workspace(request)
+    if gate:
+        return gate
+
+    customer = get_customer_from_request(request)
+
+    class _Obj:
+        def __init__(self, **kw): self.__dict__.update(kw)
+
+    chat_threads = []
+    stores = []
+
+    if customer:
+        with connection.cursor() as cursor:
+            # Fetch Stores list for sending new messages
+            cursor.execute("SELECT store_id, store_name, address FROM store ORDER BY store_name")
+            stores = [_Obj(store_id=r[0], store_name=r[1], address=r[2]) for r in cursor.fetchall()]
+
+            # Fetch Customer Message History
+            cursor.execute("""
+                SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
+                       s.store_id, s.store_name,
+                       e.employee_id, e.first_name, e.last_name
+                FROM customer_message cm
+                JOIN store s ON cm.store_id = s.store_id
+                LEFT JOIN employee e ON cm.employee_id = e.employee_id
+                WHERE cm.customer_id = %s
+                ORDER BY cm.message_id DESC
+            """, [customer.customer_id])
+            msg_rows = cursor.fetchall()
+
+            for r in msg_rows:
+                msg_id = r[0]
+                full_raw_text = r[1] or ''
+                created_at = r[2]
+                updated_at = r[3]
+                store_id = r[4]
+                store_name = r[5]
+                emp_id = r[6]
+                emp_fn = (r[7] or '').strip()
+                emp_ln = (r[8] or '').strip()
+                default_emp_name = f"{emp_fn} {emp_ln}".strip() if (emp_fn or emp_ln) else "Store Staff"
+
+                # Parse multi-line conversation stored in message field
+                lines = [line.strip() for line in full_raw_text.split('\n') if line.strip()]
+                msg_list = []
+                assigned_emp = default_emp_name if emp_id else None
+                fallback_time_str = safe_format_time(updated_at or created_at)
+                last_msg_time = fallback_time_str
+
+                for line in lines:
+                    msg_time = fallback_time_str
+                    is_reply = False
+                    clean_txt = line
+                    sender_label = "You"
+
+                    if line.startswith('[Reply from '):
+                        is_reply = True
+                        parts = line.split(']: ', 1)
+                        header_part = parts[0].replace('[Reply from ', '').strip()
+                        clean_txt = parts[1] if len(parts) == 2 else line
+
+                        if '|' in header_part:
+                            h_name, h_time = header_part.rsplit('|', 1)
+                            assigned_emp = h_name.strip() or (assigned_emp or "Store Staff")
+                            msg_time = h_time.strip()
+                        else:
+                            assigned_emp = header_part or (assigned_emp or "Store Staff")
+
+                        sender_label = assigned_emp
+                    elif line.startswith('[TIME: '):
+                        is_reply = False
+                        parts = line.split('] ', 1)
+                        if len(parts) == 2:
+                            msg_time = parts[0].replace('[TIME: ', '').strip()
+                            clean_txt = parts[1]
+                        sender_label = "You"
+
+                    last_msg_text = clean_txt
+                    last_msg_time = msg_time
+                    msg_list.append(_Obj(
+                        message_id=msg_id,
+                        message=clean_txt,
+                        is_reply=is_reply,
+                        sender_name=sender_label,
+                        created_at=created_at,
+                        msg_time=msg_time
+                    ))
+
+                chat_threads.append(_Obj(
+                    message_id=msg_id,
+                    store_id=store_id,
+                    store_name=store_name,
+                    assigned_employee=assigned_emp,
+                    last_message=last_msg_text,
+                    last_time_str=last_msg_time,
+                    last_time=updated_at or created_at,
+                    messages=msg_list,
+                ))
+
+    return render(request, 'ecommerce/messages.html', {
+        'customer': customer,
+        'chat_threads': chat_threads,
+        'stores': stores,
+    })
+
+
+@require_POST
+def api_send_superuser_message(request):
+    """API endpoint to send newsletter/direct messages to Head Office Superusers."""
+    data = request.POST
+    if not data:
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+
+    email = (data.get('email') or data.get('footer-email') or '').strip()
+    if not email:
+        return JsonResponse({'success': False, 'error': 'Email address is required.'}, status=400)
+
+    customer = get_customer_from_request(request)
+    customer_id = customer.customer_id if customer else None
+
+    # Get Head Office / First Store for Superusers
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT store_id FROM store ORDER BY store_id ASC LIMIT 1")
+        store_row = cursor.fetchone()
+        main_store_id = store_row[0] if store_row else 1
+
+        if not customer_id:
+            cursor.execute("SELECT customer_id FROM customer WHERE email = %s", [email])
+            c_row = cursor.fetchone()
+            if c_row:
+                customer_id = c_row[0]
+            else:
+                # Get fallback customer for guest inquiries
+                cursor.execute("SELECT customer_id FROM customer ORDER BY customer_id ASC LIMIT 1")
+                fallback_c = cursor.fetchone()
+                customer_id = fallback_c[0] if fallback_c else 1
+
+    try:
+        from car_sales.models import CustomerMessage
+        msg = CustomerMessage.objects.create(
+            customer_id=customer_id,
+            store_id=main_store_id,
+            employee_id=None,  # Head office / superuser inbox
+            message=f"Newsletter Subscription & Superuser Direct Inquiry from: {email}"
+        )
+        return JsonResponse({
+            'success': True,
+            'message': 'Thank you! Your email inquiry has been sent to our Head Office superusers.',
+            'message_id': msg.message_id
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

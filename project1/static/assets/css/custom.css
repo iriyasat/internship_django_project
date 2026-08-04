@@ -201,19 +201,19 @@ body {
   color: var(--text-title) !important;
 }
 
-.footer {
+.admin-footer {
   background-color: var(--bg-card) !important;
   border-top: 1px solid var(--border-color) !important;
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-.footer .copyright,
-.footer .credits {
+.admin-footer .copyright,
+.admin-footer .credits {
   color: var(--text-muted) !important;
 }
-.footer strong, .footer span {
+.admin-footer strong, .admin-footer span {
   color: var(--text-title) !important;
 }
-.footer a {
+.admin-footer a {
   color: var(--card-title-color) !important;
 }
 
@@ -350,13 +350,12 @@ body {
   background-color: var(--hover-sidebar);
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.text-dark {
+.admin-layout h1,
+.admin-layout h2,
+.admin-layout h3,
+.admin-layout h4,
+.admin-layout h5,
+.admin-layout h6 {
   color: var(--text-title) !important;
 }
 

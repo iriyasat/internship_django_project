@@ -1,0 +1,602 @@
+{% extends 'car_sales/base.html' %}
+{% load static %}
+
+{% block title %}Store Messages | Car Sales Management{% endblock %}
+
+{% block content %}
+<style>
+    .message-container {
+        display: flex;
+        height: 650px;
+        background: #ffffff;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        border: 1px solid #e2e8f0;
+    }
+    .message-sidebar {
+        width: 340px;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        background: #f8fafc;
+    }
+    .message-search {
+        padding: 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .search-form-contact {
+        position: relative;
+    }
+    .search-form-contact input {
+        padding-right: 40px;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+    }
+    .search-form-contact button {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+    .message-contacts {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .message-contact {
+        display: flex;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    .message-contact:hover, .message-contact.active {
+        background: #ffffff;
+        border-left: 4px solid #2563eb;
+    }
+    .message-contact__avatar img {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .message-contact__info {
+        flex: 1;
+        margin-left: 12px;
+        overflow: hidden;
+    }
+    .message-contact__name {
+        font-weight: 700;
+        font-size: 14px;
+        color: #0f172a;
+    }
+    .message-contact__preview {
+        font-size: 12px;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .message-contact__meta {
+        text-align: right;
+        font-size: 11px;
+        color: #94a3b8;
+    }
+    .message-chat {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+    }
+    .chat-thread-pane {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .message-chat__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .message-chat__user {
+        display: flex;
+        align-items: center;
+    }
+    .message-chat__avatar img {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+    }
+    .message-chat__user-info {
+        margin-left: 12px;
+    }
+    .message-chat__name {
+        font-weight: 700;
+        font-size: 16px;
+        color: #0f172a;
+    }
+    .message-chat__email {
+        font-size: 12px;
+        color: #64748b;
+    }
+    .message-chat__body {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: #f8fafc;
+    }
+    .message-date-separator {
+        text-align: center;
+        margin: 12px 0;
+    }
+    .message-date-separator span {
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 12px;
+    }
+    .message-item {
+        display: flex;
+        flex-direction: column;
+        max-width: 75%;
+    }
+    .message-item--sent {
+        align-self: flex-end;
+        align-items: flex-end;
+    }
+    .message-item--received {
+        align-self: flex-start;
+        align-items: flex-start;
+    }
+    .message-item__bubble {
+        padding: 12px 18px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    .message-item--sent .message-item__bubble {
+        background: #2563eb;
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+    }
+    .message-item--received .message-item__bubble {
+        background: #ffffff;
+        color: #1e293b;
+        border: 1px solid #e2e8f0;
+        border-bottom-left-radius: 4px;
+    }
+    .message-item__time {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .message__action {
+        display: flex !important;
+        align-items: center !important;
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        background: #ffffff;
+        gap: 12px;
+    }
+    .message-chat__input {
+        flex: 1;
+        margin: 0;
+    }
+    .message-chat__input-field {
+        width: 100%;
+        border-radius: 30px;
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        padding: 10px 20px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .message-chat__input-field:focus {
+        background-color: #ffffff;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .message-chat__send {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 50%;
+        background-color: #2563eb;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.1s ease;
+        flex-shrink: 0;
+    }
+    .message-chat__send:hover {
+        background-color: #1d4ed8;
+        transform: scale(1.05);
+    }
+</style>
+
+<div class="pagetitle">
+  <h1>Store Customer Messages</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/dashboard/">Home</a></li>
+      <li class="breadcrumb-item active">Store Messages</li>
+    </ol>
+  </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+  <div class="row">
+
+    <!-- Store Info Card -->
+    <div class="col-12 mb-4">
+      <div class="card border-0 shadow-sm rounded-3 bg-primary text-white">
+        <div class="card-body p-4 d-flex align-items-center justify-content-between">
+          <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-shop me-2"></i> {{ store_name }}</h4>
+            <p class="mb-0 text-white-50">Manage customer inquiries for your assigned store in real time.</p>
+          </div>
+          <div>
+            <span class="badge bg-light text-primary fs-6 px-3 py-2 rounded-pill fw-bold">
+              {{ unaccepted_count }} Pending Inquiries
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 1: Unaccepted Customer Messages (Queue for Store Staff) -->
+    <div class="col-12 mb-4">
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h5 class="card-title m-0 fw-bold text-dark"><i class="bi bi-inbox-fill text-warning me-2"></i> Incoming Customer Inquiries (Unaccepted Queue)</h5>
+          <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Available to All Store Staff</span>
+        </div>
+        <div class="card-body p-4">
+          {% if unaccepted_messages %}
+            <div class="row g-3">
+              {% for thread in unaccepted_messages %}
+              <div class="col-12">
+                <div class="border rounded-3 p-4 bg-light">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h6 class="fw-bold text-dark mb-1"><i class="bi bi-person-circle text-primary me-2"></i> {{ thread.customer.name }}</h6>
+                      <small class="text-muted"><i class="bi bi-envelope me-1"></i> {{ thread.customer.email }} | <i class="bi bi-telephone me-1"></i> {{ thread.customer.phone|default:"N/A" }}</small>
+                    </div>
+                    <div class="text-end">
+                      <span class="badge bg-secondary mb-1">Chat #{{ thread.message_id }}</span>
+                      <small class="d-block text-muted"><i class="bi bi-clock me-1"></i> {{ thread.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                  </div>
+                  
+                  <div class="p-3 bg-white border rounded-3 my-3" style="white-space: pre-line;">
+                    <strong>Inquiry Message:</strong><br>
+                    {{ thread.last_message }}
+                  </div>
+                  
+                  <div class="text-end">
+                    {% if employee_profile %}
+                    <button type="button" onclick="acceptCustomerMessage({{ thread.message_id }})" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                      <i class="bi bi-check-circle me-1"></i> Accept Chat
+                    </button>
+                    {% else %}
+                    <span class="badge bg-info text-dark rounded-pill px-3 py-2 fw-semibold">
+                      <i class="bi bi-shop me-1"></i> {{ thread.store.name }} (Unaccepted)
+                    </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-check2-circle display-4 mb-2 text-success"></i>
+              <p class="mb-0">No pending unaccepted customer inquiries for your store.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: My Accepted Customer Messages (2-Column Chat Container) -->
+    <div class="col-12">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h5 class="card-title m-0 fw-bold text-dark"><i class="bi bi-chat-dots-fill text-success me-2"></i> My Accepted Customer Chats</h5>
+          <span class="badge bg-success rounded-pill px-3 py-2"><i class="bi bi-broadcast me-1"></i> Live Real-Time Chat</span>
+        </div>
+        <div class="card-body p-0">
+          {% if accepted_messages %}
+            <div class="message-container">
+                <!-- Left Sidebar - Contact List -->
+                <div class="message-sidebar">
+                    <div class="message-search">
+                        <form action="#" class="search-form-contact" onsubmit="event.preventDefault();">
+                            <input type="text" name="SearchUsers" id="SearchUsers" class="form-control" placeholder="Search Customers..." onkeyup="filterContacts(this.value)">
+                            <button type="submit">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M17.9438 17.0575L14.0321 13.1466C15.1659 11.7854 15.7312 10.0395 15.6106 8.27214C15.4899 6.50475 14.6925 4.85192 13.3843 3.65748C12.076 2.46304 10.3576 1.81895 8.58657 1.8592C6.81553 1.89945 5.12818 2.62094 3.87554 3.87358C2.62289 5.12622 1.9014 6.81357 1.86115 8.58462C1.8209 10.3557 2.46499 12.074 3.65943 13.3823C4.85387 14.6906 6.5067 15.488 8.27409 15.6086C10.0415 15.7293 11.7874 15.1639 13.1485 14.0302L17.0595 17.9419C17.1175 17.9999 17.1865 18.046 17.2623 18.0774C17.3382 18.1089 17.4195 18.125 17.5016 18.125C17.5838 18.125 17.6651 18.1089 17.741 18.0774C17.8168 18.046 17.8858 17.9999 17.9438 17.9419C18.0019 17.8838 18.048 17.8149 18.0794 17.739C18.1108 17.6631 18.127 17.5818 18.127 17.4997C18.127 17.4176 18.1108 17.3363 18.0794 17.2604C18.048 17.1845 18.0019 17.1156 17.9438 17.0575ZM3.12664 8.74969C3.12664 7.63717 3.45654 6.54963 4.07463 5.62461C4.69271 4.69958 5.57121 3.97861 6.59905 3.55287C7.62688 3.12712 8.75788 3.01573 9.84903 3.23277C10.9402 3.44981 11.9424 3.98554 12.7291 4.77221C13.5158 5.55888 14.0515 6.56116 14.2686 7.65231C14.4856 8.74345 14.3742 9.87445 13.9485 10.9023C13.5227 11.9301 12.8018 12.8086 11.8767 13.4267C10.9517 14.0448 9.86416 14.3747 8.75164 14.3747C7.26031 14.373 5.83053 13.7799 4.77599 12.7253C3.72146 11.6708 3.1283 10.241 3.12664 8.74969Z" fill="#1C1C1C"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="message-contacts" id="contactList">
+                        {% for thread in accepted_messages %}
+                        <div class="message-contact {% if forloop.first %}active{% endif %}" data-chat-id="{{ thread.message_id }}" onclick="switchThread('{{ thread.message_id }}', this)">
+                            <div class="message-contact__avatar">
+                                <img src="https://ui-avatars.com/api/?name={{ thread.customer.name|urlencode }}&background=2563eb&color=fff&size=64" alt="{{ thread.customer.name }}">
+                            </div>
+                            <div class="message-contact__info">
+                                <div class="message-contact__name">{{ thread.customer.name }}</div>
+                                <div class="message-contact__preview">{{ thread.last_message|truncatechars:30 }}</div>
+                            </div>
+                            <div class="message-contact__meta">
+                                <div class="message-contact__time">{{ thread.last_time_str }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Right Main Area - Chat Window -->
+                <div class="message-chat">
+                    {% for thread in accepted_messages %}
+                    <div class="chat-thread-pane {% if not forloop.first %}d-none{% endif %}" id="threadPane_{{ thread.message_id }}" data-chat-thread-id="{{ thread.message_id }}">
+                        <!-- Chat Header -->
+                        <div class="message-chat__header">
+                            <div class="message-chat__user">
+                                <div class="message-chat__avatar user-online">
+                                    <img src="https://ui-avatars.com/api/?name={{ thread.customer.name|urlencode }}&background=2563eb&color=fff&size=64" alt="{{ thread.customer.name }}">
+                                </div>
+                                <div class="message-chat__user-info">
+                                    <div class="message-chat__name">{{ thread.customer.name }}</div>
+                                    <div class="message-chat__email">
+                                        <i class="bi bi-envelope me-1"></i> {{ thread.customer.email }} | <i class="bi bi-telephone me-1"></i> {{ thread.customer.phone|default:"N/A" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="message-chat__actions">
+                                <span class="badge bg-success rounded-pill px-3 py-2">
+                                    {% if employee_profile %}Accepted by You{% else %}Accepted by {{ thread.employee.name }} ({{ thread.store.name }}){% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages Body -->
+                        <div class="message-chat__body" id="chatHistory_{{ thread.message_id }}">
+                            <div class="message-date-separator">
+                                <span>Today</span>
+                            </div>
+
+                            {% for m in thread.messages %}
+                                {% if m.is_reply %}
+                                <!-- Staff Reply -->
+                                <div class="message-item message-item--sent">
+                                    <div class="message-item__bubble">
+                                        <div class="message-item__text">{{ m.message }}</div>
+                                    </div>
+                                    <div class="message-item__time">
+                                        <span>{{ m.sender_name }} • {{ m.msg_time|default:m.created_at|date:"h:i A" }}</span>
+                                        <i class="fa-solid fa-check-double text-info ms-1" title="Delivered & Updated"></i>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <!-- Customer Message -->
+                                <div class="message-item message-item--received">
+                                    <div class="message-item__bubble">
+                                        <div class="message-item__text">{{ m.message }}</div>
+                                    </div>
+                                    <div class="message-item__time"><i class="bi bi-person me-1"></i> {{ thread.customer.name }} • {{ m.msg_time|default:m.created_at|date:"h:i A" }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Message Input Bar (Side-by-side Layout) -->
+                        {% if employee_profile %}
+                        <div class="message__action d-flex align-items-center p-3 border-top bg-white gap-2">
+                            <div class="message-chat__input">
+                                <input type="text" id="replyText_{{ thread.message_id }}" placeholder="Write a response to {{ thread.customer.name }}..." class="message-chat__input-field" onkeypress="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendCustomerReply({{ thread.message_id }}); }">
+                            </div>
+                            <button type="button" onclick="sendCustomerReply({{ thread.message_id }})" class="message-chat__send">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M21.3112 2.689C21.1226 2.5005 20.8871 2.36569 20.629 2.29846C20.371 2.23122 20.0997 2.234 19.843 2.3065H19.829L1.83461 7.7665C1.54248 7.85069 1.28283 8.02166 1.09007 8.25676C0.897302 8.49185 0.780525 8.77997 0.75521 9.08294C0.729895 9.3859 0.797238 9.6894 0.948314 9.95323C1.09939 10.2171 1.32707 10.4287 1.60117 10.5602L9.56242 14.4377L13.4343 22.3943C13.5547 22.6513 13.7462 22.8685 13.9861 23.0201C14.226 23.1718 14.5042 23.2517 14.788 23.2502C14.8312 23.2502 14.8743 23.2484 14.9174 23.2446C15.2201 23.2201 15.5081 23.1036 15.7427 22.9107C15.9773 22.7178 16.1473 22.4578 16.2299 22.1656L21.6862 4.17119C21.6862 4.1665 21.6862 4.16181 21.6862 4.15712C21.7596 3.90115 21.7636 3.63024 21.6977 3.37223C21.6318 3.11421 21.4984 2.8784 21.3112 2.689ZM14.7965 21.7362L14.7918 21.7493V21.7427L11.0362 14.0271L15.5362 9.52712C15.6709 9.38533 15.7449 9.19651 15.7424 9.00094C15.7399 8.80537 15.6611 8.61852 15.5228 8.48022C15.3845 8.34191 15.1976 8.26311 15.002 8.26061C14.8065 8.2581 14.6177 8.3321 14.4759 8.46681L9.97586 12.9668L2.25742 9.21119H2.25086H2.26399L20.2499 3.75025L14.7965 21.7362Z" fill="white"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+          {% else %}
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-chat-square-text display-4 mb-2 text-secondary"></i>
+              <p class="mb-0">You haven't accepted any customer chats yet. Click "Accept Chat" on incoming inquiries above to handle them.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function switchThread(chatId, el) {
+    document.querySelectorAll('.message-contact').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+
+    document.querySelectorAll('.chat-thread-pane').forEach(pane => pane.classList.add('d-none'));
+    const activePane = document.getElementById(`threadPane_${chatId}`);
+    if (activePane) {
+      activePane.classList.remove('d-none');
+      const chatBody = document.getElementById(`chatHistory_${chatId}`);
+      if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  }
+
+  function filterContacts(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#contactList .message-contact').forEach(item => {
+      const text = item.innerText.toLowerCase();
+      item.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+  }
+
+  function acceptCustomerMessage(msgId) {
+    fetch(`/api/employee/messages/${msgId}/accept/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status) {
+        location.reload();
+      } else {
+        alert(data.message || 'Failed to accept chat.');
+      }
+    });
+  }
+
+  function sendCustomerReply(msgId) {
+    const replyInput = document.getElementById(`replyText_${msgId}`);
+    const replyText = replyInput ? replyInput.value.trim() : '';
+
+    if (!replyText) return;
+
+    // 1. Real-time instant local UI append (Zero latency)
+    const chatContainer = document.getElementById(`chatHistory_${msgId}`);
+    if (chatContainer) {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const empName = "{{ employee_profile.first_name }} {{ employee_profile.last_name }}".trim() || "Barbara Santos";
+      
+      const newBubbleHtml = `
+        <div class="message-item message-item--sent">
+          <div class="message-item__bubble">
+            <div class="message-item__text">${replyText}</div>
+          </div>
+          <div class="message-item__time">
+            <span>${empName} • ${timeStr}</span>
+            <i class="fa-solid fa-check-double text-info ms-1" title="Delivered & Updated"></i>
+          </div>
+        </div>
+      `;
+      chatContainer.insertAdjacentHTML('beforeend', newBubbleHtml);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    replyInput.value = '';
+
+    // 2. Send POST payload to server in background
+    fetch(`/api/employee/messages/${msgId}/reply/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({ message: replyText })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.status) {
+        alert(data.message || 'Failed to send reply.');
+      }
+    });
+  }
+
+  // 3. Real-Time Auto Poller (Polls every 3 seconds for new incoming customer messages)
+  setInterval(function() {
+    document.querySelectorAll('[data-chat-thread-id]').forEach(el => {
+      const msgId = el.getAttribute('data-chat-thread-id');
+      if (msgId) {
+        fetch(`/api/employee/messages/${msgId}/poll/`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.status && data.messages) {
+              const chatContainer = document.getElementById(`chatHistory_${msgId}`);
+              if (chatContainer) {
+                let html = `<div class="message-date-separator"><span>Today</span></div>`;
+                data.messages.forEach(m => {
+                  if (m.is_reply) {
+                    html += `
+                      <div class="message-item message-item--sent">
+                        <div class="message-item__bubble">
+                          <div class="message-item__text">${m.message}</div>
+                        </div>
+                        <div class="message-item__time">
+                          <span>${m.sender_name} • ${m.time}</span>
+                          <i class="fa-solid fa-check-double text-info ms-1" title="Delivered & Updated"></i>
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    html += `
+                      <div class="message-item message-item--received">
+                        <div class="message-item__bubble">
+                          <div class="message-item__text">${m.message}</div>
+                        </div>
+                        <div class="message-item__time"><i class="bi bi-person me-1"></i> ${m.sender_name} • ${m.time}</div>
+                      </div>
+                    `;
+                  }
+                });
+
+                if (chatContainer.getAttribute('data-last-html') !== html) {
+                  const shouldScroll = chatContainer.scrollTop + chatContainer.clientHeight >= chatContainer.scrollHeight - 60;
+                  chatContainer.innerHTML = html;
+                  chatContainer.setAttribute('data-last-html', html);
+                  if (shouldScroll) chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+              }
+            }
+          });
+      }
+    });
+  }, 3000);
+
+  // Initial scroll to bottom on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[id^="chatHistory_"]').forEach(el => {
+      el.scrollTop = el.scrollHeight;
+    });
+  });
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+{% endblock %}

@@ -588,3 +588,40 @@ class EmployeeHierarchy(models.Model):
     class Meta:
         db_table = 'employee_hierarchy'
         verbose_name_plural = 'employee hierarchies'
+
+
+class CustomerMessage(models.Model):
+    message_id = models.AutoField(primary_key=True, verbose_name="Message ID")
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        db_column='customer_id',
+        related_name='customer_messages',
+        verbose_name="Customer"
+    )
+    store = models.ForeignKey(
+        Store,
+        on_delete=models.CASCADE,
+        db_column='store_id',
+        related_name='customer_messages',
+        verbose_name="Store"
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='employee_id',
+        related_name='customer_messages',
+        verbose_name="Employee"
+    )
+    message = models.TextField(verbose_name="Message")
+    created_at = TruncatedDateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = TruncatedDateTimeField(auto_now=True, verbose_name="Update Time")
+
+    def __str__(self):
+        return f"Message #{self.message_id} - Customer #{self.customer_id} to Store #{self.store_id}"
+
+    class Meta:
+        db_table = 'customer_message'
+        verbose_name_plural = 'customer messages'
