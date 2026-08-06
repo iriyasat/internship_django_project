@@ -13,6 +13,7 @@ def chrome_devtools_json(request):
     return JsonResponse({})
 
 urlpatterns = [
+    path('favicon.ico', RedirectView.as_view(url='/static/assets/img/favicon.png', permanent=True)),
     path('django-admin/login/', RedirectView.as_view(url='/login/', query_string=True)),
     path('django-admin/logout/', RedirectView.as_view(url='/logout/', query_string=True)),
     
@@ -27,4 +28,5 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

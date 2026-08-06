@@ -889,11 +889,7 @@ def invoice_api(request, pk=None):
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@login_required
 def documentation_view(request):
-    if not is_car_sales_admin_user(request.user):
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied
     base_url = request.build_absolute_uri('/')[:-1]
     return render(request, 'car_sales/documentation.html', {
         'active_tab': 'documentation',

@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const isStaff = {% if request.user.is_staff %}true{% else %}false{% endif %};
   const isSuperuser = {% if is_admin %}true{% else %}false{% endif %};
-  const canModifyInvoice = {% if can_delete or is_admin %}true{% else %}false{% endif; %};
+  const canModifyInvoice = {% if can_delete or is_admin %}true{% else %}false{% endif %};
   const currentEmployeeId = {{ current_employee_id|default:"null" }};
 
   let bootstrapModal = null;

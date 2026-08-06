@@ -38,6 +38,8 @@ def get_workspace_for_user(user):
 
 
 def is_car_sales_workspace_user(user):
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        return True
     return get_workspace_for_user(user) == "car_sales"
 
 
@@ -46,6 +48,8 @@ def is_customer_workspace_user(user):
 
 
 def is_car_sales_admin_user(user):
+    if getattr(user, "is_superuser", False):
+        return True
     username = _resolve_username(user)
     return get_workspace_for_user(user) == "car_sales" and (
         username == CAR_SALES_ADMIN_USERNAME or username.startswith("car_sales_")
@@ -53,6 +57,8 @@ def is_car_sales_admin_user(user):
 
 
 def is_ecommerce_admin_user(user):
+    if getattr(user, "is_superuser", False):
+        return True
     username = _resolve_username(user)
     return get_workspace_for_user(user) == "ecommerce" and (
         username == ECOMMERCE_ADMIN_USERNAME or username.startswith("ecomm_")
