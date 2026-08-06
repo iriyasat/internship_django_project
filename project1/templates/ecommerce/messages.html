@@ -5,29 +5,34 @@
 
 {% block extra_css %}
 <style>
+    /* ─── Message Container Layout ─── */
     .message-container {
         display: flex;
-        height: 650px;
+        height: clamp(520px, 75vh, 720px);
         background: #ffffff;
         border-radius: 20px;
         overflow: hidden;
         box-shadow: 0 10px 30px rgba(0,0,0,0.06);
         border: 1px solid #e2e8f0;
+        position: relative;
     }
+
+    /* ─── Sidebar ─── */
     .message-sidebar {
-        width: 340px;
+        width: 320px;
+        min-width: 320px;
         border-right: 1px solid #e2e8f0;
         display: flex;
         flex-direction: column;
         background: #f8fafc;
+        transition: transform 0.3s ease;
+        z-index: 2;
     }
     .message-search {
         padding: 16px;
         border-bottom: 1px solid #e2e8f0;
     }
-    .search-form-contact {
-        position: relative;
-    }
+    .search-form-contact { position: relative; }
     .search-form-contact input {
         padding-right: 40px;
         border-radius: 12px;
@@ -46,6 +51,8 @@
         flex: 1;
         overflow-y: auto;
     }
+
+    /* ─── Contact Item ─── */
     .message-contact {
         display: flex;
         align-items: center;
@@ -95,11 +102,14 @@
         line-height: 20px;
         margin-top: 4px;
     }
+
+    /* ─── Chat Panel ─── */
     .message-chat {
         flex: 1;
         display: flex;
         flex-direction: column;
         background: #ffffff;
+        min-width: 0;
     }
     .chat-thread-pane {
         display: flex;
@@ -110,42 +120,74 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 16px 24px;
+        padding: 14px 20px;
         border-bottom: 1px solid #e2e8f0;
+        gap: 10px;
+        flex-shrink: 0;
     }
     .message-chat__user {
         display: flex;
         align-items: center;
+        min-width: 0;
+        flex: 1;
+        gap: 10px;
     }
     .message-chat__avatar img {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
+        flex-shrink: 0;
     }
-    .message-chat__user-info {
-        margin-left: 12px;
-    }
+    .message-chat__user-info { min-width: 0; }
     .message-chat__name {
         font-weight: 700;
-        font-size: 16px;
+        font-size: 15px;
         color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .message-chat__email {
         font-size: 12px;
         color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
+
+    /* Mobile back button — hidden on desktop */
+    .btn-chat-back {
+        display: none;
+        width: 34px;
+        height: 34px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #1e293b;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+    .btn-chat-back:hover {
+        background: #e2e8f0;
+    }
+
+    /* ─── Chat Body ─── */
     .message-chat__body {
         flex: 1;
-        padding: 24px;
+        padding: 20px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
         background: #f8fafc;
     }
     .message-date-separator {
         text-align: center;
-        margin: 12px 0;
+        margin: 8px 0;
     }
     .message-date-separator span {
         background: #e2e8f0;
@@ -158,7 +200,7 @@
     .message-item {
         display: flex;
         flex-direction: column;
-        max-width: 75%;
+        max-width: 78%;
     }
     .message-item--sent {
         align-self: flex-end;
@@ -169,7 +211,7 @@
         align-items: flex-start;
     }
     .message-item__bubble {
-        padding: 12px 18px;
+        padding: 10px 16px;
         border-radius: 18px;
         font-size: 14px;
         line-height: 1.5;
@@ -193,24 +235,24 @@
         align-items: center;
         gap: 4px;
     }
+
+    /* ─── Message Input Bar ─── */
     .message__action {
         display: flex !important;
         align-items: center !important;
-        padding: 12px 20px;
+        padding: 12px 16px;
         border-top: 1px solid #e2e8f0;
         background: #ffffff;
-        gap: 12px;
+        gap: 10px;
+        flex-shrink: 0;
     }
-    .message-chat__input {
-        flex: 1;
-        margin: 0;
-    }
+    .message-chat__input { flex: 1; }
     .message-chat__input-field {
         width: 100%;
         border-radius: 30px;
         background-color: #f1f5f9;
         border: 1px solid #cbd5e1;
-        padding: 10px 20px;
+        padding: 10px 18px;
         font-size: 14px;
         outline: none;
         transition: all 0.2s ease;
@@ -221,10 +263,9 @@
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
     .message-chat__send {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
         border-radius: 50%;
         background-color: #2563eb;
         border: none;
@@ -238,6 +279,67 @@
     .message-chat__send:hover {
         background-color: #1d4ed8;
         transform: scale(1.05);
+    }
+
+    /* ─── Mobile Responsive ─── */
+    @media (max-width: 767.98px) {
+        .message-container {
+            height: calc(100vh - 160px);
+            min-height: 500px;
+            border-radius: 14px;
+            flex-direction: column;
+        }
+
+        /* Sidebar fills full width, slides out when chat is open */
+        .message-sidebar {
+            width: 100%;
+            min-width: unset;
+            border-right: none;
+            border-bottom: 1px solid #e2e8f0;
+            position: absolute;
+            inset: 0;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+        }
+        .message-sidebar.mobile-hidden {
+            transform: translateX(-100%);
+            pointer-events: none;
+        }
+
+        /* Chat panel fills full width, slides in from right */
+        .message-chat {
+            position: absolute;
+            inset: 0;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 3;
+        }
+        .message-chat.mobile-active {
+            transform: translateX(0);
+        }
+
+        /* Show back button on mobile */
+        .btn-chat-back {
+            display: flex;
+        }
+
+        /* Smaller bubbles on tiny screens */
+        .message-item {
+            max-width: 88%;
+        }
+        .message-chat__body {
+            padding: 14px;
+        }
+        .message-chat__header {
+            padding: 12px 14px;
+        }
+        .message__action {
+            padding: 10px 12px;
+        }
+        .message-chat__actions .btn {
+            font-size: 0.78rem;
+            padding: 5px 10px;
+        }
     }
 </style>
 {% endblock %}
@@ -304,6 +406,10 @@
                 <div class="chat-thread-pane {% if not forloop.first %}d-none{% endif %}" id="threadPane_{{ thread.store_id }}" data-store-id="{{ thread.store_id }}" data-message-id="{{ thread.message_id }}">
                     <!-- Chat Header -->
                     <div class="message-chat__header">
+                        <!-- Mobile Back Button -->
+                        <button class="btn-chat-back" onclick="showSidebar()" aria-label="Back to contacts">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
                         <div class="message-chat__user">
                             <div class="message-chat__avatar user-online">
                                 <img src="https://ui-avatars.com/api/?name={{ thread.store_name|urlencode }}&background=2563eb&color=fff&size=64" alt="{{ thread.store_name }}">
@@ -425,6 +531,22 @@
 
 {% block extra_js %}
 <script>
+    function isMobile() {
+        return window.innerWidth < 768;
+    }
+
+    function showSidebar() {
+        document.querySelector('.message-sidebar').classList.remove('mobile-hidden');
+        document.querySelector('.message-chat').classList.remove('mobile-active');
+    }
+
+    function showChat() {
+        if (isMobile()) {
+            document.querySelector('.message-sidebar').classList.add('mobile-hidden');
+            document.querySelector('.message-chat').classList.add('mobile-active');
+        }
+    }
+
     function switchThread(storeId, el) {
         document.querySelectorAll('.message-contact').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
@@ -436,6 +558,9 @@
             const chatBody = document.getElementById(`chatBody_${storeId}`);
             if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
         }
+
+        // On mobile: slide the chat panel in
+        showChat();
     }
 
     function filterContacts(query) {

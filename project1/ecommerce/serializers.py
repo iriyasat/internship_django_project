@@ -1005,7 +1005,7 @@ class CartService:
             cart_row = cursor.fetchone()
             if not cart_row:
                 cursor.execute(
-                    f"INSERT INTO {CART_TABLE} (customer_id, created_at) VALUES (%s, NOW())",
+                    f"INSERT INTO {CART_TABLE} (customer_id, created_at, updated_at) VALUES (%s, NOW(), NOW())",
                     [customer.customer_id]
                 )
                 cursor.execute(
@@ -1074,7 +1074,7 @@ class CartService:
             cart_row = cursor.fetchone()
             if not cart_row:
                 cursor.execute(
-                    f"INSERT INTO {CART_TABLE} (customer_id, created_at) VALUES (%s, NOW())",
+                    f"INSERT INTO {CART_TABLE} (customer_id, created_at, updated_at) VALUES (%s, NOW(), NOW())",
                     [customer.customer_id]
                 )
                 cursor.execute(
