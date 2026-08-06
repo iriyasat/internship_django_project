@@ -41,12 +41,10 @@ urlpatterns = [
     path('api-page/inventory/', inventory_api_page_view, name='inventory_api_page_view'),
     path('api/budgets/stats/', budget_stats_api, name='budget_stats_api'),
 
-    # Invoice URLs
     path('invoices/', invoice_view, name='invoice'),
     path('api/invoices/', invoice_api, name='invoice_api'),
     path('api/invoices/<int:pk>/', invoice_api, name='invoice_api_detail'),
 
-    # Documentation URL
     path('documentation/', documentation_view, name='documentation'),
     path('employee/messages/', employee_messages_view, name='employee_messages'),
     path('api/employee/messages/<int:pk>/accept/', api_accept_customer_message, name='api_accept_customer_message'),
@@ -54,7 +52,6 @@ urlpatterns = [
     path('api/employee/messages/<int:pk>/poll/', api_poll_chat_message, name='api_poll_chat_message'),
 ]
 
-# Dynamically register the 10 CRUD API endpoints to avoid boilerplate code
 api_routes = [
     ('countries', country_api, 'country_api'),
     ('cities', city_api, 'city_api'),

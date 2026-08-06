@@ -8,21 +8,20 @@
     <title>{% block title %}Automobile | Premier Online Vehicle Marketplace{% endblock %}</title>
     <link rel="icon" href="{% static 'assets/img/favicon.png' %}" type="image/png">
     <link rel="apple-touch-icon" href="{% static 'assets/img/apple-touch-icon.png' %}">
-    <!-- Google Fonts & FontAwesome -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
-    <!-- Master Custom E-Commerce CSS (Loaded LAST to override framework defaults) -->
+
     <link rel="stylesheet" href="{% static 'assets/css/ecommerce.css' %}">
 
     {% block extra_css %}{% endblock %}
 </head>
 <body class="d-flex flex-column min-vh-100">
 
-    <!-- FIXED SHARED NAVBAR (Customer Focused) -->
     <nav class="landing-nav" id="landing-nav">
         <a href="/" class="nav-logo">
             <img src="{% static 'assets/img/logo.png' %}" alt="Logo">
@@ -39,7 +38,7 @@
 
         <div class="nav-actions">
             {% if request.user.is_authenticated %}
-                <!-- Desktop profile dropdown -->
+
                 <details class="profile-menu d-none d-lg-block">
                     <summary aria-label="Open profile menu">
                         <img
@@ -81,7 +80,6 @@
                 </a>
             {% endif %}
 
-            <!-- Mobile Hamburger Toggle -->
             <button class="mobile-menu-toggle d-lg-none" id="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false">
                 <span class="hamburger-bar"></span>
                 <span class="hamburger-bar"></span>
@@ -90,12 +88,10 @@
         </div>
     </nav>
 
-    <!-- Mobile Drawer Overlay -->
     <div class="mobile-nav-overlay" id="mobile-nav-overlay" aria-hidden="true"></div>
 
-    <!-- Mobile Slide-In Drawer -->
     <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
-        <!-- Drawer Header -->
+
         <div class="mobile-drawer-header">
             <a href="/" class="nav-logo">
                 <img src="{% static 'assets/img/logo.png' %}" alt="Logo">
@@ -106,7 +102,6 @@
             </button>
         </div>
 
-        <!-- Drawer Nav Links -->
         <nav class="mobile-drawer-nav">
             <a href="/" class="mobile-drawer-link">
                 <span class="mobile-drawer-link-icon"><i class="fa-solid fa-house"></i></span>
@@ -130,10 +125,8 @@
             </a>
         </nav>
 
-        <!-- Drawer Divider -->
         <div class="mobile-drawer-divider"></div>
 
-        <!-- Drawer Auth / Actions -->
         <div class="mobile-drawer-actions">
             {% if request.user.is_authenticated %}
                 <p class="mobile-drawer-section-label">My Account</p>
@@ -164,9 +157,17 @@
         </div>
     </aside>
 
-
-    <!-- Main Body Content -->
     <main class="flex-grow-1">
+        {% if messages %}
+            <div class="container mt-3">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 

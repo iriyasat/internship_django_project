@@ -150,7 +150,7 @@
 </div>
 
 <section class="section">
-  <!-- Top Welcome & Postman Collection Generator Banner -->
+
   <div class="card mb-4" style="background: linear-gradient(135deg, #4154f1 0%, #1e293b 100%); color: #fff; border: none; border-radius: 16px;">
     <div class="card-body p-4 p-md-5">
       <div class="row align-items-center">
@@ -176,7 +176,7 @@
   </div>
 
   <div class="row">
-    <!-- Navigation Sidebar -->
+
     <div class="col-lg-3">
       <div class="card shadow-sm sticky-top" style="top: 80px; z-index: 10; border-radius: 12px;">
         <div class="card-header bg-white py-3 border-0">
@@ -199,10 +199,8 @@
       </div>
     </div>
 
-    <!-- API Reference Sections -->
     <div class="col-lg-9">
-      
-      <!-- Authentication Guide -->
+
       <div id="authentication-guide" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
         <h3 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-shield-lock-fill text-primary"></i> API Authentication</h3>
         <p>
@@ -240,12 +238,11 @@
         </div>
       </div>
 
-      <!-- Section: Reports & Analytics -->
       <h2 id="report-apis" class="doc-section-header">Reports & Analytics APIs</h2>
       <p class="text-muted">GET-only endpoints that output aggregated stats, charts, and report matrices.</p>
 
       <div class="api-container">
-        <!-- Employee Sales -->
+
         <div class="api-card" data-search="employee sales report get /api/employee_sales/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -277,7 +274,6 @@
           </div>
         </div>
 
-        <!-- Store Sales -->
         <div class="api-card" data-search="store sales report get /api/store_sales/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -309,7 +305,6 @@
           </div>
         </div>
 
-        <!-- Store Vehicle Sales -->
         <div class="api-card" data-search="store vehicle sales report get /api/store_vehicle_sales/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -323,7 +318,6 @@
           </div>
         </div>
 
-        <!-- Budget vs Sales -->
         <div class="api-card" data-search="budget vs sales report stats get /api/budget-vs-sales/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -337,7 +331,6 @@
           </div>
         </div>
 
-        <!-- Budget Stats -->
         <div class="api-card" data-search="budget stats get /api/budgets/stats/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -352,12 +345,11 @@
         </div>
       </div>
 
-      <!-- Section: Invoices API -->
       <h2 id="invoice-apis" class="doc-section-header">Invoices Management API</h2>
       <p class="text-muted">CRUD endpoints for Invoice instances. Handles billing details linked to sales records.</p>
 
       <div class="api-container">
-        <!-- List Invoices -->
+
         <div class="api-card" data-search="list invoices query page size get /api/invoices/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -382,7 +374,6 @@
           </div>
         </div>
 
-        <!-- Create Invoice -->
         <div class="api-card" data-search="create invoice post /api/invoices/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -409,7 +400,6 @@
           </div>
         </div>
 
-        <!-- Update Invoice -->
         <div class="api-card" data-search="update invoice put /api/invoices/<id>/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -424,22 +414,20 @@
         </div>
       </div>
 
-      <!-- Section: Core CRUD APIs -->
       <h2 id="crud-apis" class="doc-section-header">Core Entity CRUD APIs</h2>
       <p class="text-muted">
         The system dynamically registers CRUD API endpoints for the main database entities. These endpoints support <code>GET</code> (list/detail), <code>POST</code> (create), <code>PUT</code> (update), and <code>DELETE</code> (remove) methods.
       </p>
 
       <div class="api-container" id="crud-api-list">
-        <!-- Rendered via JS loop for neatness and interactivity -->
+
       </div>
 
-      <!-- Section: E-Commerce Public & Marketplace APIs -->
       <h2 id="ecomm-apis" class="doc-section-header">E-Commerce Public & Marketplace APIs</h2>
       <p class="text-muted">Public search, catalog filters, shopping cart, test drive booking, customer orders & messaging endpoints.</p>
 
       <div class="api-container">
-        <!-- Catalog Search -->
+
         <div class="api-card" data-search="catalog search filter inventory get /api/catalog/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -462,7 +450,6 @@
           </div>
         </div>
 
-        <!-- Vehicle Bodies -->
         <div class="api-card" data-search="vehicle bodies get /api/bodies/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -476,7 +463,6 @@
           </div>
         </div>
 
-        <!-- Vehicle Conditions -->
         <div class="api-card" data-search="vehicle conditions get /api/conditions/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -490,7 +476,6 @@
           </div>
         </div>
 
-        <!-- Vehicle Models -->
         <div class="api-card" data-search="vehicle models brand get /api/models/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -504,7 +489,6 @@
           </div>
         </div>
 
-        <!-- Vehicle Trims -->
         <div class="api-card" data-search="vehicle trims brand model get /api/trims/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -518,7 +502,6 @@
           </div>
         </div>
 
-        <!-- Toggle Wishlist -->
         <div class="api-card" data-search="toggle wishlist post /api/wishlist/toggle/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -537,7 +520,6 @@
           </div>
         </div>
 
-        <!-- Add to Cart -->
         <div class="api-card" data-search="add cart post /api/cart/add/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -556,7 +538,6 @@
           </div>
         </div>
 
-        <!-- Remove from Cart -->
         <div class="api-card" data-search="remove cart post /api/cart/remove/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -575,7 +556,6 @@
           </div>
         </div>
 
-        <!-- Book Test Drive -->
         <div class="api-card" data-search="test drive booking post /api/test-drive/book/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -600,7 +580,6 @@
           </div>
         </div>
 
-        <!-- Submit Order -->
         <div class="api-card" data-search="submit order checkout post /api/order/submit/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -625,7 +604,6 @@
           </div>
         </div>
 
-        <!-- Update Customer Profile -->
         <div class="api-card" data-search="update profile post /api/profile/update/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -650,7 +628,6 @@
           </div>
         </div>
 
-        <!-- Send Store Message -->
         <div class="api-card" data-search="send customer message post /api/messages/send/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -672,7 +649,6 @@
           </div>
         </div>
 
-        <!-- Send Superuser Message -->
         <div class="api-card" data-search="send superuser newsletter message post /api/messages/superuser/">
           <div class="api-header">
             <div class="d-flex align-items-center gap-3">
@@ -694,9 +670,8 @@
         </div>
       </div>
 
-      <!-- Section: Terms, Privacy & Cookie Policy -->
       <h2 id="terms-policy" class="doc-section-header">Terms of Service & API Policies</h2>
-      
+
       <div id="terms-service" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
         <h4 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-file-text-fill text-primary me-2"></i> Terms of Service & API Acceptable Use</h4>
         <p>
@@ -748,7 +723,6 @@
   </div>
 </section>
 
-<!-- Notification Toast for Copied Feedback -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
   <div id="copyToast" class="toast align-items-center text-white bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
     <div class="d-flex">
@@ -846,7 +820,6 @@
         <p class="text-muted">${entity.description}</p>
       </div>
 
-      <!-- GET List -->
       <div class="api-card" data-search="${entity.name.toLowerCase()} list get /api/${entity.route}/">
         <div class="api-header">
           <div class="d-flex align-items-center gap-3">
@@ -860,7 +833,6 @@
         </div>
       </div>
 
-      <!-- GET Detail -->
       <div class="api-card" data-search="${entity.name.toLowerCase()} detail get /api/${entity.route}/<id>/">
         <div class="api-header">
           <div class="d-flex align-items-center gap-3">
@@ -874,7 +846,6 @@
         </div>
       </div>
 
-      <!-- POST Create -->
       <div class="api-card" data-search="${entity.name.toLowerCase()} create post /api/${entity.route}/">
         <div class="api-header">
           <div class="d-flex align-items-center gap-3">
@@ -893,7 +864,6 @@
         </div>
       </div>
 
-      <!-- PUT Update -->
       <div class="api-card" data-search="${entity.name.toLowerCase()} update put /api/${entity.route}/<id>/">
         <div class="api-header">
           <div class="d-flex align-items-center gap-3">
@@ -907,7 +877,6 @@
         </div>
       </div>
 
-      <!-- DELETE Remove -->
       <div class="api-card" data-search="${entity.name.toLowerCase()} delete remove /api/${entity.route}/<id>/">
         <div class="api-header">
           <div class="d-flex align-items-center gap-3">
@@ -949,7 +918,7 @@
   // Handle active link highlights based on page scroll / clicking
   document.addEventListener('DOMContentLoaded', function() {
     const sidebarLinks = document.querySelectorAll('.doc-sidebar-link');
-    
+
     sidebarLinks.forEach(link => {
       link.addEventListener('click', function(e) {
         sidebarLinks.forEach(l => l.classList.remove('active'));
@@ -974,7 +943,7 @@
   // Generate Postman Collection v2.1.0 JSON on-the-fly and download
   function downloadPostmanCollection() {
     const serverUrl = "{{ base_url }}";
-    
+
     // Base Postman Collection metadata structure
     const postman = {
       info: {

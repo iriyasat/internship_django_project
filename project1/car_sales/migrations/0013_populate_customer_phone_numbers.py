@@ -1,7 +1,6 @@
 from django.db import migrations
 
 def format_phone(cid, cname):
-    # Hash cid to get 8 pseudo-random digits
     h = (cid * 2654435761) % (10**8)
     h_str = f'{h:08d}'
     
@@ -66,7 +65,6 @@ def populate_customer_phones(apps, schema_editor):
             phone = format_phone(cid, cname)
             updates.append((phone, cid))
         
-        # Execute in batches for fast bulk update
         cursor.executemany('''
             UPDATE customer SET phone = %s WHERE customer_id = %s;
         ''', updates)

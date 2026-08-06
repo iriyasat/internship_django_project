@@ -4,7 +4,6 @@ from . import views
 app_name = 'ecommerce'
 
 urlpatterns = [
-    # Core E-Commerce Page Routes
     path('catalog/', views.catalog_view, name='catalog'),
     path('vehicle/<int:inventory_id>/', views.vehicle_detail_view, name='vehicle_detail'),
     path('compare/', views.compare_view, name='compare'),
@@ -16,7 +15,6 @@ urlpatterns = [
     path('profile/', views.customer_profile_view, name='customer_profile'),
     path('messages/', views.customer_messages_view, name='customer_messages'),
 
-    # JSON API Endpoints
     path('api/catalog/', views.api_catalog_vehicles, name='api_catalog_vehicles'),
     path('api/bodies/', views.api_vehicle_bodies, name='api_vehicle_bodies'),
     path('api/conditions/', views.api_vehicle_conditions, name='api_vehicle_conditions'),
@@ -25,6 +23,7 @@ urlpatterns = [
     path('api/messages/send/', views.api_send_customer_message, name='api_send_customer_message'),
     path('api/messages/superuser/', views.api_send_superuser_message, name='api_send_superuser_message'),
     path('api/wishlist/toggle/', views.api_toggle_wishlist, name='api_toggle_wishlist'),
+    path('api/wishlist/remove/', views.api_toggle_wishlist, name='api_remove_from_wishlist'),
     path('api/cart/add/', views.api_add_to_cart, name='api_add_to_cart'),
     path('api/cart/remove/', views.api_remove_from_cart, name='api_remove_from_cart'),
     path('api/test-drive/book/', views.api_book_test_drive, name='api_book_test_drive'),

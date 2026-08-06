@@ -8,13 +8,8 @@ from django.utils import timezone
 from car_sales.models import Customer, CustomerInfo, CustomerMessage, Store, Employee, VehicleInfo
 
 
-# Multi-turn back-and-forth conversation templates with logical progression & conclusions.
-# Format spec:
-#   Customer line: [TIME: HH:MM AM/PM] <customer text>
-#   Staff reply line: [Reply from <Staff Name> | HH:MM AM/PM]: <staff reply text>
 
 MULTI_TURN_TEMPLATES = [
-    # 1. Test Drive Booking & Confirmation (6 Turns)
     [
         {"t_cust": "09:00 AM", "cust": "Hi, I am interested in testing the {vehicle_name} at {store_name}. Is this model currently available on your lot?"},
         {"t_reply": "09:05 AM", "reply": "Hi {cust_name}! Yes, we have the {vehicle_name} ready in our main showroom. Would you like to book a test drive today or tomorrow?"},
@@ -24,7 +19,6 @@ MULTI_TURN_TEMPLATES = [
         {"t_reply": "09:30 AM", "reply": "You're very welcome, {cust_name}! I have reserved the keys for your arrival. See you tomorrow at {store_name}!"}
     ],
 
-    # 2. Financing, Trade-In & Appraisal (6 Turns)
     [
         {"t_cust": "10:00 AM", "cust": "Hello {emp_name}, I am looking to trade in my current vehicle towards a {vehicle_name}. Could you share current APR rates at {store_name}?"},
         {"t_reply": "10:08 AM", "reply": "Hello {cust_name}! We offer promotional APR financing starting at 2.9% for qualified buyers, plus a top-dollar trade-in appraisal bonus."},
@@ -34,7 +28,6 @@ MULTI_TURN_TEMPLATES = [
         {"t_reply": "10:35 AM", "reply": "Perfect! I have added you to our appraisal schedule for 4:00 PM today. Looking forward to meeting you!"}
     ],
 
-    # 3. Pre-Delivery Inspection & Online Order Pickup (6 Turns)
     [
         {"t_cust": "11:10 AM", "cust": "Hi {emp_name}, I placed an online order for the {vehicle_name} assigned to {store_name}. Can you check the status of pre-delivery prep?"},
         {"t_reply": "11:18 AM", "reply": "Hi {cust_name}! Your {vehicle_name} is currently undergoing final detailing and safety inspection in our service bay."},
@@ -44,7 +37,6 @@ MULTI_TURN_TEMPLATES = [
         {"t_reply": "11:45 AM", "reply": "Everything is set! We'll have your paperwork printed and keys ready at the front desk. Safe travels!"}
     ],
 
-    # 4. EV Charging, Range & Home Setup (6 Turns)
     [
         {"t_cust": "01:15 PM", "cust": "Hello, I am considering the {vehicle_name} but have questions regarding EV home charger installation and battery warranty."},
         {"t_reply": "01:22 PM", "reply": "Hi {cust_name}! The {vehicle_name} comes with an 8-year/100,000-mile battery warranty and a Level 2 home charging adapter."},
@@ -54,7 +46,6 @@ MULTI_TURN_TEMPLATES = [
         {"t_reply": "01:50 PM", "reply": "I have just emailed the complete EV packet to your inbox. Let me know if you would like to test drive this week!"}
     ],
 
-    # 5. Post-Purchase Service & Maintenance (6 Turns)
     [
         {"t_cust": "02:00 PM", "cust": "Hi {emp_name}, thank you for helping me purchase the {vehicle_name}! When should I schedule my first routine service?"},
         {"t_reply": "02:08 PM", "reply": "Hi {cust_name}! Congratulations again on your new {vehicle_name}. First maintenance is recommended at 5,000 miles or 6 months."},
@@ -64,7 +55,6 @@ MULTI_TURN_TEMPLATES = [
         {"t_reply": "02:35 PM", "reply": "It was my pleasure, {cust_name}! Reach out anytime if you need assistance in the future."}
     ],
 
-    # 6. Extended Warranty & Custom Protection (6 Turns)
     [
         {"t_cust": "03:10 PM", "cust": "Hello {emp_name}, what extended warranty options are available for the {vehicle_name} at {store_name}?"},
         {"t_reply": "03:18 PM", "reply": "Hi {cust_name}! We offer 5-year and 7-year bumper-to-bumper extended protection plans including 24/7 roadside assistance."},
@@ -102,7 +92,6 @@ class Command(BaseCommand):
 
         t_start = time.time()
 
-        # 1. Fetch prerequisite data
         customer_infos = list(CustomerInfo.objects.values('customer_id', 'firstname', 'lastname'))
         customer_dict = {c['customer_id']: f"{c['firstname']} {c['lastname']}".strip() for c in customer_infos}
 
@@ -115,7 +104,6 @@ class Command(BaseCommand):
         vehicles = list(VehicleInfo.objects.select_related('make').values('vehicle_model', 'make__make_name')[:2000])
         vehicle_list = [f"{v['make__make_name']} {v['vehicle_model']}".strip() for v in vehicles] if vehicles else VEHICLE_NAMES
 
-        # 2. Fetch all existing CustomerMessage records in primary-key order
         existing_msgs = list(CustomerMessage.objects.select_related('customer', 'store', 'employee').all().order_by('message_id'))
         total_msgs = len(existing_msgs)
 
@@ -127,18 +115,15 @@ class Command(BaseCommand):
 
         updated_count = 0
 
-        # Process in batches
         for i in range(0, total_msgs, batch_size):
             batch = existing_msgs[i:i + batch_size]
 
             for msg_obj in batch:
-                # Lookup names
                 cust_name = customer_dict.get(msg_obj.customer_id) or f"Customer #{msg_obj.customer_id}"
                 store_name = store_dict.get(msg_obj.store_id) or (msg_obj.store.store_name.strip() if msg_obj.store else "Dealership")
                 emp_name = emp_dict.get(msg_obj.employee_id) or (f"{msg_obj.employee.first_name} {msg_obj.employee.last_name}" if msg_obj.employee else "Store Staff")
                 vehicle_name = random.choice(vehicle_list)
 
-                # Pick a multi-turn template scenario
                 turns = random.choice(MULTI_TURN_TEMPLATES)
                 formatted_lines = []
 
@@ -152,7 +137,6 @@ class Command(BaseCommand):
 
                 msg_obj.message = "\n".join(formatted_lines)
 
-            # Bulk update message field in database preserving message_id PKs
             with transaction.atomic():
                 CustomerMessage.objects.bulk_update(batch, ['message'], batch_size=len(batch))
 

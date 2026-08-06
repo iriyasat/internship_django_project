@@ -5,27 +5,19 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import connection, connections
 from django.db.models import Count
-from django.db.models import Count
 
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 from .models import *
 from .serializers import *
 
-# ─────────────────────────────────────────────
-# Helper Functions for Role-Based Filtering
-# ─────────────────────────────────────────────
 
 from .auth import get_employee_profile
 
-from .utils import get_user_filters, is_manager as check_is_manager, get_employee_level as _get_employee_level, can_delete
+from .utils import get_user_filters, get_employee_level as _get_employee_level
 from project1.workspaces import is_car_sales_admin_user, is_car_sales_workspace_user
 
 
@@ -43,15 +35,6 @@ def safe_format_time(dt):
         return dt.strftime('%I:%M %p')
 
 
-def _in_scope(value, allowed):
-    """Return whether a scalar database value is included in an access filter."""
-    if allowed is None:
-        return True
-    if isinstance(allowed, (list, tuple, set)):
-        return value in allowed
-    return value == allowed
-
-
 def is_staff_user(request):
     """Check if request user is an Employee/Staff member or Superuser."""
     if not request.user.is_authenticated:
@@ -60,16 +43,6 @@ def is_staff_user(request):
         return True
     profile = get_employee_profile(request)
     return profile is not None
-
-
-def _has_scoped_access(request, store_id=None, employee_id=None):
-    """Single source of truth for showroom/country and own-record checks."""
-    return is_staff_user(request)
-
-
-def _payload_is_in_scope(request, model_name, data):
-    """Prevent a valid user from submitting another showroom's IDs in a write."""
-    return is_staff_user(request)
 
 
 def check_analytical_access_and_get_params(request):
@@ -157,9 +130,6 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
     return handler(model_name, action, data)
 
 
-# ─────────────────────────────────────────────
-# Standard Views
-# ─────────────────────────────────────────────
 
 @login_required
 def home_view(request):
@@ -172,8 +142,6 @@ def home_view(request):
         'active_tab': 'dashboard',
         **stats
     })
-
-dashboard_view = home_view
 
 @api_view(['POST'])
 def api_review_order(request):
@@ -269,14 +237,12 @@ def index_view(request):
         })
     stores = Store.objects.select_related('city', 'country').all().order_by('store_name')[:15]
     
-    # Query top available vehicles from inventory database
     featured_inventory = Inventory.objects.select_related(
         'vehicle__make', 'store', 'store__city'
     ).filter(
         status__in=[Inventory.StatusChoices.AVAILABLE, Inventory.StatusChoices.PRE_ORDER]
     ).order_by('-inventory_id')[:8]
 
-    # Fetch dynamic vehicle body categories and condition tabs from DB via ecommerce serializers
     try:
         from ecommerce.serializers import VehicleBodyService, VehicleConditionService
         vehicle_bodies = VehicleBodyService.fetch_vehicle_bodies()
@@ -455,9 +421,6 @@ def admin_panel_view(request):
         'stats': stats,
     })
 
-# ─────────────────────────────────────────────
-# Analytical API Views
-# ─────────────────────────────────────────────
 
 @api_view(['GET', 'POST'])
 def employee_sales_api(request):
@@ -644,9 +607,6 @@ def inventory_api_page_view(request):
         'status_choices': Inventory.StatusChoices.choices,
     })
 
-# ─────────────────────────────────────────────
-# Generic REST API Handler & Model Handlers
-# ─────────────────────────────────────────────
 
 def generic_model_api(request, model_class, serializer_class, search_fields, pk=None, store_field=None, employee_field=None):
     action_map = {'GET': 'GET', 'POST': 'POST', 'PUT': 'PUT', 'DELETE': 'DELETE'}
@@ -699,7 +659,6 @@ def generic_model_api(request, model_class, serializer_class, search_fields, pk=
         import inspect
         sig = inspect.signature(serializer_class.create)
         
-        # Intercept and override for Level 9 users when creating Sales records
         if model_class == SellingInfo:
             profile = get_employee_profile(request)
             if profile and _get_employee_level(profile.employee_id) == 9:
@@ -839,9 +798,6 @@ def employee_api(request, pk=None):
 
 
 
-# ─────────────────────────────────────────────
-# Invoice & PDF Views
-# ─────────────────────────────────────────────
 
 @login_required
 def invoice_view(request):
@@ -864,8 +820,6 @@ def invoice_view(request):
         'current_employee_id': profile.employee_id if profile else None,
     })
 
-invoice_api_page_view = invoice_view
-
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 def invoice_api(request, pk=None):
     if not request.user.is_authenticated:
@@ -885,7 +839,6 @@ def invoice_api(request, pk=None):
         if sell_id_param:
             item = InvoiceSerializer.fetch_by_sell_id(sell_id_param)
             if item:
-                # Need to fetch the full invoice to verify permission
                 full_item = InvoiceSerializer.fetch_one(item.get('invoice_id'))
                 if full_item and not check_record_permission(request, Invoice, full_item):
                     return Response({"status": False, "message": "Permission denied. You do not have access to this record."}, status=status.HTTP_403_FORBIDDEN)
@@ -995,7 +948,6 @@ def employee_messages_view(request):
 
     with connection.cursor() as cursor:
         if is_admin and not profile:
-            # Superuser (no employee profile) - fetches all unaccepted messages across all stores
             cursor.execute("""
                 SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
                        c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
@@ -1030,7 +982,6 @@ def employee_messages_view(request):
                     messages=msg_list
                 ))
 
-            # Fetch all accepted messages across all stores for superuser overview
             cursor.execute("""
                 SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
                        c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
@@ -1081,8 +1032,6 @@ def employee_messages_view(request):
                     messages=msg_list
                 ))
         else:
-            # Regular Store Employee
-            # 1. Unaccepted chat threads for this employee's store
             cursor.execute("""
                 SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
                        c.customer_id, ci.firstname, ci.lastname, c.email, c.phone,
@@ -1117,7 +1066,6 @@ def employee_messages_view(request):
                     messages=msg_list
                 ))
 
-            # 2. Accepted chat threads for THIS specific employee ONLY
             if current_emp_id:
                 cursor.execute("""
                     SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
@@ -1237,13 +1185,11 @@ def api_reply_customer_message(request, pk):
         from car_sales.models import CustomerMessage
         parent_msg = CustomerMessage.objects.get(pk=pk)
 
-        # Set employee_id if not set yet
         if not parent_msg.employee_id:
             parent_msg.employee_id = profile.employee_id
         elif parent_msg.employee_id != profile.employee_id:
             return Response({'status': False, 'message': 'You must accept this chat before replying.'}, status=403)
 
-        # Append reply text directly into the single chat record with local timestamp
         now_time = timezone.localtime(timezone.now()).strftime('%I:%M %p')
         parent_msg.message = f"{parent_msg.message}\n[Reply from {profile.first_name} {profile.last_name} | {now_time}]: {reply_text}"
         parent_msg.updated_at = timezone.now()

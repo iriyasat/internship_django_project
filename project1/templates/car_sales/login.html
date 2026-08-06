@@ -9,15 +9,12 @@
   <title>Login - Car Sales & E-Commerce Management</title>
   <meta content="Car Sales Management System Login" name="description">
 
-  <!-- Favicons -->
   <link href="{% static 'assets/img/favicon.png' %}" rel="icon">
   <link href="{% static 'assets/img/apple-touch-icon.png' %}" rel="apple-touch-icon">
 
-  <!-- Google Fonts -->
   <link href="https://fonts.gstatic.com" rel="preconnect">
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
 
-  <!-- Vendor CSS Files -->
   <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
   <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
   <link href="{% static 'assets/vendor/boxicons/css/boxicons.min.css' %}" rel="stylesheet">
@@ -26,7 +23,6 @@
   <link href="{% static 'assets/vendor/remixicon/remixicon.css' %}" rel="stylesheet">
   <link href="{% static 'assets/vendor/simple-datatables/style.css' %}" rel="stylesheet">
 
-  <!-- Template Main CSS File -->
   <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
   <link href="{% static 'assets/css/custom.css' %}" rel="stylesheet">
 
@@ -89,7 +85,7 @@
                   <img src="{% static 'assets/img/logo.png' %}" alt="Logo">
                   <span class="d-none d-lg-block ps-2">Car Sales</span>
                 </a>
-              </div><!-- End Logo -->
+              </div>
 
               <div class="card mb-3 w-100">
 
@@ -100,7 +96,6 @@
                     <p class="small text-muted mb-0">Select your account type to proceed</p>
                   </div>
 
-                  <!-- Role Selector Tabs: Customer vs Staff / Employee -->
                   <div class="btn-group w-100 mb-4 p-1 bg-light rounded" role="group" aria-label="Role Switcher">
                     <button type="button" class="btn role-toggle-btn {% if selected_role != 'staff' %}btn-primary text-white{% else %}btn-light text-secondary{% endif %}" id="btnRoleCustomer" onclick="selectRole('customer')">
                       <i class="bi bi-person-fill me-1"></i> Customer
@@ -110,7 +105,6 @@
                     </button>
                   </div>
 
-                  <!-- Display messages -->
                   {% if messages %}
                     {% for message in messages %}
                       <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
@@ -160,12 +154,10 @@
                       </button>
                     </div>
 
-                    <!-- Customer Only Registration Link -->
                     <div class="col-12 text-center pt-2" id="customerRegisterBox" style="{% if selected_role == 'staff' %}display: none;{% endif %}">
                       <p class="small text-muted mb-0">Don't have a customer account? <a href="{% url 'register' %}" class="fw-bold">Register as Customer</a></p>
                     </div>
 
-                    <!-- Staff Info Notice -->
                     <div class="col-12 text-center pt-2" id="staffNoticeBox" style="{% if selected_role != 'staff' %}display: none;{% endif %}">
                       <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i> Staff accounts are managed by store administrators. Self-registration is disabled for employees.</p>
                     </div>
@@ -184,20 +176,18 @@
       </section>
 
     </div>
-  </main><!-- End #main -->
+  </main>
 
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
-  <!-- Vendor JS Files -->
   <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 
-  <!-- Template Main JS File -->
   <script src="{% static 'assets/js/main.js' %}?v=1.1.0"></script>
 
   <script>
     function selectRole(role) {
       document.getElementById('userRoleInput').value = role;
-      
+
       const btnCust = document.getElementById('btnRoleCustomer');
       const btnStaff = document.getElementById('btnRoleStaff');
       const usernameLabel = document.getElementById('usernameLabel');

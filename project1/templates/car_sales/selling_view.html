@@ -16,12 +16,11 @@
 
 <section class="section dashboard">
   <div class="row">
-    <!-- Action Alerts -->
+
     <div class="col-12" id="alert-container"></div>
 
-      <!-- Summary Cards and Charts -->
   <div class="row mb-4">
-    <!-- Total Transactions Card -->
+
     <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card sales-card">
         <div class="card-body">
@@ -39,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Page Revenue Card -->
     <div class="col-xxl-4 col-md-6 mb-3">
       <div class="card info-card revenue-card">
         <div class="card-body">
@@ -57,7 +55,6 @@
       </div>
     </div>
 
-    <!-- Page Avg Price Card -->
     <div class="col-xxl-4 col-md-12 mb-3">
       <div class="card info-card customers-card">
         <div class="card-body">
@@ -75,7 +72,6 @@
       </div>
     </div>
 
-
   </div>
 
       <div class="col-12">
@@ -85,7 +81,6 @@
             Sales Directory <span>| Live Query & CRUD Interface</span>
           </h5>
 
-          <!-- Search and Table Controls -->
           <div class="row g-3 align-items-center mb-3">
             <div class="col-md-6 d-flex align-items-center gap-2">
               <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
@@ -110,7 +105,6 @@
             </div>
           </div>
 
-          <!-- Loading Spinner -->
           <div id="loading-spinner" class="text-center py-5">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
@@ -118,7 +112,6 @@
             <p class="text-muted mt-2">Loading sales records...</p>
           </div>
 
-          <!-- Table Wrapper -->
           <div class="table-responsive" id="table-wrapper" style="display: none;">
             <table class="table table-hover align-middle">
               <thead class="table-light">
@@ -137,19 +130,18 @@
                 </tr>
               </thead>
               <tbody id="api-table-body">
-                <!-- Populated via Javascript -->
+
               </tbody>
             </table>
           </div>
 
-          <!-- Pagination -->
           <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
             <div class="small text-muted" id="pagination-info">
               Showing 0 to 0 of 0 entries
             </div>
             <nav aria-label="Table navigation">
               <ul class="pagination pagination-sm mb-0" id="pagination-list">
-                <!-- Populated via Javascript -->
+
               </ul>
             </nav>
           </div>
@@ -160,7 +152,6 @@
   </div>
 </section>
 
-<!-- CRUD Modal -->
 {% if request.user.is_staff %}
 <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -261,8 +252,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if (crudModalEl) {
     bootstrapModal = new bootstrap.Modal(crudModalEl);
   }
-
-
 
   function updatePageStats(records, totalCount) {
     document.getElementById('card-total-count').textContent = totalCount.toLocaleString();

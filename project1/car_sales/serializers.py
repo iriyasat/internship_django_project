@@ -6,7 +6,6 @@ from django.db import connections
 from django.db import transaction
 
 
-# ─── Query Helper Operations ───
 
 def format_date_fields(item):
     """Utility to format date and datetime fields to string format in-place."""
@@ -176,7 +175,6 @@ def execute_raw_sql_query(db_name, select_base, count_base, table_alias, field_m
     data = [format_date_fields(dict(zip(columns, row))) for row in rows]
     return total, data
 
-# ─── Serializer Implementations ───
 
 class employeesalesserializers:
     DB_NAME = 'default'
@@ -1296,7 +1294,6 @@ class InvoiceSerializer:
         if not invoice_date:
             raise ValueError('invoice_date is required.')
         
-        # If sell_id is not provided, we create a new sale from scratch using inventory_id
         if not sell_id:
             inventory_id = data.get('inventory_id')
             customer = data.get('customer')
@@ -1308,14 +1305,12 @@ class InvoiceSerializer:
                 raise ValueError('To create an invoice from scratch, inventory_id, customer, employee, and selling_price are required.')
 
             with transaction.atomic():
-                # Fetch inventory details
                 inv_item = inventoryserializer.fetch_one(inventory_id)
                 if not inv_item:
                     raise ValueError('Selected inventory item does not exist.')
                 if inv_item['status'] == 1:
                     raise ValueError('Selected inventory item is already sold.')
 
-                # Create SellingInfo record
                 sell_id = SellingInfoSerializer.create(
                     customer=customer,
                     vehicle=inv_item['vehicle'],
@@ -1325,13 +1320,12 @@ class InvoiceSerializer:
                     selling_date=selling_date
                 )
 
-                # Link sale to inventory and mark as Sold (1)
                 inventoryserializer.update(
                     inventory_id=inventory_id,
                     vehicle_id=inv_item['vehicle'],
                     store_id=inv_item['store'],
                     employee_id=inv_item['employee'],
-                    status=1, # Sold
+                    status=1,
                     selling_info=sell_id
                 )
 

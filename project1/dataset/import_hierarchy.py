@@ -2,7 +2,6 @@ import os
 import sys
 import pandas as pd
 
-# Set up Django environment
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project1.settings')
 
@@ -20,7 +19,6 @@ def import_hierarchy():
     print("Reading legend and populating EmployeeLevel...")
     df_legend = pd.read_excel(excel_path, sheet_name='legend')
     
-    # Clear existing level records
     EmployeeLevel.objects.all().delete()
     
     level_objects = []
@@ -29,7 +27,6 @@ def import_hierarchy():
         lvl = int(row['Level'])
         raw_notes = str(row['Reports To']).strip()
         
-        # Clean notes of symbols and layout indicators
         clean_notes = raw_notes.replace('→', '').replace('┐', '').replace('┘', '').replace('SAME LEVEL', '').strip()
         clean_notes = ' '.join(clean_notes.split())
         
@@ -48,18 +45,15 @@ def import_hierarchy():
     print(f"Reading employee hierarchy from: {excel_path}...")
     df = pd.read_excel(excel_path, sheet_name='employee_hierarchy')
     
-    # Clear existing hierarchy records
     print("Clearing existing EmployeeHierarchy records...")
     EmployeeHierarchy.objects.all().delete()
 
     print("Beginning import of 2,000 hierarchy records...")
     hierarchy_objects = []
     
-    # Pre-cache models to optimize query count
     roles = {r.role_id: r for r in EmployeeRole.objects.all()}
     levels = {l.level: l for l in EmployeeLevel.objects.all()}
     
-    # Load all employees into memory for quick lookup
     employees = {e.employee_id: e for e in Employee.objects.all()}
     
     missing_employees = 0
@@ -74,14 +68,11 @@ def import_hierarchy():
         employee = employees[emp_id]
         role = roles.get(int(row['role_id']))
         
-        # Get status from the employee's status in DB
         status = employee.status
         
-        # Get matching EmployeeLevel object
         level_val = int(row['level'])
         level_obj = levels.get(level_val)
         
-        # Build supervisor dict dynamically
         supervisor_kwargs = {}
         for i in range(1, 9):
             col_id = 'supervisor_id' if i == 1 else f'supervisor{i}_id'
@@ -90,7 +81,6 @@ def import_hierarchy():
             sup_val = row[col_id]
             role_val = row[col_role]
             
-            # Field names in model
             field_sup = 'supervisor' if i == 1 else f'supervisor{i}'
             field_role = 'supervisor_role' if i == 1 else f'supervisor{i}_role'
             

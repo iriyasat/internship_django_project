@@ -3,7 +3,7 @@
 {% block title %}Shopping Cart | Automobile{% endblock %}
 
 {% block content %}
-<!-- Dark Hero Header -->
+
 <div class="ecom-page-header mb-5">
     <div class="container">
         <h1 class="fw-extrabold display-5 mb-2">Shopping Cart</h1>
@@ -11,12 +11,10 @@
     </div>
 </div>
 
-
 <div class="container mb-5">
-    <div class="row g-4">
-        
-        <div class="col-lg-8">
-            {% if cart_items %}
+    {% if cart_items %}
+        <div class="row g-4">
+            <div class="col-lg-8">
                 <div class="d-grid gap-3">
                     {% for item in cart_items %}
                     <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vehicle-card-hover">
@@ -41,50 +39,48 @@
                     </div>
                     {% endfor %}
                 </div>
-            {% else %}
-                <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
-                    <i class="fa-solid fa-cart-arrow-down display-1 text-muted mb-3"></i>
-                    <h4 class="fw-bold">Your Cart is Currently Empty</h4>
-                    <p class="text-muted">Browse our vehicle inventory catalog to add cars to your shopping cart.</p>
-                    <div>
-                        <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
-                            <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
-                        </a>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
+            </div>
 
-        {% if cart_items %}
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white sticky-top" style="top: 100px;">
-                <h5 class="fw-bold mb-3 border-bottom pb-2">Order Summary</h5>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Cart Subtotal</span>
-                    <span class="fw-bold">${{ total_price }}</span>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white sticky-top" style="top: 100px;">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Order Summary</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Cart Subtotal</span>
+                        <span class="fw-bold">${{ total_price }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Hold Deposit (per vehicle)</span>
+                        <span class="fw-bold text-success">$500</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 pt-2 border-top">
+                        <span class="fw-extrabold text-dark fs-5">Total</span>
+                        <span class="fw-extrabold text-primary fs-5">${{ total_price }}</span>
+                    </div>
+                    <a href="{% url 'ecommerce:checkout' %}" class="btn btn-primary btn-lg rounded-pill fw-bold w-100 py-3 shadow-lg">
+                        Proceed to Checkout <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </a>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Hold Deposit (per vehicle)</span>
-                    <span class="fw-bold text-success">$500</span>
-                </div>
-                <div class="d-flex justify-content-between mb-3 pt-2 border-top">
-                    <span class="fw-extrabold text-dark fs-5">Total</span>
-                    <span class="fw-extrabold text-primary fs-5">${{ total_price }}</span>
-                </div>
-                <a href="{% url 'ecommerce:checkout' %}" class="btn btn-primary btn-lg rounded-pill fw-bold w-100 py-3 shadow-lg">
-                    Proceed to Checkout <i class="fa-solid fa-arrow-right ms-2"></i>
+            </div>
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+            <i class="fa-solid fa-cart-arrow-down display-1 text-muted mb-3"></i>
+            <h4 class="fw-bold">Your Cart is Currently Empty</h4>
+            <p class="text-muted">Browse our vehicle inventory catalog to add cars to your shopping cart.</p>
+            <div>
+                <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                    <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
                 </a>
             </div>
         </div>
-        {% endif %}
-
-    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     function removeFromCart(inventoryId, btn) {
+        if (btn) btn.disabled = true;
         fetch("{% url 'ecommerce:api_remove_from_cart' %}", {
             method: "POST",
             headers: {
@@ -95,10 +91,60 @@
         })
         .then(res => res.json())
         .then(data => {
+            if (btn) btn.disabled = false;
             if (data.success) {
-                location.reload();
+                const countEl = document.getElementById('nav-cart-count');
+                const countElMobile = document.getElementById('nav-cart-count-mobile');
+                if (countEl) countEl.innerText = data.cart_count;
+                if (countElMobile) countElMobile.innerText = data.cart_count;
+
+                const cardItem = btn ? btn.closest('.card') : null;
+                if (cardItem) {
+                    cardItem.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                    cardItem.style.opacity = '0';
+                    cardItem.style.transform = 'scale(0.85)';
+
+                    setTimeout(() => {
+                        cardItem.remove();
+                        const remainingItems = document.querySelectorAll('.col-lg-8 .card');
+                        if (remainingItems.length === 0) {
+                            const mainContainer = document.querySelector('.container.mb-5');
+                            if (mainContainer) {
+                                mainContainer.innerHTML = `
+                                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+                                        <i class="fa-solid fa-cart-arrow-down display-1 text-muted mb-3"></i>
+                                        <h4 class="fw-bold">Your Cart is Currently Empty</h4>
+                                        <p class="text-muted">Browse our vehicle inventory catalog to add cars to your shopping cart.</p>
+                                        <div>
+                                            <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2">
+                                                <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+                                            </a>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            location.reload();
+                        }
+                    }, 300);
+                } else {
+                    location.reload();
+                }
+                if (window.showEcomToast) {
+                    showEcomToast(data.message || "Item removed from shopping cart", "info");
+                }
             } else {
-                alert(data.error || "Failed to remove item");
+                if (window.showEcomToast) {
+                    showEcomToast(data.error || "Failed to remove item", "danger");
+                } else {
+                    alert(data.error || "Failed to remove item");
+                }
+            }
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
+            if (window.showEcomToast) {
+                showEcomToast("Network error. Please try again.", "danger");
             }
         });
     }

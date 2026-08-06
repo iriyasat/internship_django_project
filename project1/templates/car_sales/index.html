@@ -6,13 +6,13 @@
 {% block extra_css %}{% endblock %}
 
 {% block content %}
-  <!-- ─── HERO ─── -->
+
   <section class="hero py-5">
     <div class="hero-shell">
       <div class="search-cars container margin-top-auto margin-bottom-auto text-center">
       <h1 class="search-cars__title text-center wow fadeInUp" data-wow-delay="0.1s" style="visibility: visible; animation-delay: 0.1s; animation-name: fadeInUp;">Find Your Dream Car Today!</h1>
       <p class="h7 text-secondary font-weight-500 mb-36 text-center wow fadeInUp" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: fadeInUp;">Discover the perfect car for you with a wide selection at great prices.</p>
-      
+
       <div class="flat-tabs mb-16 wow fadeInUp" data-wow-delay="0.5s" style="visibility: visible; animation-delay: 0.5s; animation-name: fadeInUp;">
         <div class="overflow-x-auto">
           <ul class="menu-tab menu-tab-style1 text-white margin-auto" id="heroConditionTabs">
@@ -30,8 +30,7 @@
           </ul>
         </div>
       </div> 
-      
-      <!-- Primary Search Filters -->
+
       <div class="search-cars__filters wow fadeInUp" data-wow-delay="0.7s" style="visibility: visible; animation-delay: 0.7s; animation-name: fadeInUp;"> 
         <div class="search-cars__select-wrapper">
           <div class="search-cars__select bg-white filter-select-dropdown" data-name="Brand">
@@ -114,42 +113,25 @@
                 <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Trim', 'all', 'All Trim')">
                   <span>All Trim</span>
                 </div>
-                <div class="filter-checkbox" data-value="Base" onclick="selectHeroOption(this, 'Trim', 'Base', 'Base')">
-                  <span>Base</span>
-                </div>
-                <div class="filter-checkbox" data-value="Premium" onclick="selectHeroOption(this, 'Trim', 'Premium', 'Premium')">
-                  <span>Premium</span>
-                </div>
-                <div class="filter-checkbox" data-value="Limited" onclick="selectHeroOption(this, 'Trim', 'Limited', 'Limited')">
-                  <span>Limited</span>
-                </div>
-                <div class="filter-checkbox" data-value="Sport" onclick="selectHeroOption(this, 'Trim', 'Sport', 'Sport')">
-                  <span>Sport</span>
-                </div>
-                <div class="filter-checkbox" data-value="Touring" onclick="selectHeroOption(this, 'Trim', 'Touring', 'Touring')">
-                  <span>Touring</span>
-                </div>
               </div>
             </div>
           </div>
         </div>   
-        
-        <!-- Filter Icon Button -->
+
         <div class="search-cars__filter style2" id="filterToggle" onclick="toggleAdvancedFilters()">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        
+
         <a href="{% url 'ecommerce:catalog' %}" id="heroSearchBtn" class="search-cars__search flex items-center gap-8 justify-center md-w-full text-decoration-none">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span id="heroMatchesText">Show {% if available_inventory_count %}{{ available_inventory_count|intcomma }}{% else %}26,998{% endif %} Matches</span>
         </a>
       </div>
-      
-      <!-- Advanced Filters Panel -->
+
       <div class="search-cars__advanced d-none" id="advancedFilters">
         <div class="search-cars__advanced-content">
           <div class="search-cars__advanced-row">
-            <!-- Exterior Color -->
+
             <div class="search-cars__select-wrapper">
               <div class="bg-white filter-select-dropdown style2" data-name="Color">
                 <input type="checkbox" id="color-type" class="filter-select-dropdown__toggle">
@@ -187,7 +169,6 @@
               </div>
             </div>   
 
-            <!-- Interior Color -->
             <div class="search-cars__select-wrapper">
               <div class="bg-white filter-select-dropdown style2" data-name="Interior">
                 <input type="checkbox" id="InteriorToggle" class="filter-select-dropdown__toggle">
@@ -222,7 +203,6 @@
               </div>
             </div>    
 
-            <!-- Vehicle Condition (1-50 Rating Grades) -->
             <div class="search-cars__select-wrapper">
               <div class="bg-white filter-select-dropdown style2" data-name="Condition">
                 <input type="checkbox" id="ConditionToggle" class="filter-select-dropdown__toggle">
@@ -253,8 +233,7 @@
                 </div>
               </div>
             </div>
-            
-            <!-- Mileage Range -->
+
             <div class="search-cars__select-wrapper">
               <div class="bg-white filter-select-dropdown style2" data-name="Miles">
                 <input type="checkbox" id="MilesToggle" class="filter-select-dropdown__toggle">
@@ -283,7 +262,6 @@
               </div>
             </div>  
 
-            <!-- Dual Price Range Box -->
             <div class="search-cars__range ms-md-auto text-white p-2" style="min-width: 290px;">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <span class="text-white-50 font-weight-600 small">Price Range</span>
@@ -381,10 +359,6 @@
     </div>
   </section>
 
-  <!-- ─── BRANDS BAR ─── -->
-
-
-  <!-- ─── STATS BAND ─── -->
   <section class="stats-band">
     <div class="container">
       <div class="title-section mb-40">
@@ -486,13 +460,31 @@
     let lastFetchedBrand = null;
 
     function fetchModelsForBrand(brand) {
+        if (!brand || brand === 'all') {
+            lastFetchedBrand = 'all';
+            const modelListContainer = document.getElementById('heroModelList');
+            if (modelListContainer) {
+                modelListContainer.innerHTML = `
+                    <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Model', 'all', 'All Model')">
+                        <span>All Model</span>
+                    </div>
+                `;
+                const dropdown = modelListContainer.closest('.filter-select-dropdown');
+                if (dropdown) {
+                    const textSpan = dropdown.querySelector('.filter-select-dropdown__text span');
+                    if (textSpan) textSpan.innerText = 'All Model';
+                }
+            }
+            return;
+        }
+
         if (brand === lastFetchedBrand) return;
         lastFetchedBrand = brand;
 
         const modelListContainer = document.getElementById('heroModelList');
         if (!modelListContainer) return;
 
-        fetch("{% url 'ecommerce:api_vehicle_models' %}?brand=" + encodeURIComponent(brand || 'all'))
+        fetch("{% url 'ecommerce:api_vehicle_models' %}?brand=" + encodeURIComponent(brand))
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.models) {
@@ -517,17 +509,35 @@
     let lastFetchedTrimKey = null;
 
     function fetchTrimsForBrandAndModel(brand, model) {
-        const key = (brand || 'all') + '_' + (model || 'all');
+        if (!brand || brand === 'all') {
+            lastFetchedTrimKey = 'all_all';
+            const trimListContainer = document.getElementById('heroTrimList');
+            if (trimListContainer) {
+                trimListContainer.innerHTML = `
+                    <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Trim', 'all', 'All Trim')">
+                        <span>All Trim</span>
+                    </div>
+                `;
+                const dropdown = trimListContainer.closest('.filter-select-dropdown');
+                if (dropdown) {
+                    const textSpan = dropdown.querySelector('.filter-select-dropdown__text span');
+                    if (textSpan) textSpan.innerText = 'All Trim';
+                }
+            }
+            return;
+        }
+
+        const key = brand + '_' + (model || 'all');
         if (key === lastFetchedTrimKey) return;
         lastFetchedTrimKey = key;
 
         const trimListContainer = document.getElementById('heroTrimList');
         if (!trimListContainer) return;
 
-        fetch("{% url 'ecommerce:api_vehicle_trims' %}?brand=" + encodeURIComponent(brand || 'all') + "&model=" + encodeURIComponent(model || 'all'))
+        fetch("{% url 'ecommerce:api_vehicle_trims' %}?brand=" + encodeURIComponent(brand) + "&model=" + encodeURIComponent(model || 'all'))
             .then(res => res.json())
             .then(data => {
-                if (data.success && data.trims && data.trims.length > 0) {
+                if (data.success && data.trims) {
                     let html = `
                         <div class="filter-checkbox active" data-value="all" onclick="selectHeroOption(this, 'Trim', 'all', 'All Trim')">
                             <span>All Trim</span>

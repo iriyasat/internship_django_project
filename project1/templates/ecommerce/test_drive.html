@@ -4,7 +4,7 @@
 {% block title %}Schedule a Test Drive | Automobile{% endblock %}
 
 {% block content %}
-<!-- Dark Hero Header -->
+
 <div class="ecom-page-header mb-5">
     <div class="container">
         <h1 class="fw-extrabold display-5 mb-2">Schedule a Test Drive</h1>
@@ -14,17 +14,16 @@
 
 <div class="container mb-5">
     <div class="row g-4">
-        
-        <!-- Left Schedule Form -->
+
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                 <h5 class="fw-bold mb-4 border-bottom pb-3 text-dark">
                     <i class="fa-solid fa-calendar-check text-primary me-2"></i> Confirm Test Drive Slot
                 </h5>
-                
+
                 <form id="test-drive-form" class="d-grid gap-3">
                     {% if selected_inventory %}
-                        <!-- Auto-Selected Vehicle Summary Card -->
+
                         <input type="hidden" name="inventory_id" value="{{ selected_inventory.inventory_id }}">
                         <input type="hidden" name="vehicle_id" value="{{ selected_inventory.vehicle.id }}">
                         <input type="hidden" name="store_id" id="store-id-input" value="{{ selected_inventory.store.store_id }}">
@@ -41,7 +40,6 @@
                             </div>
                         </div>
 
-                        <!-- Fixed Showroom Location -->
                         <div>
                             <label class="form-label small fw-semibold text-muted mb-1">Assigned Showroom Store</label>
                             <div class="p-3 bg-primary bg-opacity-10 border border-primary-subtle rounded-3 d-flex align-items-center gap-2">
@@ -54,7 +52,7 @@
                         </div>
 
                     {% else %}
-                        <!-- Dropdown to Choose Vehicle from Inventory -->
+
                         <div>
                             <label class="form-label small fw-semibold text-muted mb-1">Select Available Vehicle</label>
                             <select name="inventory_id" id="inventory-select" class="form-select rounded-3 p-2.5" required onchange="updateStoreFromSelect(this)">
@@ -70,7 +68,6 @@
                         <input type="hidden" name="vehicle_id" id="vehicle-id-input" value="">
                         <input type="hidden" name="store_id" id="store-id-input" value="">
 
-                        <!-- Fixed Showroom Location Output -->
                         <div>
                             <label class="form-label small fw-semibold text-muted mb-1">Assigned Showroom Store</label>
                             <div class="p-3 bg-light border rounded-3 d-flex align-items-center gap-2">
@@ -112,11 +109,10 @@
             </div>
         </div>
 
-        <!-- Right My Test Drives List -->
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                 <h5 class="fw-bold mb-4 border-bottom pb-3 text-dark"><i class="fa-solid fa-list-check text-primary me-2"></i> My Scheduled Test Drives</h5>
-                
+
                 {% if bookings %}
                     <div class="d-grid gap-3">
                         {% for b in bookings %}

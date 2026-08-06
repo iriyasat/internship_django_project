@@ -98,7 +98,6 @@ class EmployeeHierarchyAdmin(admin.ModelAdmin):
     search_fields = ('employee__first_name', 'employee__last_name', 'supervisor__first_name', 'supervisor__last_name')
     list_select_related = ('employee', 'role', 'status', 'supervisor')
 
-# Register to both standard admin.site and dedicated car_sales_admin_site
 models_and_admins = [
     (Country, CountryAdmin),
     (City, CityAdmin),

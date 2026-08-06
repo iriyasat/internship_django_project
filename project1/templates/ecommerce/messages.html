@@ -6,7 +6,7 @@
 {% block extra_css %}{% endblock %}
 
 {% block content %}
-<!-- Dark Hero Header -->
+
 <div class="ecom-page-header mb-5">
     <div class="container">
         <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
@@ -25,7 +25,7 @@
 
 <div class="container mb-5">
     <div class="message-container">
-        <!-- Left Sidebar - Contact List (1 Contact per Store) -->
+
         <div class="message-sidebar">
             <div class="message-search">
                 <form action="#" class="search-form-contact" onsubmit="event.preventDefault();">
@@ -60,14 +60,13 @@
             </div>
         </div>
 
-        <!-- Right Main Area - Chat Window -->
         <div class="message-chat">
             {% if chat_threads %}
                 {% for thread in chat_threads %}
                 <div class="chat-thread-pane {% if not forloop.first %}d-none{% endif %}" id="threadPane_{{ thread.store_id }}" data-store-id="{{ thread.store_id }}" data-message-id="{{ thread.message_id }}">
-                    <!-- Chat Header -->
+
                     <div class="message-chat__header">
-                        <!-- Mobile Back Button -->
+
                         <button class="btn-chat-back" onclick="showSidebar()" aria-label="Back to contacts">
                             <i class="fa-solid fa-arrow-left"></i>
                         </button>
@@ -93,7 +92,6 @@
                         </div>
                     </div>
 
-                    <!-- Chat Messages Body -->
                     <div class="message-chat__body" id="chatBody_{{ thread.store_id }}">
                         <div class="message-date-separator">
                             <span>{{ thread.last_time|date:"F d, Y" }}</span>
@@ -101,7 +99,7 @@
 
                         {% for m in thread.messages %}
                             {% if m.is_reply %}
-                            <!-- Employee Reply -->
+
                             <div class="message-item message-item--received">
                                 <div class="message-item__bubble">
                                     <div class="message-item__text">{{ m.message }}</div>
@@ -109,7 +107,7 @@
                                 <div class="message-item__time"><i class="fa-solid fa-user-shield me-1"></i> {{ m.sender_name }} • {{ m.msg_time|default:m.created_at|date:"h:i A" }}</div>
                             </div>
                             {% else %}
-                            <!-- Customer Message with Double Ticks Seen Status -->
+
                             <div class="message-item message-item--sent">
                                 <div class="message-item__bubble">
                                     <div class="message-item__text">{{ m.message }}</div>
@@ -127,7 +125,6 @@
                         {% endfor %}
                     </div>
 
-                    <!-- Message Input Bar (Side-by-side Layout) -->
                     <div class="message__action d-flex align-items-center p-3 border-top bg-white gap-2">
                         <div class="message-chat__input">
                             <input type="text" id="quickReplyInput_{{ thread.store_id }}" placeholder="Write a message to {{ thread.store_name }}..." class="message-chat__input-field" onkeypress="if(event.key==='Enter'){ event.preventDefault(); sendQuickReply('{{ thread.store_id }}'); }">
@@ -154,7 +151,6 @@
     </div>
 </div>
 
-<!-- Send New Message Modal -->
 <div class="modal fade" id="newMessageModal" tabindex="-1" aria-labelledby="newMessageModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow-lg">

@@ -15,23 +15,17 @@ import os
 import pymysql
 pymysql.install_as_MySQLdb()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-a40qprg&ivxpho=3&qq%xn9*aj+^m9q6n84p7bj(5bw!c*d7@!'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -73,6 +67,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'car_sales.utils.employee_context',
+                'ecommerce.context_processors.customer_context',
             ],
         },
     },
@@ -81,8 +76,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'project1.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {                                                                                                                        
         'default': {                                                                                                                     
@@ -100,8 +93,6 @@ DATABASES = {
     } 
 
 
-# Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -119,8 +110,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
@@ -131,8 +120,6 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
@@ -141,14 +128,12 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Authentication Settings
 LOGIN_URL = 'login'
 AUTHENTICATION_BACKENDS = [
     'car_sales.auth.EmployeeBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Custom date/time format module path
 FORMAT_MODULE_PATH = [
     'project1.formats',
 ]

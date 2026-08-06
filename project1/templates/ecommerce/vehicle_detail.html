@@ -9,7 +9,6 @@
 {% block content %}
 <main class="flex-grow-1">
 
-    <!-- Dark Hero Header -->
     <div class="ecom-page-header mb-5">
         <div class="container">
             <nav aria-label="breadcrumb" class="mb-3">
@@ -48,28 +47,24 @@
         </div>
     </div>
 
-    <!-- Main Content Section -->
     <div class="container py-5">
         <div class="row g-4">
-            
-            <!-- Left Main Details Column (8 Cols) -->
+
             <div class="col-lg-8">
-                
-                <!-- Gallery Section -->
+
                 <div class="mb-5">
                     <div class="detail-gallery-main mb-3 p-4">
                         <img id="main-detail-image" src="{{ vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ vehicle.vehicle_model }}">
                     </div>
                 </div>
 
-                <!-- Vehicle Overview Specs Grid -->
                 <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
                     <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
                         <h4 class="fw-bold text-dark mb-0">Specifications</h4>
                     </div>
-                    
+
                     <div class="row g-3">
-                        <!-- Make -->
+
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-industry"></i></div>
@@ -80,7 +75,6 @@
                             </div>
                         </div>
 
-                        <!-- Model & Trim -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-car"></i></div>
@@ -91,7 +85,6 @@
                             </div>
                         </div>
 
-                        <!-- Odometer -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-gauge-high"></i></div>
@@ -102,7 +95,6 @@
                             </div>
                         </div>
 
-                        <!-- Body Style -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-car-side"></i></div>
@@ -113,7 +105,6 @@
                             </div>
                         </div>
 
-                        <!-- Transmission -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-gears"></i></div>
@@ -124,7 +115,6 @@
                             </div>
                         </div>
 
-                        <!-- Condition Rating -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-shield-halved"></i></div>
@@ -135,7 +125,6 @@
                             </div>
                         </div>
 
-                        <!-- Exterior Color -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-palette"></i></div>
@@ -146,7 +135,6 @@
                             </div>
                         </div>
 
-                        <!-- Interior Color -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-couch"></i></div>
@@ -157,7 +145,6 @@
                             </div>
                         </div>
 
-                        <!-- State -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-map-location-dot"></i></div>
@@ -168,7 +155,6 @@
                             </div>
                         </div>
 
-                        <!-- MMR Price -->
                         <div class="col-md-4 col-6">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-sack-dollar"></i></div>
@@ -179,7 +165,6 @@
                             </div>
                         </div>
 
-                        <!-- VIN -->
                         <div class="col-md-4 col-12">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-barcode"></i></div>
@@ -190,13 +175,9 @@
                             </div>
                         </div>
 
-
-
                     </div>
                 </div>
 
-
-                <!-- Description Block -->
                 <div class="card border-0 shadow-sm rounded-4 p-4 mb-5">
                     <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-align-left text-primary me-2"></i> Vehicle Description & Inspection Summary</h4>
                     <p class="text-secondary leading-relaxed mb-3">
@@ -210,10 +191,8 @@
 
             </div>
 
-            <!-- Right Sidebar Column (4 Cols) -->
             <div class="col-lg-4">
-                
-                <!-- Sidebar Price & Actions Card -->
+
                 <div class="sidebar-price-card mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted small fw-bold uppercase">Listing MMR Price</span>
@@ -238,9 +217,6 @@
                     </div>
                 </div>
 
-
-
-                <!-- Vehicle Inquiry Form -->
                 <div class="card border-0 shadow-sm rounded-4 p-4">
                     <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-paper-plane text-primary me-2"></i> Send Dealer Inquiry</h5>
                     <form id="dealerInquiryForm">
@@ -257,7 +233,6 @@
             </div>
         </div>
 
-        <!-- Recommended Similar Inventory Section -->
         {% if similar_inventory_groups %}
         <div class="mt-5 pt-4 border-top">
             <div class="d-flex align-items-center justify-content-between gap-3 mb-4">

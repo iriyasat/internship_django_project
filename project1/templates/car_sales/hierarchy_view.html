@@ -16,10 +16,9 @@
 
 <section class="section dashboard">
   <div class="row">
-    <!-- Action Alerts -->
+
     <div class="col-12" id="alert-container"></div>
 
-    <!-- Summary Card -->
     <div class="row mb-4">
       <div class="col-12 mb-3">
         <div class="card info-card sales-card">
@@ -39,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Hierarchy Directory Card -->
     <div class="col-12">
       <div class="card">
         <div class="card-body pt-3">
@@ -47,7 +45,6 @@
             Employee Directory <span>| Live Query & Hierarchy Chains</span>
           </h5>
 
-          <!-- Search and Table Controls -->
           <div class="row g-3 align-items-center mb-3">
             <div class="col-md-6 d-flex align-items-center gap-2">
               <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
@@ -72,7 +69,6 @@
             </div>
           </div>
 
-          <!-- Loading Spinner -->
           <div id="loading-spinner" class="text-center py-5">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
@@ -80,7 +76,6 @@
             <p class="text-muted mt-2">Loading hierarchy data...</p>
           </div>
 
-          <!-- Table Wrapper -->
           <div class="table-responsive" id="table-wrapper" style="display: none;">
             <table class="table table-hover align-middle">
               <thead class="table-light">
@@ -95,19 +90,18 @@
                 </tr>
               </thead>
               <tbody id="data-table-body">
-                <!-- Dynamically populated -->
+
               </tbody>
             </table>
           </div>
 
-          <!-- Pagination -->
           <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
             <div class="small text-muted" id="pagination-info">
               Showing 0 to 0 of 0 entries
             </div>
             <nav aria-label="Table navigation">
               <ul class="pagination pagination-sm mb-0" id="pagination-list">
-                <!-- Populated via Javascript -->
+
               </ul>
             </nav>
           </div>
@@ -118,7 +112,6 @@
   </div>
 </section>
 
-<!-- Detail/Chain Modal -->
 <div class="modal fade" id="chainModal" tabindex="-1" aria-labelledby="chainModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
@@ -128,7 +121,7 @@
       </div>
       <div class="modal-body p-4">
         <div id="modal-content-details">
-          <!-- Dynamically populated details and timeline -->
+
         </div>
       </div>
     </div>
@@ -222,7 +215,7 @@
   function fetchData() {
     showLoading(true);
     const url = `/api/hierarchy/?page=${currentPage}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`;
-    
+
     fetch(url)
       .then(response => response.json())
       .then(data => {
@@ -262,9 +255,9 @@
 
     records.forEach(row => {
       const tr = document.createElement('tr');
-      
+
       const badgeColor = row.status_name === 'In Service' ? 'bg-success' : (row.status_name === 'On Leave' ? 'bg-warning text-dark' : 'bg-danger');
-      
+
       tr.innerHTML = `
         <td class="fw-bold">#${row.employee_id}</td>
         <td>${row.employee_name}</td>
@@ -313,7 +306,7 @@
 
   function showReportingChain(empId) {
     const url = `/api/hierarchy/${empId}/`;
-    
+
     fetch(url)
       .then(res => res.json())
       .then(data => {
@@ -333,7 +326,7 @@
 
   function renderChain(data) {
     const detailsContainer = document.getElementById('modal-content-details');
-    
+
     let html = `
       <div class="mb-4 d-flex align-items-center justify-content-between p-3 border-0 bg-light rounded-4">
         <div>
@@ -352,7 +345,7 @@
 
     // Collect all active supervisors in order
     const path = [];
-    
+
     // Add target employee first as base
     path.push({
       name: data.employee_name,
@@ -366,7 +359,7 @@
       const supId = data[`supervisor${suffix}_id`];
       const supName = data[`supervisor${suffix}_name`];
       const supRole = data[`supervisor${suffix}_role_name`];
-      
+
       if (supId) {
         path.push({
           name: supName,
@@ -383,12 +376,12 @@
       const isLast = idx === path.length - 1;
       const stepColor = step.isTarget ? 'border-primary bg-primary text-white' : 'border-secondary bg-white text-dark';
       const indicatorColor = step.isTarget ? '#0d6efd' : '#6c757d';
-      
+
       html += `
         <div class="mb-4 position-relative d-flex align-items-start gap-3">
-          <!-- Timeline line -->
+
           ${!isLast ? `<div class="position-absolute" style="left: -19px; top: 24px; bottom: -28px; width: 2px; background-color: #dee2e6;"></div>` : ''}
-          <!-- Timeline dot -->
+
           <div class="d-flex align-items-center justify-content-center rounded-circle border border-3 ${stepColor}" 
                style="position: absolute; left: -28px; top: 2px; width: 20px; height: 20px; z-index: 2;">
           </div>

@@ -41,10 +41,8 @@ class Command(BaseCommand):
                 order_status=Order.OrderStatus.NEEDS_APPROVAL
             ))
 
-        # Bulk update inventory status to PRE_ORDER
         Inventory.objects.filter(inventory_id__in=inv_ids_to_update).update(status=Inventory.StatusChoices.PRE_ORDER)
 
-        # Bulk create orders
         Order.objects.bulk_create(orders_to_create, batch_size=200)
 
         total_pending = Order.objects.filter(order_status=Order.OrderStatus.NEEDS_APPROVAL).count()

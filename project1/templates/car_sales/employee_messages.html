@@ -240,12 +240,11 @@
       <li class="breadcrumb-item active">Store Messages</li>
     </ol>
   </nav>
-</div><!-- End Page Title -->
+</div>
 
 <section class="section">
   <div class="row">
 
-    <!-- Store Info Card -->
     <div class="col-12 mb-4">
       <div class="card border-0 shadow-sm rounded-3 bg-primary text-white">
         <div class="card-body p-4 d-flex align-items-center justify-content-between">
@@ -262,7 +261,6 @@
       </div>
     </div>
 
-    <!-- Section 1: Unaccepted Customer Messages (Queue for Store Staff) -->
     <div class="col-12 mb-4">
       <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -285,12 +283,12 @@
                       <small class="d-block text-muted"><i class="bi bi-clock me-1"></i> {{ thread.created_at|date:"Y-m-d H:i" }}</small>
                     </div>
                   </div>
-                  
+
                   <div class="p-3 bg-white border rounded-3 my-3" style="white-space: pre-line;">
                     <strong>Inquiry Message:</strong><br>
                     {{ thread.last_message }}
                   </div>
-                  
+
                   <div class="text-end">
                     {% if employee_profile %}
                     <button type="button" onclick="acceptCustomerMessage({{ thread.message_id }})" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">
@@ -316,7 +314,6 @@
       </div>
     </div>
 
-    <!-- Section 2: My Accepted Customer Messages (2-Column Chat Container) -->
     <div class="col-12">
       <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -326,7 +323,7 @@
         <div class="card-body p-0">
           {% if accepted_messages %}
             <div class="message-container">
-                <!-- Left Sidebar - Contact List -->
+
                 <div class="message-sidebar">
                     <div class="message-search">
                         <form action="#" class="search-form-contact" onsubmit="event.preventDefault();">
@@ -357,11 +354,10 @@
                     </div>
                 </div>
 
-                <!-- Right Main Area - Chat Window -->
                 <div class="message-chat">
                     {% for thread in accepted_messages %}
                     <div class="chat-thread-pane {% if not forloop.first %}d-none{% endif %}" id="threadPane_{{ thread.message_id }}" data-chat-thread-id="{{ thread.message_id }}">
-                        <!-- Chat Header -->
+
                         <div class="message-chat__header">
                             <div class="message-chat__user">
                                 <div class="message-chat__avatar user-online">
@@ -381,7 +377,6 @@
                             </div>
                         </div>
 
-                        <!-- Chat Messages Body -->
                         <div class="message-chat__body" id="chatHistory_{{ thread.message_id }}">
                             <div class="message-date-separator">
                                 <span>Today</span>
@@ -389,7 +384,7 @@
 
                             {% for m in thread.messages %}
                                 {% if m.is_reply %}
-                                <!-- Staff Reply -->
+
                                 <div class="message-item message-item--sent">
                                     <div class="message-item__bubble">
                                         <div class="message-item__text">{{ m.message }}</div>
@@ -400,7 +395,7 @@
                                     </div>
                                 </div>
                                 {% else %}
-                                <!-- Customer Message -->
+
                                 <div class="message-item message-item--received">
                                     <div class="message-item__bubble">
                                         <div class="message-item__text">{{ m.message }}</div>
@@ -411,7 +406,6 @@
                             {% endfor %}
                         </div>
 
-                        <!-- Message Input Bar (Side-by-side Layout) -->
                         {% if employee_profile %}
                         <div class="message__action d-flex align-items-center p-3 border-top bg-white gap-2">
                             <div class="message-chat__input">
@@ -492,7 +486,7 @@
     if (chatContainer) {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const empName = "{{ employee_profile.first_name }} {{ employee_profile.last_name }}".trim() || "Barbara Santos";
-      
+
       const newBubbleHtml = `
         <div class="message-item message-item--sent">
           <div class="message-item__bubble">

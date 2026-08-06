@@ -9,7 +9,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Add customer_id column
         migrations.AddField(
             model_name='invoice',
             name='customer',
@@ -23,7 +22,6 @@ class Migration(migrations.Migration):
                 verbose_name='Customer',
             ),
         ),
-        # Add employee_id column
         migrations.AddField(
             model_name='invoice',
             name='employee',
@@ -37,7 +35,6 @@ class Migration(migrations.Migration):
                 verbose_name='Employee',
             ),
         ),
-        # Add store_id column
         migrations.AddField(
             model_name='invoice',
             name='store',

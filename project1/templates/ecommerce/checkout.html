@@ -3,7 +3,7 @@
 {% block title %}Checkout & Order Placement | Automobile{% endblock %}
 
 {% block content %}
-<!-- Dark Hero Header -->
+
 <div class="ecom-page-header mb-5">
     <div class="container">
         <h1 class="fw-extrabold display-5 mb-2">Checkout & Vehicle Reservation</h1>
@@ -11,15 +11,13 @@
     </div>
 </div>
 
-
 <div class="container mb-5">
     <div class="row g-4">
-        
-        <!-- Left Checkout Form -->
+
         <div class="col-lg-7">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                 <h5 class="fw-bold mb-3 border-bottom pb-2">1. Delivery & Fulfillment Preference</h5>
-                
+
                 <form id="checkout-form" class="d-grid gap-3">
                     {% if buy_now_item %}
                         <input type="hidden" name="inventory_id" value="{{ buy_now_item.inventory_id }}">
@@ -55,7 +53,7 @@
                     </div>
 
                     <h5 class="fw-bold mb-2 border-bottom pb-2 mt-4">2. Payment Method Preference</h5>
-                    
+
                     <div class="d-grid gap-2">
                         <div class="form-check card p-3 border rounded-4 bg-light">
                             <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_card" value="ONLINE_CARD" checked>
@@ -90,11 +88,10 @@
             </div>
         </div>
 
-        <!-- Right Summary Card -->
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white sticky-top" style="top: 100px;">
                 <h5 class="fw-bold mb-3 border-bottom pb-2">Vehicle Purchase Details</h5>
-                
+
                 {% if buy_now_item %}
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <img src="{{ buy_now_item.vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" class="rounded-3" style="width: 80px; height: 60px; object-fit: cover;">

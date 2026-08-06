@@ -16,7 +16,7 @@
 </div>
 
 <section class="section dashboard">
-  <!-- Date Filter Form (Client-side) -->
+
   <div class="card mb-4">
     <div class="card-body pt-3">
       <h5 class="card-title py-0 my-0 mb-3" style="font-size: 1.1rem; font-weight: 700;">Query JSON API for Store Sales</h5>
@@ -54,15 +54,14 @@
   </div>
 
   <div class="row">
-    <!-- Table Status Info / Alerts -->
+
     <div class="col-12" id="alert-container"></div>
 
-    <!-- API Data Table -->
     <div class="col-12">
       <div class="card">
         <div class="card-body">
           <h5 class="card-title">Store Sales Records <span>| Client-side API Rendered</span></h5>
-          
+
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex align-items-center gap-2">
               <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
@@ -81,7 +80,6 @@
             </div>
           </div>
 
-          <!-- Loading Spinner -->
           <div id="loading-spinner" class="text-center py-5" style="display: none;">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
@@ -89,7 +87,6 @@
             <p class="text-muted mt-2">Calling Store Sales API...</p>
           </div>
 
-          <!-- Table Wrapper -->
           <div class="table-responsive" id="table-wrapper">
             <table class="table table-hover align-middle">
               <thead class="table-light">
@@ -111,14 +108,13 @@
             </table>
           </div>
 
-          <!-- Pagination -->
           <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none !important;">
             <div class="small text-muted" id="pagination-info">
               Showing 0 to 0 of 0 entries
             </div>
             <nav aria-label="Table navigation">
               <ul class="pagination pagination-sm mb-0" id="pagination-list">
-                <!-- Populated via Javascript -->
+
               </ul>
             </nav>
           </div>
@@ -147,12 +143,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const resetBtn = document.getElementById('reset-btn');
   const dtFromInput = document.getElementById('dt_from');
   const dtToInput = document.getElementById('dt_to');
-  
+
   const loadingSpinner = document.getElementById('loading-spinner');
   const tableWrapper = document.getElementById('table-wrapper');
   const tableBody = document.getElementById('api-table-body');
   const alertContainer = document.getElementById('alert-container');
-  
+
   const pageSizeSelect = document.getElementById('page-size-select');
   const searchInput = document.getElementById('search-input');
   const downloadPdfBtn = document.getElementById('download-pdf-btn');
@@ -203,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function fetchData() {
     const fromDate = dtFromInput.value.trim();
     const toDate = dtToInput.value.trim();
-    
+
     if (!fromDate || !toDate) {
       showError('Please specify both From Date and To Date.');
       return;
@@ -230,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (res.status && Array.isArray(res.data)) {
           allRecords = res.data;
           filteredRecords = [...allRecords];
-          
+
           currentPage = 1;
           renderTable();
         } else {
@@ -269,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderTable() {
     loadingSpinner.style.display = 'none';
     tableBody.innerHTML = '';
-    
+
     if (filteredRecords.length === 0) {
       tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No matching records found.</td></tr>`;
       tableWrapper.style.display = 'block';
@@ -285,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const row = document.createElement('tr');
       row.style.opacity = '0';
       row.style.transition = 'opacity 0.25s ease-in-out';
-      
+
       const mmrVal = parseFloat(rec.mmr || 0);
       const priceVal = parseFloat(rec.selling_price || 0);
       const marginVal = priceVal - mmrVal;
@@ -293,14 +289,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const formattedMmr = '$' + mmrVal.toLocaleString(undefined, {minimumFractionDigits: 0});
       const formattedPrice = '$' + priceVal.toLocaleString(undefined, {minimumFractionDigits: 0});
-      
+
       let badgeHtml = '';
       if (marginVal >= 0) {
         badgeHtml = `<span class="badge bg-success-light text-success"><i class="bi bi-arrow-up-right me-1"></i> +$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0})}</span>`;
       } else {
         badgeHtml = `<span class="badge bg-danger-light text-danger"><i class="bi bi-arrow-down-left me-1"></i> -$${absMargin.toLocaleString(undefined, {minimumFractionDigits: 0})}</span>`;
       }
-      
+
       row.innerHTML = `
         <td><strong>${escapeHtml(rec.store_name || 'N/A')}</strong></td>
         <td>${escapeHtml(rec.customer_name || 'N/A')}</td>
@@ -310,13 +306,13 @@ document.addEventListener('DOMContentLoaded', function() {
         <td class="text-end text-dark fw-bold">${formattedPrice}</td>
         <td class="text-center">${badgeHtml}</td>
       `;
-      
+
       tableBody.appendChild(row);
       setTimeout(() => row.style.opacity = '1', 50);
     });
 
     tableWrapper.style.display = 'block';
-    
+
     // Pagination Controls update
     updatePagination();
   }
@@ -344,13 +340,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'pt', 'a4');
-    
+
     // Header styling
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(33, 37, 41);
     doc.text("Store Sales Report", 40, 45);
-    
+
     // Sub-header Info
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -359,12 +355,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateTo = dtToInput.value || '2014-01-31';
     doc.text(`Report Range: ${dateFrom} to ${dateTo}`, 40, 65);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 78);
-    
+
     const searchVal = searchInput.value.trim();
     if (searchVal) {
       doc.text(`Search Query: "${searchVal}"`, 40, 91);
     }
-    
+
     // Data Table headers and rows
     const headers = [["Store Name", "Customer Name", "Vehicle Details", "Selling Date", "MMR", "Price", "Margin"]];
     const rows = filteredRecords.map(rec => {
@@ -384,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formattedMargin
       ];
     });
-    
+
     doc.autoTable({
       startY: searchVal ? 105 : 95,
       head: headers,
@@ -398,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
         6: { halign: 'center' }
       }
     });
-    
+
     doc.save(`store_sales_report_${dateFrom}_to_${dateTo}.pdf`);
   }
 

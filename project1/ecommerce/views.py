@@ -20,7 +20,6 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.core.files.storage import default_storage
 from project1.workspaces import get_workspace_for_user, is_customer_workspace_user
@@ -58,13 +57,11 @@ def _get_request_payload(request):
     return getattr(request, 'GET', {})
 
 
-# Strictly secure helper to get current authenticated customer record
 def get_customer_from_request(request):
     if not (hasattr(request, 'user') and request.user.is_authenticated):
         return None
 
     with connection.cursor() as cursor:
-        # 1. Check cust_<id> username format
         if request.user.username.startswith('cust_'):
             try:
                 c_id = int(request.user.username.split('_')[1])
@@ -83,7 +80,6 @@ def get_customer_from_request(request):
             except Exception:
                 pass
 
-        # 2. Check matching email
         if request.user.email:
             cursor.execute(
                 "SELECT customer_id, email, phone FROM customer WHERE email = %s",
@@ -98,7 +94,6 @@ def get_customer_from_request(request):
                 cust.phone = row[2]
                 return cust
 
-        # 3. Fallback for staff / superusers / test accounts: use first customer ID
         cursor.execute("SELECT customer_id, email, phone FROM customer ORDER BY customer_id ASC LIMIT 1")
         row = cursor.fetchone()
         if row:
@@ -122,9 +117,6 @@ def _require_customer_workspace(request, json_mode=False):
 
 
 
-# ==============================================================================
-# 1. CATALOG & SEARCH VIEWS / APIS
-# ==============================================================================
 
 def catalog_view(request):
     """Customer vehicle catalog page."""
@@ -241,9 +233,6 @@ def api_vehicle_trims(request):
     return JsonResponse({'success': True, 'count': len(trims_list), 'trims': trims_list})
 
 
-# ==============================================================================
-# 2. VEHICLE COMPARE VIEW
-# ==============================================================================
 
 def compare_view(request):
     """Compare up to 4 vehicles side-by-side using raw SQL."""
@@ -361,9 +350,6 @@ def compare_view(request):
 
 
 
-# ==============================================================================
-# 3. WISHLIST VIEWS & APIS
-# ==============================================================================
 
 def wishlist_view(request):
     """Customer wishlist page."""
@@ -385,9 +371,9 @@ def wishlist_view(request):
     })
 
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 def api_toggle_wishlist(request):
-    """Add or remove a vehicle from customer's wishlist."""
+    """Add, remove, or toggle a vehicle in customer's wishlist."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Authentication required. Please log in.'}, status=401)
 
@@ -396,28 +382,34 @@ def api_toggle_wishlist(request):
         return JsonResponse({'success': False, 'error': 'Customer account profile not found.'}, status=400)
 
     payload = _get_request_payload(request)
-    vehicle_id = payload.get('vehicle_id') or payload.get('inventory_id') or payload.get('id')
+    target_id = payload.get('vehicle_id') or payload.get('inventory_id') or payload.get('id')
 
-    if not vehicle_id:
+    if not target_id:
         return JsonResponse({'success': False, 'error': 'vehicle_id required'}, status=400)
 
-    # Resolve inventory_id -> vehicle_id if an inventory_id was passed
+    vehicle_id = None
     with connection.cursor() as cursor:
-        cursor.execute("SELECT vehicle_id FROM inventory WHERE inventory_id = %s OR vehicle_id = %s LIMIT 1", [vehicle_id, vehicle_id])
-        inv_row = cursor.fetchone()
-        if inv_row and inv_row[0]:
-            vehicle_id = inv_row[0]
+        cursor.execute("SELECT id FROM vehicle_info WHERE id = %s LIMIT 1", [target_id])
+        v_row = cursor.fetchone()
+        if v_row:
+            vehicle_id = v_row[0]
+        else:
+            cursor.execute("SELECT vehicle_id FROM inventory WHERE inventory_id = %s LIMIT 1", [target_id])
+            inv_row = cursor.fetchone()
+            if inv_row and inv_row[0]:
+                vehicle_id = inv_row[0]
+            else:
+                vehicle_id = target_id
+
+    action = 'delete' if (request.method == 'DELETE' or request.path.endswith('/remove/') or payload.get('action') in ('delete', 'remove')) else None
 
     try:
-        res = WishlistService.toggle_wishlist(customer, vehicle_id)
+        res = WishlistService.toggle_wishlist(customer, vehicle_id, action=action)
         return JsonResponse({'success': True, **res})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-# ==============================================================================
-# 3. SHOPPING CART VIEWS & APIS
-# ==============================================================================
 
 def cart_view(request):
     """Customer shopping cart page."""
@@ -480,9 +472,6 @@ def api_remove_from_cart(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-# ==============================================================================
-# 4. TEST DRIVE BOOKING VIEWS & APIS
-# ==============================================================================
 
 def test_drive_view(request):
     """Test drive booking page and user's scheduled test drives."""
@@ -611,9 +600,6 @@ def api_book_test_drive(request):
 
 
 
-# ==============================================================================
-# 5. CHECKOUT & ORDER SUBMISSION VIEWS & APIS
-# ==============================================================================
 
 def checkout_view(request):
     """Customer checkout page."""
@@ -628,7 +614,7 @@ def checkout_view(request):
     if customer:
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address,
+                SELECT ci.firstname, ci.lastname, ci.customer_status, ci.customer_address, ci.profile_picture,
                        c.city_id, c.city_name, co.country_id, co.country_name
                 FROM customer_info ci
                 LEFT JOIN city c ON ci.city_id = c.city_id
@@ -641,11 +627,15 @@ def checkout_view(request):
 
     class _Obj:
         def __init__(self, **kw): self.__dict__.update(kw)
+    profile_picture = ci_row[4] if ci_row and ci_row[4] else None
+    profile_picture_url = f"/media/{profile_picture}" if profile_picture else None
     customer_info = _Obj(
         firstname=ci_row[0], lastname=ci_row[1],
         customer_status=ci_row[2], customer_address=ci_row[3],
-        city=_Obj(city_id=ci_row[4], city_name=ci_row[5]),
-        country=_Obj(country_id=ci_row[6], country_name=ci_row[7])
+        profile_picture=profile_picture,
+        profile_picture_url=profile_picture_url,
+        city=_Obj(city_id=ci_row[5], city_name=ci_row[6]) if ci_row and ci_row[5] else None,
+        country=_Obj(country_id=ci_row[7], country_name=ci_row[8]) if ci_row and ci_row[7] else None
     ) if ci_row else None
     
     cart_items, cart_total = CartService.fetch_customer_cart_items(customer) if customer else ([], 0)
@@ -729,9 +719,6 @@ def customer_orders_view(request):
     return redirect('/profile/?tab=orders')
 
 
-# ==============================================================================
-# 6. CUSTOMER PROFILE VIEWS & APIS
-# ==============================================================================
 
 def customer_profile_view(request):
     """Customer profile management & merged order history page."""
@@ -795,7 +782,6 @@ def customer_profile_view(request):
             cursor.execute("SELECT country_id, country_name FROM country ORDER BY country_name")
             countries = [_Obj(country_id=r[0], country_name=r[1]) for r in cursor.fetchall()]
 
-            # Fetch Order Details
             cursor.execute("""
                 SELECT o.order_id, o.total_amount, o.order_status, o.fulfillment_type,
                        o.created_at, v.vehicle_model, m.make_name, s.store_name,
@@ -931,7 +917,6 @@ def api_update_customer_profile(request):
                     except Exception:
                         pass
 
-            # Check if customer_info record exists
             cursor.execute(
                 "SELECT customer_id FROM customer_info WHERE customer_id = %s",
                 [customer.customer_id]
@@ -939,7 +924,6 @@ def api_update_customer_profile(request):
             existing_info = cursor.fetchone()
 
             if existing_info:
-                # Update existing record
                 updates = []
                 params = []
                 if firstname: updates.append("firstname = %s"); params.append(firstname)
@@ -956,7 +940,6 @@ def api_update_customer_profile(request):
                         params
                     )
             else:
-                # Insert new record
                 cursor.execute("""
                     INSERT INTO customer_info
                         (customer_id, firstname, lastname, customer_status, customer_address, city_id, country_id, profile_picture)
@@ -1067,11 +1050,9 @@ def customer_messages_view(request):
 
     if customer:
         with connection.cursor() as cursor:
-            # Fetch Stores list for sending new messages
             cursor.execute("SELECT store_id, store_name, address FROM store ORDER BY store_name")
             stores = [_Obj(store_id=r[0], store_name=r[1], address=r[2]) for r in cursor.fetchall()]
 
-            # Fetch Customer Message History
             cursor.execute("""
                 SELECT cm.message_id, cm.message, cm.created_at, cm.updated_at,
                        s.store_id, s.store_name,
@@ -1096,7 +1077,6 @@ def customer_messages_view(request):
                 emp_ln = (r[8] or '').strip()
                 default_emp_name = f"{emp_fn} {emp_ln}".strip() if (emp_fn or emp_ln) else "Store Staff"
 
-                # Parse multi-line conversation stored in message field
                 lines = [line.strip() for line in full_raw_text.split('\n') if line.strip()]
                 msg_list = []
                 assigned_emp = default_emp_name if emp_id else None
@@ -1177,7 +1157,6 @@ def api_send_superuser_message(request):
     customer = get_customer_from_request(request)
     customer_id = customer.customer_id if customer else None
 
-    # Get Head Office / First Store for Superusers
     with connection.cursor() as cursor:
         cursor.execute("SELECT store_id FROM store ORDER BY store_id ASC LIMIT 1")
         store_row = cursor.fetchone()
@@ -1189,7 +1168,6 @@ def api_send_superuser_message(request):
             if c_row:
                 customer_id = c_row[0]
             else:
-                # Get fallback customer for guest inquiries
                 cursor.execute("SELECT customer_id FROM customer ORDER BY customer_id ASC LIMIT 1")
                 fallback_c = cursor.fetchone()
                 customer_id = fallback_c[0] if fallback_c else 1
@@ -1199,7 +1177,7 @@ def api_send_superuser_message(request):
         msg = CustomerMessage.objects.create(
             customer_id=customer_id,
             store_id=main_store_id,
-            employee_id=None,  # Head office / superuser inbox
+            employee_id=None,
             message=f"Newsletter Subscription & Superuser Direct Inquiry from: {email}"
         )
         return JsonResponse({

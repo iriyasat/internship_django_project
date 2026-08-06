@@ -18,7 +18,7 @@
 
 <section class="section">
   <div class="row">
-    <!-- Action Alerts -->
+
     <div class="col-12" id="alert-container"></div>
 
     <div class="col-12">
@@ -33,7 +33,6 @@
             {% endif %}
           </h5>
 
-          <!-- Search and Table Controls -->
           <div class="row g-3 align-items-center mb-3">
             <div class="col-md-6 d-flex align-items-center gap-2">
               <label for="page-size-select" class="small fw-bold text-muted mb-0">Show:</label>
@@ -58,7 +57,6 @@
             </div>
           </div>
 
-          <!-- Loading Spinner -->
           <div id="loading-spinner" class="text-center py-5">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
@@ -66,7 +64,6 @@
             <p class="text-muted mt-2">Loading Inventory Database...</p>
           </div>
 
-          <!-- Table Wrapper -->
           <div class="table-responsive" id="table-wrapper" style="display: none;">
             <table class="table table-hover align-middle">
               <thead class="table-light">
@@ -85,19 +82,18 @@
                 </tr>
               </thead>
               <tbody id="api-table-body">
-                <!-- Populated via Javascript -->
+
               </tbody>
             </table>
           </div>
 
-          <!-- Pagination -->
           <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none;">
             <div class="small text-muted" id="pagination-info">
               Showing 0 to 0 of 0 entries
             </div>
             <nav aria-label="Table navigation">
               <ul class="pagination pagination-sm mb-0" id="pagination-list">
-                <!-- Populated via Javascript -->
+
               </ul>
             </nav>
           </div>
@@ -108,7 +104,6 @@
   </div>
 </section>
 
-<!-- CRUD Modal (Add / Edit) -->
 <div class="modal fade" id="inventoryModal" tabindex="-1" aria-labelledby="inventoryModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -120,9 +115,9 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="edit-inventory-id" name="inventory_id">
-          
+
           <div class="row g-3">
-            <!-- Vehicle Selection & Inline Creation -->
+
             <div class="col-md-12">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <label for="id_vehicle" class="form-label fw-bold small text-muted mb-0">Vehicle <span class="text-danger">*</span></label>
@@ -137,7 +132,6 @@
               <div class="invalid-feedback">Please select a vehicle.</div>
             </div>
 
-            <!-- Dynamic New Vehicle Form inline section -->
             <div class="col-12" id="new-vehicle-section" style="display: none;">
               <div class="card p-3 mb-2 bg-light border shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -190,7 +184,6 @@
               </div>
             </div>
 
-            <!-- Store Selection -->
             <div class="col-md-6">
               <label for="id_store" class="form-label fw-bold small text-muted">Store</label>
               <select class="form-select form-select-sm" id="id_store" required>
@@ -202,7 +195,6 @@
               <div class="invalid-feedback">Please select a store.</div>
             </div>
 
-            <!-- Employee Selection -->
             <div class="col-md-6">
               <label for="id_employee" class="form-label fw-bold small text-muted">Entry By</label>
               <select class="form-select form-select-sm" id="id_employee" required>
@@ -214,7 +206,6 @@
               <div class="invalid-feedback">Please assign an employee.</div>
             </div>
 
-            <!-- Status Choices -->
             <div class="col-md-6">
               <label for="id_status" class="form-label fw-bold small text-muted">Status</label>
               <select class="form-select form-select-sm" id="id_status" required>
@@ -225,7 +216,6 @@
               <div class="invalid-feedback">Please select status.</div>
             </div>
 
-            <!-- Selling Info Selection -->
             <div class="col-md-6">
               <label for="id_selling_info" class="form-label fw-bold small text-muted">Selling Transaction (Optional)</label>
               <select class="form-select form-select-sm" id="id_selling_info">
@@ -265,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const inventoryForm = document.getElementById('inventory-form');
   const addInventoryBtn = document.getElementById('add-inventory-btn');
   const modalTitle = document.getElementById('inventoryModalLabel');
-  
+
   // Form Inputs
   const editIdInput = document.getElementById('edit-inventory-id');
   const vehicleSelect = document.getElementById('id_vehicle');
@@ -686,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
     modalTitle.textContent = `Edit Inventory Item #${id}`;
     if (newVehicleSection) newVehicleSection.style.display = 'none';
     clearNewVehicleFields();
-    
+
     // Fetch details of single item
     fetch(`/api/inventory/${id}/`)
       .then(response => response.json())
@@ -714,7 +704,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Delete Item function
   function deleteItem(id) {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
+
     fetch(`/api/inventory/${id}/`, {
       method: 'DELETE',
       headers: {
@@ -764,23 +754,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l', 'pt', 'a4');
-    
+
     // Header styling
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(33, 37, 41);
     doc.text("Inventory CRUD Report", 40, 45);
-    
+
     // Sub-header Info
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(108, 117, 125);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 65);
-    
+
     if (searchQuery) {
       doc.text(`Search Query: "${searchQuery}"`, 40, 78);
     }
-    
+
     // Data Table headers and rows
     const headers = [["ID", "Vehicle Name / Details", "Store Location", "Entry By", "Status", "Selling ID", "Created At", "Updated At"]];
     const rows = currentRecords.map(rec => [
@@ -793,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
       rec.created_at || 'N/A',
       rec.updated_at || 'N/A'
     ]);
-    
+
     doc.autoTable({
       startY: searchQuery ? 95 : 85,
       head: headers,
@@ -802,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
       headStyles: { fillColor: [13, 110, 253], textColor: [255, 255, 255] },
       styles: { fontSize: 8, font: 'helvetica' }
     });
-    
+
     doc.save(`inventory_crud_report.pdf`);
   }
 

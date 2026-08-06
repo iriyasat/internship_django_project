@@ -1,16 +1,5 @@
-/**
-* Template Name: NiceAdmin
-* Updated: Jan 09 2024 with Bootstrap v5.3.2
-* Template URL: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/
-* Author: BootstrapMade.com
-* License: https://bootstrapmade.com/license/
-*/
 (function() {
   "use strict";
-
-  /**
-   * Easy selector helper function
-   */
   const select = (el, all = false) => {
     el = el.trim()
     if (all) {
@@ -19,10 +8,6 @@
       return document.querySelector(el)
     }
   }
-
-  /**
-   * Easy event listener function
-   */
   const on = (type, el, listener, all = false) => {
     if (all) {
       select(el, all).forEach(e => e.addEventListener(type, listener))
@@ -30,35 +15,19 @@
       select(el, all).addEventListener(type, listener)
     }
   }
-
-  /**
-   * Easy on scroll event listener 
-   */
   const onscroll = (el, listener) => {
     el.addEventListener('scroll', listener)
   }
-
-  /**
-   * Sidebar toggle
-   */
   if (select('.toggle-sidebar-btn')) {
     on('click', '.toggle-sidebar-btn', function(e) {
       select('body').classList.toggle('toggle-sidebar')
     })
   }
-
-  /**
-   * Search bar toggle
-   */
   if (select('.search-bar-toggle')) {
     on('click', '.search-bar-toggle', function(e) {
       select('.search-bar').classList.toggle('search-bar-show')
     })
   }
-
-  /**
-   * Navbar links active state on scroll
-   */
   let navbarlinks = select('#navbar .scrollto', true)
   const navbarlinksActive = () => {
     let position = window.scrollY + 200
@@ -75,10 +44,6 @@
   }
   window.addEventListener('load', navbarlinksActive)
   onscroll(document, navbarlinksActive)
-
-  /**
-   * Toggle .header-scrolled class to #header when page is scrolled
-   */
   let selectHeader = select('#header')
   if (selectHeader) {
     const headerScrolled = () => {
@@ -91,10 +56,6 @@
     window.addEventListener('load', headerScrolled)
     onscroll(document, headerScrolled)
   }
-
-  /**
-   * Back to top button
-   */
   let backtotop = select('.back-to-top')
   if (backtotop) {
     const toggleBacktotop = () => {
@@ -107,30 +68,20 @@
     window.addEventListener('load', toggleBacktotop)
     onscroll(document, toggleBacktotop)
   }
-
-  /**
-   * Initiate tooltips
-   */
   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
   var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl)
   })
-
-  /**
-   * Initiate quill editors
-   */
   if (select('.quill-editor-default')) {
     new Quill('.quill-editor-default', {
       theme: 'snow'
     });
   }
-
   if (select('.quill-editor-bubble')) {
     new Quill('.quill-editor-bubble', {
       theme: 'bubble'
     });
   }
-
   if (select('.quill-editor-full')) {
     new Quill(".quill-editor-full", {
       modules: {
@@ -178,14 +129,9 @@
       theme: "snow"
     });
   }
-
-  /**
-   * Initiate TinyMCE Editor
-   */
   if (typeof tinymce !== 'undefined') {
     const useDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isSmallScreen = window.matchMedia('(max-width: 1023.5px)').matches;
-
     tinymce.init({
       selector: 'textarea.tinymce-editor',
       plugins: 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
@@ -229,21 +175,16 @@
       ],
       importcss_append: true,
       file_picker_callback: (callback, value, meta) => {
-        /* Provide file and text for the link dialog */
         if (meta.filetype === 'file') {
           callback('https://www.google.com/logos/google.jpg', {
             text: 'My text'
           });
         }
-
-        /* Provide image and alt text for the image dialog */
         if (meta.filetype === 'image') {
           callback('https://www.google.com/logos/google.jpg', {
             alt: 'My alt text'
           });
         }
-
-        /* Provide alternative source and posted for the media dialog */
         if (meta.filetype === 'media') {
           callback('movie.mp4', {
             source2: 'alt.ogg',
@@ -280,12 +221,7 @@
       content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px }'
     });
   }
-
-  /**
-   * Initiate Bootstrap validation check
-   */
   var needsValidation = document.querySelectorAll('.needs-validation')
-
   Array.prototype.slice.call(needsValidation)
     .forEach(function(form) {
       form.addEventListener('submit', function(event) {
@@ -293,14 +229,9 @@
           event.preventDefault()
           event.stopPropagation()
         }
-
         form.classList.add('was-validated')
       }, false)
     })
-
-  /**
-   * Initiate Datatables
-   */
   const datatables = select('.datatable', true)
   datatables.forEach(datatable => {
     new simpleDatatables.DataTable(datatable, {
@@ -321,10 +252,6 @@
       ]
     });
   })
-
-  /**
-   * Autoresize echart charts
-   */
   const mainContainer = select('#main');
   if (mainContainer) {
     setTimeout(() => {
@@ -335,14 +262,12 @@
       }).observe(mainContainer);
     }, 200);
   }
-
-  // ─── Global PDF styling & helper configurations ───
   window.pdfStyles = {
-    primary: [79, 70, 229],      // Indigo (#4F46E5)
-    textDark: [30, 41, 59],      // Slate 800 (#1E293B)
-    textMuted: [100, 116, 139],  // Slate 500 (#64748B)
-    bgLight: [248, 250, 252],   // Slate 50 (#F8FAFC)
-    borderColor: [226, 232, 240], // Slate 200 (#E2E8F0)
+    primary: [79, 70, 229],      
+    textDark: [30, 41, 59],      
+    textMuted: [100, 116, 139],  
+    bgLight: [248, 250, 252],   
+    borderColor: [226, 232, 240], 
     headStyles: {
       fillColor: [79, 70, 229],
       textColor: [255, 255, 255],
@@ -353,15 +278,11 @@
       font: 'helvetica'
     }
   };
-
-  // ─── Datatable Column Controls (DTCC) & Column Sorting ───
-
   function getCellValue(row, index) {
     const cell = row.cells[index];
     if (!cell) return '';
     return (cell.innerText || cell.textContent).trim();
   }
-
   function cleanNumericValue(val) {
     let clean = val.replace(/[\$,%]/g, '').trim();
     if (clean.startsWith('(') && clean.endsWith(')')) {
@@ -369,7 +290,6 @@
     }
     return clean;
   }
-
   function parseValue(val) {
     if (!val) return '';
     const clean = cleanNumericValue(val);
@@ -385,61 +305,47 @@
     }
     return val.toLowerCase();
   }
-
   function sortTableColumn(table, colIndex, asc) {
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
-
     const rows = Array.from(tbody.querySelectorAll('tr'));
     if (rows.length === 0) return;
     if (rows.length === 1 && rows[0].querySelector('td[colspan]')) return;
-
     rows.sort((rowA, rowB) => {
       const valA = getCellValue(rowA, colIndex);
       const valB = getCellValue(rowB, colIndex);
-
       const isSpecialA = valA === '' || valA.toLowerCase() === 'n/a';
       const isSpecialB = valB === '' || valB.toLowerCase() === 'n/a';
       if (isSpecialA && !isSpecialB) return 1;
       if (!isSpecialA && isSpecialB) return -1;
       if (isSpecialA && isSpecialB) return 0;
-
       const parsedA = parseValue(valA);
       const parsedB = parseValue(valB);
-
       if (typeof parsedA === 'number' && typeof parsedB === 'number') {
         return asc ? parsedA - parsedB : parsedB - parsedA;
       }
-
       const strA = String(parsedA);
       const strB = String(parsedB);
       return asc 
         ? strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' })
         : strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
     });
-
     rows.forEach(row => tbody.appendChild(row));
   }
-
   function initSingleTable(table) {
     if (table._dtccInitialized) return;
     table._dtccInitialized = true;
-
     const thead = table.querySelector('thead');
     if (!thead) return;
-
     const headers = thead.querySelectorAll('tr:last-child th');
     headers.forEach((th, colIndex) => {
       const headerText = th.textContent.trim().toLowerCase();
       if (headerText === 'actions' || headerText === 'action' || th.classList.contains('no-sort')) {
         return;
       }
-
       if (th.querySelector('.dtcc')) return;
-
       th.style.position = 'relative';
       th.style.cursor = 'pointer';
-
       const dtccSpan = document.createElement('span');
       dtccSpan.className = 'dtcc';
       dtccSpan.innerHTML = `
@@ -459,31 +365,24 @@
           <span class="dtcc-button-extra"></span>
         </button>
       `;
-
       th.appendChild(dtccSpan);
-
       let sortAsc = true;
       const orderBtn = dtccSpan.querySelector('.dtcc-button_order');
-
       function triggerSort(asc) {
         sortTableColumn(table, colIndex, asc);
-        
         thead.querySelectorAll('.dtcc-button_order').forEach(btn => {
           btn.classList.remove('dtcc-button_active', 'dtcc-button_desc');
         });
-
         orderBtn.classList.add('dtcc-button_active');
         if (!asc) {
           orderBtn.classList.add('dtcc-button_desc');
         }
       }
-
       orderBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         triggerSort(sortAsc);
         sortAsc = !sortAsc;
       });
-
       th.addEventListener('click', (e) => {
         if (e.target.closest('button')) {
           return;
@@ -492,23 +391,19 @@
       });
     });
   }
-
   function initTableSorting() {
     const tables = document.querySelectorAll('table.table:not(.datatable)');
     tables.forEach(table => initSingleTable(table));
   }
-
   function observeDynamicTables() {
     const main = document.getElementById('main') || document.body;
     const observer = new MutationObserver((mutations) => {
       mutations.forEach(mutation => {
         mutation.addedNodes.forEach(node => {
           if (node.nodeType !== Node.ELEMENT_NODE) return;
-          
           if (node.matches && node.matches('table.table:not(.datatable)')) {
             initSingleTable(node);
           }
-          
           if (node.querySelectorAll) {
             const tables = node.querySelectorAll('table.table:not(.datatable)');
             tables.forEach(table => initSingleTable(table));
@@ -518,9 +413,6 @@
     });
     observer.observe(main, { childList: true, subtree: true });
   }
-
-  // Run initial setup
   initTableSorting();
   observeDynamicTables();
-
 })();

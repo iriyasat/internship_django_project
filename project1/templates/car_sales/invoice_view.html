@@ -16,12 +16,11 @@
 
 <section class="section dashboard">
   <div class="row">
-    <!-- Action Alerts -->
+
     <div class="col-12" id="alert-container"></div>
 
-    <!-- Summary Cards -->
     <div class="row mb-4">
-      <!-- Total Invoices -->
+
       <div class="col-xxl-3 col-md-6 mb-3">
         <div class="card info-card sales-card">
           <div class="card-body">
@@ -39,7 +38,6 @@
         </div>
       </div>
 
-      <!-- Paid -->
       <div class="col-xxl-3 col-md-6 mb-3">
         <div class="card info-card revenue-card">
           <div class="card-body">
@@ -57,7 +55,6 @@
         </div>
       </div>
 
-      <!-- Unpaid / Pending -->
       <div class="col-xxl-3 col-md-6 mb-3">
         <div class="card info-card customers-card">
           <div class="card-body">
@@ -75,7 +72,6 @@
         </div>
       </div>
 
-      <!-- Page Final Amount -->
       <div class="col-xxl-3 col-md-6 mb-3">
         <div class="card info-card">
           <div class="card-body">
@@ -106,7 +102,6 @@
             {% endif %}
           </h5>
 
-          <!-- Filters Row -->
           <div class="row g-2 mb-3 align-items-end">
             <div class="col-md-2">
               <label for="filter-status" class="small fw-bold text-muted mb-1">Payment Status</label>
@@ -149,7 +144,6 @@
             </div>
           </div>
 
-          <!-- Loading Spinner -->
           <div id="loading-spinner" class="text-center py-5">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Loading...</span>
@@ -157,7 +151,6 @@
             <p class="text-muted mt-2">Loading invoice records...</p>
           </div>
 
-          <!-- Table Wrapper -->
           <div class="table-responsive" id="table-wrapper" style="display: none;">
             <table class="table table-hover align-middle" id="invoice-table">
               <thead class="table-light">
@@ -177,12 +170,11 @@
                 </tr>
               </thead>
               <tbody id="api-table-body">
-                <!-- Populated via JavaScript -->
+
               </tbody>
             </table>
           </div>
 
-          <!-- Pagination -->
           <div class="d-flex justify-content-between align-items-center mt-3" id="pagination-controls" style="display: none !important;">
             <div class="small text-muted" id="pagination-info">Showing 0 to 0 of 0 entries</div>
             <nav aria-label="Table navigation">
@@ -195,7 +187,6 @@
   </div>
 </section>
 
-<!-- CRUD Modal -->
 {% if request.user.is_authenticated %}
 <div class="modal fade" id="crudModal" tabindex="-1" aria-labelledby="crudModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
@@ -210,7 +201,6 @@
         <div class="modal-body">
           <div class="row g-3">
 
-            <!-- New Sale Fields (create from scratch mode only) -->
             <div class="col-md-6 new-sale-field">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <label for="new_sale_customer_search" class="form-label fw-bold mb-0">Customer <span class="text-danger">*</span></label>
@@ -222,7 +212,6 @@
               <div class="invalid-feedback">Please select a customer from the search options.</div>
             </div>
 
-            <!-- Dynamic New Customer Form inline section -->
             <div class="col-12 new-sale-field" id="new-customer-section" style="display: none;">
               <div class="card p-3 mb-2 bg-light border shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -267,7 +256,6 @@
               </div>
             </div>
 
-            <!-- Inventory selector: only lists physical vehicles in stock -->
             <div class="col-md-6 new-sale-field">
               <label for="new_sale_inventory_search" class="form-label fw-bold">Select from Inventory <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="new_sale_inventory_search" placeholder="Type VIN, model or store..." list="inventory-datalist" autocomplete="off" required>
@@ -276,7 +264,6 @@
               <div class="invalid-feedback">Please select a valid stocked vehicle from the search options.</div>
             </div>
 
-            <!-- Employee selection -->
             <div class="col-md-6 new-sale-field">
               <label for="new_sale_employee" class="form-label fw-bold">Sales Executive <span class="text-danger">*</span></label>
               <select class="form-select" id="new_sale_employee" required>
@@ -288,34 +275,29 @@
               <div class="invalid-feedback">Please select the sales executive.</div>
             </div>
 
-            <!-- Selling Price -->
             <div class="col-md-6 new-sale-field">
               <label for="new_sale_price" class="form-label fw-bold">Selling Price ($) <span class="text-danger">*</span></label>
               <input type="number" class="form-control" id="new_sale_price" min="0" placeholder="e.g. 25000" required>
               <div class="invalid-feedback">Please enter a valid selling price.</div>
             </div>
 
-            <!-- Sale Date -->
             <div class="col-md-6 new-sale-field">
               <label for="new_sale_date" class="form-label fw-bold">Sale Date <span class="text-danger">*</span></label>
               <input type="date" class="form-control" id="new_sale_date" required>
               <div class="invalid-feedback">Please select the sale date.</div>
             </div>
 
-            <!-- Invoice Date -->
             <div class="col-md-6">
               <label for="id_invoice_date" class="form-label fw-bold">Invoice Date <span class="text-danger">*</span></label>
               <input type="date" class="form-control" id="id_invoice_date" required>
               <div class="invalid-feedback">Please select an invoice date.</div>
             </div>
 
-            <!-- Due Date -->
             <div class="col-md-6">
               <label for="id_due_date" class="form-label fw-bold">Due Date</label>
               <input type="date" class="form-control" id="id_due_date">
             </div>
 
-            <!-- Payment Status -->
             <div class="col-md-6">
               <label for="id_payment_status" class="form-label fw-bold">Payment Status <span class="text-danger">*</span></label>
               <select class="form-select" id="id_payment_status" required>
@@ -326,7 +308,6 @@
               <div class="invalid-feedback">Please select a payment status.</div>
             </div>
 
-            <!-- Payment Method -->
             <div class="col-md-6">
               <label for="id_payment_method" class="form-label fw-bold">Payment Method <span class="text-danger">*</span></label>
               <select class="form-select" id="id_payment_method" required>
@@ -337,13 +318,11 @@
               <div class="invalid-feedback">Please select a payment method.</div>
             </div>
 
-            <!-- Discount -->
             <div class="col-md-6">
               <label for="id_discount_amount" class="form-label fw-bold">Discount Amount ($) <small class="text-muted">(Auto-calculated from MMR)</small></label>
               <input type="number" class="form-control" id="id_discount_amount" min="0" value="0" placeholder="0" readonly>
             </div>
 
-            <!-- Notes -->
             <div class="col-md-6">
               <label for="id_notes" class="form-label fw-bold">Notes</label>
               <textarea class="form-control" id="id_notes" rows="2" placeholder="Optional notes..."></textarea>
@@ -541,7 +520,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-
   function renderPagination(total) {
     window.updatePaginationHelper(
       paginationList,
@@ -556,8 +534,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     );
   }
-
-
 
   // Debounce helper
   function debounce(func, wait) {
@@ -744,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const newCust = res.data;
           const fullName = `${newCust.firstname} ${newCust.lastname}`;
           customerMap.set(fullName, newCust.customer_id);
-          
+
           if (customerSearch) {
             customerSearch.value = fullName;
             customerSearch.setCustomValidity('');
@@ -779,7 +755,7 @@ document.addEventListener('DOMContentLoaded', function () {
       crudForm.classList.remove('was-validated');
       editIdInput.value = '';
       modalTitle.textContent = 'Create Invoice';
-      
+
       // Reset searches & hidden inputs
       if (customerSearch) { customerSearch.value = ''; customerSearch.setCustomValidity(''); }
       if (customerHidden) customerHidden.value = '';
@@ -1085,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const discountAmount = parseInt(r.discount_amount || 0);
     const mmrVal = parseInt(r.mmr || 0);
     const discountPct = parseFloat(r.discount_pct || 0);
-    
+
     let discountDetail = "No discount";
     if (discountAmount > 0) {
       discountDetail = `-$${discountAmount.toLocaleString()} (${discountPct.toFixed(2)}% off MMR MMR Price: $${mmrVal.toLocaleString()})`;
@@ -1211,7 +1187,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     doc.save(`INV_${r.invoice_id}.pdf`);
   };
-
 
   // ─── Filter / search listeners ─────────────────
   let searchTimeout = null;

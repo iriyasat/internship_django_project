@@ -49,50 +49,6 @@ def _resolve_vehicle_image_url(make_name, vehicle_model=None):
     return f"/static/logos/{logo_alias}.png"
 
 
-# ------------------------------------------------------------------------------
-# Raw SQL Execution Helpers (Unified Architecture matching car_sales)
-# ------------------------------------------------------------------------------
-
-def format_date_fields(item):
-    """Utility to format date and datetime fields to string format in-place."""
-    if not isinstance(item, dict):
-        return item
-    for key, val in item.items():
-        if val and hasattr(val, 'strftime') and not isinstance(val, str):
-            if key in ('created_at', 'updated_at', 'reviewed_at', 'booking_date', 'order_date'):
-                item[key] = val.strftime('%Y-%m-%d %H:%M')
-            elif key in ('selling_date', 'invoice_date', 'due_date', 'date_of_joining'):
-                item[key] = val.strftime('%Y-%m-%d')
-    return item
-
-
-def execute_raw_fetch_all(db_name, query, params=None):
-    with connections[db_name or 'default'].cursor() as cursor:
-        cursor.execute(query, params or [])
-        columns = [col[0] for col in cursor.description] if cursor.description else []
-        rows = cursor.fetchall()
-    return [format_date_fields(dict(zip(columns, row))) for row in rows]
-
-
-def execute_fetchone_query(db_name, query, params=None):
-    with connections[db_name or 'default'].cursor() as cursor:
-        cursor.execute(query, params or [])
-        row = cursor.fetchone()
-        if row:
-            columns = [col[0] for col in cursor.description]
-            return format_date_fields(dict(zip(columns, row)))
-    return None
-
-
-def execute_cud_query(db_name, query, params=None):
-    with connections[db_name or 'default'].cursor() as cursor:
-        cursor.execute(query, params or [])
-        return cursor.lastrowid
-
-
-# ------------------------------------------------------------------------------
-# REST Framework Model Serializers
-# ------------------------------------------------------------------------------
 
 class WishlistModelSerializer(serializers.ModelSerializer):
     vehicle_model = serializers.CharField(source='vehicle.vehicle_model', read_only=True)
@@ -213,17 +169,6 @@ class VehicleBodyService:
         return cls.BODY_SVG_MAP['sedan']
 
     @staticmethod
-    def _get_car_image_urls():
-        from pathlib import Path
-        from django.conf import settings
-
-        image_dir = Path(settings.BASE_DIR) / 'static' / 'cars'
-        urls = []
-        for pattern in ('*.jpg', '*.jpeg', '*.png', '*.webp'):
-            urls.extend(f"/static/cars/{path.name}" for path in image_dir.glob(pattern))
-        return urls
-
-    @staticmethod
     def _resolve_body_image_url(body_name):
         """Pick a representative inventory vehicle image for a body type."""
         with connection.cursor() as cursor:
@@ -245,7 +190,6 @@ class VehicleBodyService:
 
     @classmethod
     def fetch_vehicle_bodies(cls):
-        # RAW SQL Execution
         with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT v.body, COUNT(i.inventory_id) as count
@@ -295,7 +239,6 @@ class VehicleConditionService:
 
     @classmethod
     def fetch_condition_tabs(cls, active_condition='all'):
-        # RAW SQL Execution
         with connection.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (2, 4)")
             all_count = cursor.fetchone()[0]
@@ -346,9 +289,6 @@ class VehicleConditionService:
         return serializer.data
 
 
-# ------------------------------------------------------------------------------
-# Encapsulated Business Query & Transaction Services (RAW SQL)
-# ------------------------------------------------------------------------------
 
 class CatalogService:
     @staticmethod
@@ -499,7 +439,6 @@ class CatalogService:
         )
         where_sql = " WHERE " + " AND ".join(where_clauses)
 
-        # Count total query
         count_sql = f"""
             SELECT COUNT(*)
             FROM inventory i
@@ -511,7 +450,6 @@ class CatalogService:
             {where_sql}
         """
 
-        # Sorting logic
         sort_order = "i.inventory_id DESC"
         if sort in ['lowest-price', 'price_asc']:
             sort_order = "v.mmr ASC"
@@ -564,13 +502,11 @@ class CatalogService:
             cursor.execute(select_sql, params + [page_size, offset])
             rows = cursor.fetchall()
 
-            # Price Stats SQL
             cursor.execute(f"SELECT MIN(v.mmr), MAX(v.mmr) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql}", params)
             p_stats = cursor.fetchone()
             min_p = p_stats[0] or 0
             max_p = p_stats[1] or 182000
 
-            # Live condition breakdown counts
             cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.odometer <= 100", params)
             c_new = cursor.fetchone()[0]
             cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.odometer > 100", params)
@@ -590,7 +526,6 @@ class CatalogService:
             inv_id, v_id, s_id, st_code, v_model, v_trim, v_body, v_trans, v_color, v_int, v_state, v_cond, v_odo, v_mmr, v_vin, m_name, s_name, c_name, co_name = r
 
             
-            # Resolve image URL
             img_url = _resolve_vehicle_image_url(m_name, v_model)
 
             vehicles.append({
@@ -753,7 +688,6 @@ class VehicleDetailService:
         PNG_ALIASES = {'mercedesbenz': 'mercedes', 'landrover': 'landrover'}
 
         with connection.cursor() as cursor:
-            # Main inventory + vehicle + store detail
             cursor.execute("""
                 SELECT
                     i.inventory_id, i.vehicle_id, i.store_id, i.status,
@@ -794,7 +728,6 @@ class VehicleDetailService:
         brand_logo_url = f"/static/logos/{png_slug}.png"
         vehicle_image_url = _resolve_vehicle_image_url(make_name, v_model)
 
-        # Build mock objects that templates expect
         class _Obj(dict):
             """Dict-like object with attribute access for template compatibility."""
             def __getattr__(self, k):
@@ -830,7 +763,6 @@ class VehicleDetailService:
             vehicle=vehicle, store=store, employee=employee
         )
 
-        # Similar vehicles raw SQL (price-range first, then diversified by brand)
         import random
         target_cards = 16
         base_price = int(v_mmr or 0)
@@ -961,7 +893,7 @@ class WishlistService:
         return [_WishlistItem(r) for r in rows]
 
     @staticmethod
-    def toggle_wishlist(customer, vehicle_id):
+    def toggle_wishlist(customer, vehicle_id, action=None):
         """Add or remove a vehicle from the customer wishlist using Raw SQL."""
         if not customer:
             raise ValueError("Authentication required")
@@ -971,9 +903,10 @@ class WishlistService:
                 [customer.customer_id, vehicle_id]
             )
             existing = cursor.fetchone()
-            if existing:
-                cursor.execute(f"DELETE FROM {WISHLIST_TABLE} WHERE id = %s", [existing[0]])
+            if action in ('delete', 'remove') or existing:
+                cursor.execute(f"DELETE FROM {WISHLIST_TABLE} WHERE customer_id = %s AND vehicle_id = %s", [customer.customer_id, vehicle_id])
                 added = False
+                action_str = 'removed'
                 msg = "Removed from Wishlist"
             else:
                 cursor.execute(
@@ -981,13 +914,14 @@ class WishlistService:
                     [customer.customer_id, vehicle_id]
                 )
                 added = True
+                action_str = 'added'
                 msg = "Added to Wishlist"
             cursor.execute(
                 f"SELECT COUNT(*) FROM {WISHLIST_TABLE} WHERE customer_id = %s",
                 [customer.customer_id]
             )
             count = cursor.fetchone()[0]
-        return {'added': added, 'message': msg, 'wishlist_count': count}
+        return {'added': added, 'action': action_str, 'message': msg, 'wishlist_count': count}
 
 
 class CartService:
@@ -997,7 +931,6 @@ class CartService:
         if not customer:
             return [], 0
         with connection.cursor() as cursor:
-            # Ensure cart exists
             cursor.execute(
                 f"SELECT {CART_PK_COLUMN} FROM {CART_TABLE} WHERE customer_id = %s",
                 [customer.customer_id]
@@ -1064,7 +997,7 @@ class CartService:
             inv_row = cursor.fetchone()
             if not inv_row:
                 raise ValueError("Inventory item not found")
-            if inv_row[0] not in [1, 4]:  # 1=Available, 4=Pre-Order
+            if inv_row[0] not in [1, 4]:
                 raise ValueError("Item is no longer available")
 
             cursor.execute(
@@ -1236,11 +1169,9 @@ class OrderService:
                 order_status=Order.OrderStatus.NEEDS_APPROVAL
             )
 
-            # Update inventory status to PRE_ORDER (2)
             inventory.status = Inventory.StatusChoices.PRE_ORDER
             inventory.save()
 
-            # Record online card deposit if applicable
             if deposit > 0 and payment_preference == Order.PaymentPreference.ONLINE_CARD:
                 PaymentTransaction.objects.create(
                     gateway_transaction_id=f"TXN-DEP-{uuid.uuid4().hex[:12].upper()}",
@@ -1254,7 +1185,6 @@ class OrderService:
                 order.order_status = Order.OrderStatus.PARTIALLY_PAID
                 order.save()
 
-            # Clear cart item if present
             cart = Cart.objects.filter(customer=customer).first()
             if cart:
                 CartItem.objects.filter(cart=cart, inventory=inventory).delete()
@@ -1273,11 +1203,9 @@ class OrderService:
             if action == 'ACCEPT':
                 order.order_status = Order.OrderStatus.APPROVED
 
-                # Remove vehicle from active catalog by setting status to SOLD (1)
                 order.inventory.status = Inventory.StatusChoices.SOLD
                 order.inventory.save()
 
-                # Record official SellingInfo sale
                 from car_sales.models import SellingInfo
                 sell_record = SellingInfo.objects.create(
                     customer=order.customer,
@@ -1288,7 +1216,6 @@ class OrderService:
                     selling_date=date.today()
                 )
 
-                # Generate Invoice if missing
                 if not order.invoice:
                     inv_id = (Invoice.objects.all().order_by('-invoice_id').first().invoice_id + 1) if Invoice.objects.exists() else 4000
                     invoice = Invoice.objects.create(
@@ -1309,16 +1236,14 @@ class OrderService:
                 order.save()
                 msg = f"Order #{order.order_id} approved. Inventory status updated to Sold."
 
-            else: # REJECT
+            else:
                 order.order_status = Order.OrderStatus.REJECTED
                 order.rejection_reason = rejection_reason
                 order.save()
 
-                # Revert inventory status back to AVAILABLE (4)
                 order.inventory.status = Inventory.StatusChoices.AVAILABLE
                 order.inventory.save()
 
-                # Process refund if deposit was paid
                 if order.deposit_amount > 0:
                     PaymentTransaction.objects.create(
                         gateway_transaction_id=f"TXN-REF-{uuid.uuid4().hex[:12].upper()}",
@@ -1371,7 +1296,6 @@ class OrderService:
             raise ValueError("No employee assigned for sales handover credit")
 
         with transaction.atomic():
-            # 1. Create official SellingInfo record credited to employee
             selling_info = SellingInfo.objects.create(
                 customer=order.customer,
                 vehicle=order.inventory.vehicle,
@@ -1381,18 +1305,15 @@ class OrderService:
                 selling_date=date.today()
             )
 
-            # 2. Update Inventory to SOLD (1)
             order.inventory.status = Inventory.StatusChoices.SOLD
             order.inventory.selling_info = selling_info
             order.inventory.save()
 
-            # 3. Update Invoice if present
             if order.invoice:
                 order.invoice.selling_info = selling_info
                 order.invoice.payment_status = Invoice.PaymentStatusChoices.PAID
                 order.invoice.save()
 
-            # 4. Update Order to FULFILLED
             order.order_status = Order.OrderStatus.FULFILLED
             order.assigned_employee = employee
             order.save()

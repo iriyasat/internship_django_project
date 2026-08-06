@@ -1,9 +1,3 @@
-/* ==========================================================================
-   Automobile E-Commerce Master Design System & Stylesheet
-   Centralized CSS for Navbar, Footers, Catalog Cards, Search & Filters
-   ========================================================================== */
-
-/* ─── CSS Variables & Design Tokens ─── */
 :root {
     --primary: #3b82f6;
     --primary-dark: #1d4ed8;
@@ -14,20 +8,15 @@
     --bg-light: #f8fafc;
     --radius: 20px;
 }
-
-/* ─── Global Base Styles ─── */
 body {
     font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
     background-color: var(--bg-light);
     color: var(--text-main);
-    padding-top: 76px; /* Fixed Navbar Offset */
+    padding-top: 76px; 
 }
-
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
 }
-
-/* ─── Fixed Shared Navigation Bar ─── */
 .landing-nav {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -47,7 +36,6 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
     height: 68px;
 }
-
 .nav-logo {
     display: flex;
     flex-direction: column;
@@ -72,7 +60,6 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--dark-bg);
     text-transform: uppercase;
 }
-
 .nav-tabs-wrapper {
     display: flex;
     align-items: center;
@@ -94,13 +81,11 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--primary);
     background: rgba(59, 130, 246, 0.08);
 }
-
 .nav-actions { 
     display: flex; 
     align-items: center; 
     gap: 14px; 
 }
-
 .btn-nav-login { 
     padding: 8px 20px; 
     border-radius: 99px; 
@@ -116,8 +101,6 @@ h1, h2, h3, h4, h5, h6 {
     color: #fff; 
     transform: translateY(-1px); 
 }
-
-/* ─── Profile Menu & Dropdown ─── */
 .profile-menu {
     position: relative;
 }
@@ -198,8 +181,6 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: center;
     line-height: 1;
 }
-
-/* ─── Hero Page Header (Gradient Header) ─── */
 .ecom-page-header {
     background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%);
     position: relative;
@@ -234,26 +215,23 @@ h1, h2, h3, h4, h5, h6 {
     position: relative;
     z-index: 2;
 }
-
 .ecom-page-header h1, .ecom-page-header .h1 {
     font-family: 'Outfit', sans-serif !important;
-    font-size: 2.25rem !important; /* Standardized 36px heading size */
+    font-size: 2.25rem !important; 
     font-weight: 800 !important;
     letter-spacing: -0.02em !important;
     line-height: 1.25 !important;
     color: #ffffff !important;
     margin-bottom: 0.4rem !important;
 }
-
 .ecom-page-header p {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 1.025rem !important; /* Standardized subtitle size */
+    font-size: 1.025rem !important; 
     font-weight: 400 !important;
     color: rgba(226, 232, 240, 0.88) !important;
     line-height: 1.5 !important;
     margin-bottom: 0 !important;
 }
-
 .ecom-page-header .breadcrumb-item, 
 .ecom-page-header .breadcrumb-item a {
     color: rgba(203, 213, 225, 0.85) !important;
@@ -266,8 +244,6 @@ h1, h2, h3, h4, h5, h6 {
 .ecom-page-header .breadcrumb-item + .breadcrumb-item::before {
     color: rgba(148, 163, 184, 0.6) !important;
 }
-
-/* ─── Vehicle Card Component (Style 9 Grid & List View) ─── */
 .card-box {
     position: relative;
     background: #ffffff;
@@ -285,7 +261,6 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1) !important;
     border-color: rgba(37, 99, 235, 0.3);
 }
-
 .card-box .top {
     position: absolute;
     top: 14px;
@@ -312,7 +287,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 .bg-primary-2 { background-color: #2563eb !important; }
 .bg-green { background-color: #10b981 !important; }
-
 .heart-btn {
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.6);
@@ -331,7 +305,6 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale(1.1);
     background: #ffffff;
 }
-
 .card-box .image {
     position: relative;
     height: 200px;
@@ -358,7 +331,6 @@ h1, h2, h3, h4, h5, h6 {
 .card-box:hover .card--img {
     transform: scale(1.05);
 }
-
 .card-box .content {
     padding: 20px;
     display: flex;
@@ -371,7 +343,6 @@ h1, h2, h3, h4, h5, h6 {
 .card-box__title a { color: inherit; text-decoration: none; }
 .card-box__title a:hover { color: #2563eb; }
 .card-box__price { font-weight: 900; color: #2563eb; font-size: 1.3rem; margin-bottom: 0; }
-
 .tag.style3 {
     display: flex;
     flex-wrap: wrap;
@@ -394,13 +365,44 @@ h1, h2, h3, h4, h5, h6 {
 .tag.style3 li i {
     color: #2563eb;
 }
-
 .card-box .content .btn-sm {
     font-size: 0.78rem;
     padding: 6px 10px;
     white-space: nowrap;
 }
-
+.card-box-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+}
+.card-box-actions .btn {
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 6px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50rem;
+    width: 100%;
+}
+.card-box-actions .btn i {
+    font-size: 0.78rem;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+@media (max-width: 575px) {
+    .card-box-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+    .card-box-actions .btn-buy-now {
+        grid-column: span 2;
+    }
+}
 .vehicle-card-hover {
     transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
     border-radius: var(--radius);
@@ -410,8 +412,6 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12) !important;
     border-color: rgba(59, 130, 246, 0.3) !important;
 }
-
-/* Single Column Row Layout Transformation on Desktop */
 @media (min-width: 768px) {
     .grid-cols-1 .card-box {
         flex-direction: row;
@@ -434,8 +434,6 @@ h1, h2, h3, h4, h5, h6 {
         justify-content: space-between;
     }
 }
-
-/* ─── Dual Range Slider Controls ─── */
 .dual-range-container {
     position: relative;
     height: 36px;
@@ -498,8 +496,6 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 2px 6px rgba(13, 110, 253, 0.4);
     cursor: pointer;
 }
-
-/* ─── View Mode Switcher & Dropdown ─── */
 .item-menu {
     display: inline-flex !important;
     align-items: center !important;
@@ -530,7 +526,6 @@ h1, h2, h3, h4, h5, h6 {
 .item-menu.active i {
     color: #ffffff !important;
 }
-
 .core-dropdown { position: relative; }
 .core-dropdown__button {
     display: inline-flex;
@@ -574,8 +569,6 @@ h1, h2, h3, h4, h5, h6 {
     color: #2563eb;
     font-weight: 700;
 }
-
-/* ─── Listing Filter Sidebar ─── */
 .listing-sidebar-right__filter {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -594,8 +587,6 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 6px;
     display: block;
 }
-
-/* ─── Grid & Layout Utilities ─── */
 .grid { display: grid; }
 .flex { display: flex; }
 .justify-between { justify-content: space-between; }
@@ -604,11 +595,9 @@ h1, h2, h3, h4, h5, h6 {
 .gap-20 { gap: 20px; }
 .mb-32 { margin-bottom: 32px; }
 .uppercase { text-transform: uppercase; }
-
 .grid-cols-1 { display: grid; grid-template-columns: repeat(1, 1fr); }
 .grid-cols-2 { display: grid; grid-template-columns: repeat(2, 1fr); }
 .grid-cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
-
 @media (min-width: 992px) {
     .listing-sidebar-right__filter {
         position: sticky;
@@ -617,7 +606,6 @@ h1, h2, h3, h4, h5, h6 {
         overflow-y: auto;
     }
 }
-
 @media (max-width: 991px) {
     .listing-sidebar-right__filter {
         position: relative;
@@ -631,8 +619,6 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 767px) {
     .grid-cols-3, .grid-cols-2, .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
 }
-
-/* ─── Pagination Styles ─── */
 .pagination {
     display: flex;
     gap: 6px;
@@ -674,8 +660,6 @@ h1, h2, h3, h4, h5, h6 {
         font-size: 0.78rem;
     }
 }
-
-/* ─── Sleek Dark Footer ─── */
 .landing-footer {
     background: #020617;
     color: rgba(226, 232, 240, 0.65);
@@ -687,7 +671,6 @@ h1, h2, h3, h4, h5, h6 {
     transition: color 0.2s;
 }
 .landing-footer a:hover { color: #60a5fa; }
-
 footer,
 .footer,
 footer.footer,
@@ -856,12 +839,9 @@ footer > *,
     list-style: none !important;
     list-style-type: none !important;
 }
-
-/* ─── Global Mobile Responsiveness & Navbar Scaling ─── */
 body {
     padding-top: 76px;
 }
-
 @media (max-width: 991px) {
     body {
         padding-top: 68px;
@@ -874,7 +854,6 @@ body {
         height: 60px;
     }
 }
-
 @media (max-width: 576px) {
     body {
         padding-top: 62px;
@@ -902,8 +881,6 @@ body {
         font-size: 0.82rem;
     }
 }
-
-/* ─── Mobile Hamburger Toggle Button ─── */
 .mobile-menu-toggle {
     display: none;
     flex-direction: column;
@@ -946,8 +923,6 @@ body {
 .mobile-menu-toggle[aria-expanded="true"] .hamburger-bar:nth-child(3) {
     transform: translateY(-7px) rotate(-45deg);
 }
-
-/* ─── Mobile Drawer Overlay ─── */
 .mobile-nav-overlay {
     position: fixed;
     inset: 0;
@@ -964,8 +939,6 @@ body {
     opacity: 1;
     pointer-events: all;
 }
-
-/* ─── Mobile Slide-In Drawer ─── */
 .mobile-nav-drawer {
     position: fixed;
     top: 0;
@@ -985,8 +958,6 @@ body {
 .mobile-nav-drawer.is-open {
     transform: translateX(0);
 }
-
-/* Responsive display guards */
 @media (max-width: 991.98px) {
     .mobile-nav-overlay {
         display: block;
@@ -995,7 +966,6 @@ body {
         display: flex;
     }
 }
-
 @media (min-width: 992px) {
     .mobile-nav-drawer,
     .mobile-nav-drawer.is-open,
@@ -1006,8 +976,6 @@ body {
         pointer-events: none !important;
     }
 }
-
-/* ─── Drawer Header ─── */
 .mobile-drawer-header {
     display: flex;
     align-items: center;
@@ -1037,8 +1005,6 @@ body {
     border-color: var(--primary);
     transform: rotate(90deg);
 }
-
-/* ─── Drawer Nav Links ─── */
 .mobile-drawer-nav {
     display: flex;
     flex-direction: column;
@@ -1090,16 +1056,12 @@ body {
     background: rgba(59, 130, 246, 0.12);
     color: var(--primary);
 }
-
-/* ─── Drawer Divider ─── */
 .mobile-drawer-divider {
     height: 1px;
     background: #e2e8f0;
     margin: 0 16px;
     flex-shrink: 0;
 }
-
-/* ─── Drawer Actions / Auth Section ─── */
 .mobile-drawer-actions {
     display: flex;
     flex-direction: column;
@@ -1187,15 +1149,12 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
 }
-
-/* ─── Catalog & Page Utility Classes ─── */
 .pb-100 { padding-bottom: 80px; }
 .tf-spacing-style3 { height: 24px; }
 .listing-sidebar-right { margin-top: 20px; }
 .listing-sidebar-right__content { width: 100%; }
 .gap-20 { gap: 20px; }
 .mb-32 { margin-bottom: 32px; }
-
 @media (max-width: 576px) {
     .pb-100 { padding-bottom: 32px; }
     .gap-20 { gap: 14px; }
@@ -1208,8 +1167,6 @@ body {
         font-size: 0.88rem;
     }
 }
-
-/* ─── Compare Page Table & Components ─── */
 .card-details { overflow-x: auto; }
 .card-details--table {
     width: 100%;
@@ -1262,8 +1219,6 @@ body {
     color: #94a3b8;
     background: #f8fafc;
 }
-
-/* ─── Messages Page Layout & Chat Interface ─── */
 .message-container {
     display: flex;
     height: clamp(520px, 75vh, 720px);
@@ -1577,8 +1532,6 @@ body {
         padding: 5px 10px;
     }
 }
-
-/* ─── Profile Page & Dashboard Components ─── */
 .profile-hero-card {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1642,8 +1595,6 @@ body {
     .profile-grid { grid-template-columns: 1fr; }
     .profile-grid .full { grid-column: auto; }
 }
-
-/* ─── Vehicle Detail Page Components ─── */
 .vehicle-detail-header {
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
@@ -1733,8 +1684,6 @@ body {
     border-radius: 4px;
     overflow: hidden;
 }
-
-/* ─── Homepage Hero & Component Styles ─── */
 .dual-range-input::-webkit-slider-thumb {
   pointer-events: auto;
   width: 16px;
@@ -1756,7 +1705,6 @@ body {
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
-
 .hero {
   min-height: 92vh;
   background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%);
@@ -1767,7 +1715,6 @@ body {
   overflow: hidden;
   color: #fff;
 }
-
 .hero-shell {
   position: relative;
   width: min(100%, 1180px);
@@ -1800,7 +1747,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   pointer-events: none;
 }
-
 .hero::before {
   content: '';
   position: absolute;
@@ -1819,7 +1765,6 @@ body {
   background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 65%);
   pointer-events: none;
 }
-
 .hero-content {
   position: relative;
   z-index: 2;
@@ -1827,7 +1772,6 @@ body {
   margin: 0 auto;
   text-align: center;
 }
-
 .hero-badge {
   display: inline-flex;
   align-items: center;
@@ -1851,12 +1795,10 @@ body {
   box-shadow: 0 0 12px #10b981;
   animation: pulse-dot 2s infinite;
 }
-
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.8); }
 }
-
 .hero h1 {
   font-size: clamp(2.6rem, 5.5vw, 4.2rem);
   font-weight: 900;
@@ -1870,14 +1812,12 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 .hero p {
   font-size: 1.15rem;
   color: rgba(226, 232, 240, 0.82);
   line-height: 1.75;
   margin-bottom: 36px;
 }
-
 .search-cars {
   position: relative;
   z-index: 2;
@@ -1937,7 +1877,6 @@ body {
   font-size: 0.75rem;
   font-weight: 800;
 }
-
 .search-cars__filters {
   position: relative;
   z-index: 10;
@@ -2009,7 +1948,42 @@ body {
 .filter-select-dropdown__toggle:checked ~ .filter-select-dropdown__menu {
   display: block;
 }
-
+.filter-select-dropdown__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.filter-checkbox {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #0f172a !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+.filter-checkbox span {
+  color: #0f172a !important;
+  display: block;
+}
+.filter-checkbox:hover {
+  background-color: #f1f5f9;
+  color: #2563eb !important;
+}
+.filter-checkbox:hover span {
+  color: #2563eb !important;
+}
+.filter-checkbox.active {
+  background-color: #eff6ff;
+  color: #2563eb !important;
+  font-weight: 700;
+}
+.filter-checkbox.active span {
+  color: #2563eb !important;
+  font-weight: 700;
+}
 .search-cars__filter.style2 {
   width: 48px; height: 48px;
   background: #f1f5f9;
@@ -2021,7 +1995,6 @@ body {
 .search-cars__filter.style2:hover {
   background: #e2e8f0;
 }
-
 .search-cars__search {
   background: var(--primary);
   color: #fff !important;
@@ -2039,7 +2012,6 @@ body {
   color: #fff !important;
   transform: translateY(-1px);
 }
-
 .search-cars__advanced {
   background: #0f172a;
   border: 1px solid rgba(255,255,255,0.15);
@@ -2059,7 +2031,6 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
 }
-
 .category-list.style-2 {
   display: flex;
   gap: 10px;
@@ -2086,7 +2057,6 @@ body {
   color: #fff !important;
   transform: translateY(-2px);
 }
-
 .hero-glass-input {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
@@ -2106,7 +2076,6 @@ body {
   background: #0f172a;
   color: #fff;
 }
-
 .hero-visual {
   position: absolute;
   right: 6%;
@@ -2118,7 +2087,6 @@ body {
   gap: 20px;
   width: 420px;
 }
-
 .stat-chip {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -2138,12 +2106,10 @@ body {
 .stat-chip:nth-child(2) { animation-delay: 1s; }
 .stat-chip:nth-child(3) { animation-delay: 2s; }
 .stat-chip:nth-child(4) { animation-delay: 0.5s; }
-
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
-
 .stat-chip .stat-icon {
   font-size: 2.2rem;
   margin-bottom: 8px;
@@ -2166,7 +2132,6 @@ body {
   font-weight: 700;
   margin-top: 2px;
 }
-
 .brands-showcase-section {
   padding: 92px 6% 110px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -2232,7 +2197,6 @@ body {
   margin: 0 0 6px;
   font-size: 1.05rem;
 }
-
 .stats-band {
   background: linear-gradient(135deg, #030712 0%, #0a1738 30%, #0f2847 65%, #1e3a8a 100%) !important;
   position: relative;
@@ -2294,7 +2258,6 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
 }
-
 .py-100 {
   padding-top: 100px;
   padding-bottom: 100px;
@@ -2314,7 +2277,6 @@ body {
   color: #0f172a;
   margin: 0;
 }
-
 .card-box-style-5 {
   display: block;
   height: 100%;
@@ -2365,7 +2327,6 @@ body {
   margin: 0 !important;
   height: auto;
 }
-
 .modules-section {
   padding: 90px 6%;
   background: var(--bg-light);
@@ -2392,7 +2353,6 @@ body {
   box-shadow: 0 4px 15px rgba(15, 23, 42, 0.03);
 }
 .module-pill:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1); border-color: var(--primary); color: var(--primary); }
-
 @media (max-width: 1200px) {
   .brands-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .swiper-card-8 .swiper-wrapper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2410,8 +2370,3 @@ body {
   .swiper-card-8 .swiper-wrapper { grid-template-columns: repeat(1, minmax(0, 1fr)); }
   .py-100 { padding-top: 72px; padding-bottom: 72px; }
 }
-
-
-
-
-

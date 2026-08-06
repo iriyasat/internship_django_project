@@ -20,7 +20,6 @@ class CarSalesBaseTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # Locate the excel file path dynamically
         excel_path = os.path.join(settings.BASE_DIR, 'dataset', 'car_sales_dataset_v2_untouched.xlsx')
 
         with pd.ExcelFile(excel_path) as xls:
@@ -31,7 +30,6 @@ class CarSalesBaseTestCase(TestCase):
             df_status = pd.read_excel(xls, sheet_name='employee_status')
             df_emp = pd.read_excel(xls, sheet_name='employee', nrows=5)
 
-        # 1. Load Country & City
         countries = []
         for _, row in df_country.iterrows():
             c, _ = Country.objects.get_or_create(
@@ -52,7 +50,6 @@ class CarSalesBaseTestCase(TestCase):
             cities.append(c)
         cls.city = cities[0]
 
-        # 2. Load Store
         stores = []
         for _, row in df_store.iterrows():
             city_id = int(row['city_id'])
@@ -72,7 +69,6 @@ class CarSalesBaseTestCase(TestCase):
             stores.append(s)
         cls.store = stores[0]
 
-        # 3. Load Employee Roles and Statuses
         for _, row in df_role.iterrows():
             EmployeeRole.objects.get_or_create(
                 role_id=int(row['role_id']),
@@ -89,7 +85,6 @@ class CarSalesBaseTestCase(TestCase):
         cls.status_active = EmployeeStatus.objects.get(status="In Service")
         cls.status_in_service = cls.status_active
 
-        # 4. Load Base Employees
         employees = []
         for _, row in df_emp.iterrows():
             role_id = int(row['employee_role'])
@@ -121,7 +116,6 @@ class CarSalesBaseTestCase(TestCase):
             )
             employees.append(e)
         
-        # Explicitly configure their roles and store to match existing test authorization logic
         cls.test_employee = employees[0]
         cls.test_employee.employee_role = cls.role
         cls.test_employee.store = cls.store
@@ -137,7 +131,6 @@ class CarSalesBaseTestCase(TestCase):
         cls.manager_employee.country = cls.country
         cls.manager_employee.save()
 
-        # Create EmployeeLevel records and EmployeeHierarchy entries so is_manager() works
         cls.level_9, _ = EmployeeLevel.objects.get_or_create(level=9, defaults={'notes': 'Reports to Senior Sales Executive / Sales Manager'})
         cls.level_6, _ = EmployeeLevel.objects.get_or_create(level=6, defaults={'notes': 'Reports to Senior Branch Manager (role 5)'})
         EmployeeHierarchy.objects.get_or_create(
@@ -151,27 +144,22 @@ class CarSalesBaseTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        # Record pre-existing user and employee primary keys to detect new ones
         self._initial_user_pks = set(User.objects.values_list('pk', flat=True))
         self._initial_employee_pks = set(Employee.objects.values_list('pk', flat=True))
 
     def tearDown(self):
-        # Identify users/employees created during this individual test method
         current_user_pks = set(User.objects.values_list('pk', flat=True))
         created_user_pks = current_user_pks - self._initial_user_pks
 
         current_employee_pks = set(Employee.objects.values_list('pk', flat=True))
         created_employee_pks = current_employee_pks - self._initial_employee_pks
 
-        # Delete the created user objects
         if created_user_pks:
             User.objects.filter(pk__in=created_user_pks).delete()
         
-        # Delete the created employee objects
         if created_employee_pks:
             Employee.objects.filter(pk__in=created_employee_pks).delete()
 
-        # Verify they are completely deleted from the database
         remaining_users = User.objects.filter(pk__in=created_user_pks).count()
         remaining_employees = Employee.objects.filter(pk__in=created_employee_pks).count()
 
@@ -190,11 +178,9 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
 
     def test_user_and_employee_lifecycle(self):
         """Create users and custom employees, delete them, and verify they are gone."""
-        # 1. Create a Django standard User
         user = User.objects.create_user(username="temp_user_test", email="temp@test.com", password="pass")
         self.assertTrue(User.objects.filter(username="temp_user_test").exists())
 
-        # 2. Create a custom Employee
         emp = Employee.objects.create(
             first_name="Temp",
             last_name="Emp",
@@ -208,11 +194,9 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
         )
         self.assertTrue(Employee.objects.filter(employee_id=emp.employee_id).exists())
 
-        # 3. Explicitly delete them
         user.delete()
         emp.delete()
 
-        # 4. Verify they are deleted from the database
         self.assertFalse(User.objects.filter(username="temp_user_test").exists())
         self.assertFalse(Employee.objects.filter(employee_id=emp.employee_id).exists())
 
@@ -231,13 +215,11 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
             df_sale = pd.read_excel(xls, sheet_name='selling_info', nrows=2)
             df_budget = pd.read_excel(xls, sheet_name='employee_budget', nrows=2)
 
-        # Test loading and verifying details of IndustryInfo and VehicleInfo from Excel
         make_row = df_make.iloc[0]
         make, _ = IndustryInfo.objects.get_or_create(
             make_id=int(make_row['make_id']),
             defaults={'make_name': str(make_row['make_name'])}
         )
-        # Verify
         db_make = IndustryInfo.objects.get(make_id=make.make_id)
         self.assertEqual(db_make.make_name, str(make_row['make_name']))
 
@@ -259,13 +241,11 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
                 'interior': str(v_row['interior']) if pd.notna(v_row['interior']) else None
             }
         )
-        # Verify
         db_vehicle = VehicleInfo.objects.get(id=vehicle.id)
         self.assertEqual(db_vehicle.vin, str(v_row['vin']))
         self.assertEqual(db_vehicle.vehicle_model, str(v_row['vehicle_model']))
         self.assertEqual(db_vehicle.mmr, int(v_row['mmr']))
 
-        # Test CustomerInfo sheet verification
         c_row = df_customer.iloc[0]
         c_id = int(c_row['customer_id'])
         c_parent, _ = Customer.objects.get_or_create(customer_id=c_id, defaults={'email': f'customer{c_id}@example.com', 'password': 'password123'})
@@ -280,13 +260,11 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
                 'country': self.country
             }
         )
-        # Verify
         db_customer = CustomerInfo.objects.get(customer=c_parent)
         self.assertEqual(db_customer.firstname, str(c_row['firstname']))
         self.assertEqual(db_customer.lastname, str(c_row['lastname']))
         self.assertEqual(db_customer.customer_status, str(c_row['customer_status']))
 
-        # Test SellingInfo sheet verification
         s_row = df_sale.iloc[0]
         sale, _ = SellingInfo.objects.get_or_create(
             sell_id=int(s_row['sell_id']),
@@ -299,12 +277,10 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
                 'selling_date': pd.to_datetime(s_row['selling_date']).date()
             }
         )
-        # Verify
         db_sale = SellingInfo.objects.get(sell_id=sale.sell_id)
         self.assertEqual(db_sale.selling_price, int(s_row['selling_price']))
         self.assertEqual(db_sale.selling_date, pd.to_datetime(s_row['selling_date']).date())
 
-        # Test EmployeeBudget sheet verification
         b_row = df_budget.iloc[0]
         budget, _ = EmployeeBudget.objects.get_or_create(
             employee=self.test_employee,
@@ -316,7 +292,6 @@ class DatabaseVerificationAndCleanupTestCase(CarSalesBaseTestCase):
                 'budget_amount': int(b_row['budget_amount'])
             }
         )
-        # Verify
         db_budget = EmployeeBudget.objects.get(pk=budget.pk)
         self.assertEqual(db_budget.budget_year, int(b_row['budget_year']))
         self.assertEqual(db_budget.budget_qty, int(b_row['budget_qty']))
@@ -338,13 +313,11 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
             df_vehicle = pd.read_excel(xls, sheet_name='vehicle_info', nrows=2)
             df_customer = pd.read_excel(xls, sheet_name='customer_info', nrows=2)
 
-        # Create Make
         cls.make, _ = IndustryInfo.objects.get_or_create(
             make_id=int(df_make.iloc[0]['make_id']),
             defaults={'make_name': str(df_make.iloc[0]['make_name'])}
         )
 
-        # Create Vehicle
         v_row = df_vehicle.iloc[0]
         cls.vehicle, _ = VehicleInfo.objects.get_or_create(
             id=int(v_row['id']),
@@ -364,7 +337,6 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
             }
         )
 
-        # Create Customer
         c_row = df_customer.iloc[0]
         c_id = int(c_row['customer_id'])
         cls.customer_parent, _ = Customer.objects.get_or_create(
@@ -397,22 +369,18 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
 
     def test_unique_constraints(self):
         """Verify unique constraints are enforced by the database."""
-        # 1. Duplicate country name
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 Country.objects.create(country_name="United States")
 
-        # 2. Duplicate employee role name
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 EmployeeRole.objects.create(role_name="Sales Executive")
 
-        # 3. Duplicate employee status name
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 EmployeeStatus.objects.create(status="In Service")
 
-        # 4. Duplicate store code
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 Store.objects.create(
@@ -423,7 +391,6 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
                     address="Somewhere"
                 )
 
-        # 5. Duplicate vehicle VIN
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 VehicleInfo.objects.create(
@@ -459,7 +426,6 @@ class CarSalesModelTestCase(CarSalesBaseTestCase):
         )
         self.assertEqual(budget.budget_qty, 10)
 
-        # Attempt duplicate budget for same employee/year/month/store
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 EmployeeBudget.objects.create(
@@ -477,10 +443,8 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
 
     def test_frontend_pages_render_successfully(self):
         """Verify that all main dashboard, listing, and report pages load (status 200) based on role permissions."""
-        # 1. Test junior employee (Sales Executive) permissions
         self.client.login(username=str(self.test_employee.employee_id), password="CAr$@lse2014")
         
-        # Allowed pages (should return 200)
         junior_allowed_urls = [
             'home',
             'vehicle',
@@ -505,10 +469,8 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             
         self.client.logout()
 
-        # 2. Test manager employee (Branch Manager) permissions
         self.client.login(username=str(self.manager_employee.employee_id), password="CAr$@lse2014")
         
-        # Managers can view all pages now
         manager_allowed_urls = [
             'home',
             'employee',
@@ -531,7 +493,6 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
                 f"Page reverse('{url_name}') returned status code {response.status_code} instead of 200 for manager."
             )
             
-        # Login as manager/staff user for restricted API pages (reports)
         restricted_urls = [
             'employee_sales_page_view',
             'store_sales_page_view',
@@ -639,7 +600,6 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         response = self.client.get(list_url)
         self.assertEqual(response.status_code, 401)
 
-        # Create base models for testing
         from .models import Inventory, VehicleInfo
         make = IndustryInfo.objects.create(make_name="TestMake")
         vehicle = VehicleInfo.objects.create(vehicle_model="TestModel", make=make, mmr=15000, vin="TESTVIN1234567890")
@@ -651,7 +611,7 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
             vehicle=vehicle,
             store=self.store,
             employee=self.test_employee,
-            status=4 # Available
+            status=4
         )
         
         response = self.client.get(list_url)
@@ -665,7 +625,6 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['data']['inventory_id'], item.inventory_id)
 
-        # Test inventory API page rendering
         page_url = reverse('inventory_api_page_view')
         response = self.client.get(page_url)
         self.assertEqual(response.status_code, 200)
@@ -681,20 +640,17 @@ class AllPagesAndApiTestCase(CarSalesBaseTestCase):
         new_item_id = response.json()['data']['inventory_id']
         
         put_data = {
-            'status': 1 # Sold
+            'status': 1
         }
         detail_url_new = reverse('inventory_api_detail', kwargs={'pk': new_item_id})
         
-        # Level 6 (Branch Manager) can PUT but NOT delete
         response = self.client.put(detail_url_new, put_data, content_type='application/json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Inventory.objects.get(pk=new_item_id).status, 1)
 
-        # Level 6 cannot delete — restricted to Level 1-4 only
         response = self.client.delete(detail_url_new)
         self.assertEqual(response.status_code, 403)
 
-        # Elevate to Level 4 (Fleet Sales Specialist) to perform authorised delete
         self.client.logout()
         level_4, _ = EmployeeLevel.objects.get_or_create(level=4, defaults={'notes': 'Reports to Customer Relations Officer (role 8)'})
         fleet_role, _ = EmployeeRole.objects.get_or_create(role_id=7, defaults={'role_name': 'Fleet Sales Specialist'})
@@ -804,7 +760,6 @@ class CustomAuthTestCase(CarSalesBaseTestCase):
         })
         self.assertRedirects(response, reverse('home'))
         
-        # Verify User was created
         user_exists = User.objects.filter(username='register_user').exists()
         self.assertTrue(user_exists)
 
@@ -822,7 +777,6 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
 
     def test_all_hierarchy_levels_login_and_access(self):
         """Verify that employees at every level (1–9) can log in and receive correct RBAC access."""
-        # Define roles and levels 1 to 9
         roles_config = [
             (1, "Global Chief Executive"),
             (2, "Vice President"),
@@ -836,7 +790,6 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
         ]
 
         for lvl_num, role_title in roles_config:
-            # 1. Prepare Level, Role & Employee
             level_obj, _ = EmployeeLevel.objects.get_or_create(level=lvl_num, defaults={'notes': f'Test Level {lvl_num}'})
             role_obj, _ = EmployeeRole.objects.get_or_create(role_name=role_title)
 
@@ -859,7 +812,6 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
                 status=self.status_active
             )
 
-            # 2. Test Login
             login_resp = self.client.post(self.login_url, {
                 'username': str(emp.employee_id),
                 'password': 'CAr$@lse2014'
@@ -869,7 +821,6 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
                 msg_prefix=f"Level {lvl_num} ({role_title}) failed to log in successfully."
             )
 
-            # 3. Test Home Dashboard Access & Context Flags
             home_resp = self.client.get(reverse('home'))
             self.assertEqual(home_resp.status_code, 200, f"Level {lvl_num} home dashboard returned status {home_resp.status_code}")
             
@@ -877,14 +828,11 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
             self.assertIsNotNone(ctx_profile, f"Level {lvl_num} employee profile missing in context.")
             self.assertEqual(ctx_profile.employee_id, emp.employee_id)
 
-            # 4. Verify CRUD permissions for Inventory (Level 9 can POST, only Level 1-8 can PUT, Level 1-4 can DELETE)
             inv_api_url = reverse('inventory_api')
             
-            # GET Inventory list (all logged-in levels allowed)
             get_resp = self.client.get(inv_api_url)
             self.assertEqual(get_resp.status_code, 200, f"Level {lvl_num} GET inventory returned {get_resp.status_code}")
 
-            # 5. Test Logout
             logout_resp = self.client.post(self.logout_url)
             self.assertRedirects(logout_resp, self.login_url)
 
@@ -894,7 +842,6 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
         make = IndustryInfo.objects.create(make_name="MatrixMake")
         vehicle = VehicleInfo.objects.create(vehicle_model="MatrixModel", make=make, mmr=18000, vin="MATRIXVIN12345678")
 
-        # Create test users: Level 9 (Sales Exec), Level 6 (Manager), Level 2 (VP/Senior Management)
         l9_level, _ = EmployeeLevel.objects.get_or_create(level=9)
         l6_level, _ = EmployeeLevel.objects.get_or_create(level=6)
         l2_level, _ = EmployeeLevel.objects.get_or_create(level=2)
@@ -910,37 +857,28 @@ class AllRolesLoginAndPermissionsTestCase(CarSalesBaseTestCase):
 
         inv_url = reverse('inventory_api')
 
-        # --- Test Level 9 ---
         self.client.login(username=str(emp_l9.employee_id), password="CAr$@lse2014")
-        # Level 9 can POST (Create)
         post_resp = self.client.post(inv_url, {'vehicle': vehicle.id, 'store': self.store.store_id, 'employee': emp_l9.employee_id, 'status': 4}, content_type='application/json')
         self.assertEqual(post_resp.status_code, 201, "Level 9 failed to create inventory.")
         inv_id = post_resp.json()['data']['inventory_id']
         inv_detail_url = reverse('inventory_api_detail', kwargs={'pk': inv_id})
 
-        # Level 9 CANNOT PUT (Edit)
         put_resp = self.client.put(inv_detail_url, {'status': 1}, content_type='application/json')
         self.assertEqual(put_resp.status_code, 403, "Level 9 was incorrectly allowed to edit inventory.")
         
-        # Level 9 CANNOT DELETE
         del_resp = self.client.delete(inv_detail_url)
         self.assertEqual(del_resp.status_code, 403, "Level 9 was incorrectly allowed to delete inventory.")
         self.client.logout()
 
-        # --- Test Level 6 ---
         self.client.login(username=str(emp_l6.employee_id), password="CAr$@lse2014")
-        # Level 6 CAN PUT (Edit)
         put_resp = self.client.put(inv_detail_url, {'status': 1}, content_type='application/json')
         self.assertEqual(put_resp.status_code, 200, "Level 6 failed to edit inventory.")
 
-        # Level 6 CANNOT DELETE
         del_resp = self.client.delete(inv_detail_url)
         self.assertEqual(del_resp.status_code, 403, "Level 6 was incorrectly allowed to delete inventory.")
         self.client.logout()
 
-        # --- Test Level 2 ---
         self.client.login(username=str(emp_l2.employee_id), password="CAr$@lse2014")
-        # Level 2 CAN DELETE
         del_resp = self.client.delete(inv_detail_url)
         self.assertEqual(del_resp.status_code, 200, "Level 2 failed to delete inventory.")
         self.assertFalse(Inventory.objects.filter(pk=inv_id).exists())

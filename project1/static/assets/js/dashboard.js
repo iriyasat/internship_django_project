@@ -1,17 +1,11 @@
-/**
- * Dashboard Chart Initialization
- * Parses dynamic JSON script data and builds the ApexCharts report chart.
- */
 document.addEventListener("DOMContentLoaded", () => {
   const chartSalesEl = document.getElementById('chart-sales-data');
   const chartRevenueEl = document.getElementById('chart-revenue-data');
   const chartDatesEl = document.getElementById('chart-dates-data');
-  
   if (chartSalesEl && chartRevenueEl && chartDatesEl) {
     const chartSales = JSON.parse(chartSalesEl.textContent);
     const chartRevenue = JSON.parse(chartRevenueEl.textContent);
     const chartDates = JSON.parse(chartDatesEl.textContent);
-
     new ApexCharts(document.querySelector("#reportsChart"), {
       series: [{
         name: 'Sales Count',

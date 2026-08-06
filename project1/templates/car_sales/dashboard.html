@@ -13,16 +13,14 @@
           <li class="breadcrumb-item active">Dashboard</li>
         </ol>
       </nav>
-    </div><!-- End Page Title -->
+    </div>
 
     <section class="section dashboard">
       <div class="row">
 
-        <!-- Left side columns -->
         <div class="col-lg-8">
           <div class="row">
 
-            <!-- Sales Card -->
             <div class="col-xxl-6 col-md-6">
               <div class="card info-card sales-card">
                 <div class="card-body">
@@ -39,9 +37,8 @@
                   </div>
                 </div>
               </div>
-            </div><!-- End Sales Card -->
+            </div>
 
-            <!-- Revenue Card -->
             <div class="col-xxl-6 col-md-6">
               <div class="card info-card revenue-card">
                 <div class="card-body">
@@ -58,9 +55,8 @@
                   </div>
                 </div>
               </div>
-            </div><!-- End Revenue Card -->
+            </div>
 
-            <!-- Customers Card -->
             <div class="col-xxl-12 col-12">
               <div class="card info-card customers-card">
                 <div class="card-body">
@@ -77,32 +73,24 @@
                   </div>
                 </div>
               </div>
-            </div><!-- End Customers Card -->
+            </div>
 
-            <!-- Reports -->
             <div class="col-12">
               <div class="card">
                 <div class="card-body">
                   <h5 class="card-title">Reports <span>| Monthly Sales Trend</span></h5>
 
-                  <!-- Line Chart -->
                   <div id="reportsChart"></div>
 
                   {{ chart_sales|json_script:"chart-sales-data" }}
                   {{ chart_revenue|json_script:"chart-revenue-data" }}
                   {{ chart_dates|json_script:"chart-dates-data" }}
 
-
-                  <!-- End Line Chart -->
-
                 </div>
 
               </div>
-            </div><!-- End Reports -->
+            </div>
 
-
-
-            <!-- Recent Sales -->
             <div class="col-12">
               <div class="card recent-sales overflow-auto">
                 <div class="card-body">
@@ -140,9 +128,8 @@
                 </div>
 
               </div>
-            </div><!-- End Recent Sales -->
+            </div>
 
-            <!-- Top Selling -->
             <div class="col-12">
               <div class="card top-selling overflow-auto">
                 <div class="card-body">
@@ -174,15 +161,13 @@
                 </div>
 
               </div>
-            </div><!-- End Top Selling -->
+            </div>
 
           </div>
-        </div><!-- End Left side columns -->
+        </div>
 
-        <!-- Right side columns -->
         <div class="col-lg-4">
 
-          <!-- Recent Activity -->
           <div class="card">
             <div class="card-body">
               <h5 class="card-title">Recent Updates <span>| System</span></h5>
@@ -197,7 +182,7 @@
                   <div class="activity-content">
                     Sold <strong>{{ sale.vehicle_name }}</strong> to {{ sale.customer_name }} for <span class="text-dark fw-bold">${{ sale.selling_price|intcomma }}</span>.
                   </div>
-                </div><!-- End activity item-->
+                </div>
                 {% empty %}
                 <div class="activity-item d-flex">
                   <div class="activite-label">No updates</div>
@@ -205,14 +190,13 @@
                   <div class="activity-content">
                     No recent transaction updates found.
                   </div>
-                </div><!-- End activity item-->
+                </div>
                 {% endfor %}
               </div>
 
             </div>
-          </div><!-- End Recent Activity -->
+          </div>
 
-          <!-- Requested Orders Approval Card -->
           <div class="card shadow-sm border-0 rounded-3 mt-4">
             <div class="card-body">
               <h5 class="card-title pb-0 d-flex justify-content-between align-items-center">
@@ -259,9 +243,9 @@
                 {% endfor %}
               </div>
             </div>
-          </div><!-- End Requested Orders Approval Card -->
+          </div>
 
-        </div><!-- End Right side columns -->
+        </div>
 
       </div>
     </section>
@@ -274,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const chartSalesEl = document.getElementById('chart-sales-data');
   const chartRevenueEl = document.getElementById('chart-revenue-data');
   const chartDatesEl = document.getElementById('chart-dates-data');
-  
+
   let chartSales = [];
   let chartRevenue = [];
   let chartDates = [];

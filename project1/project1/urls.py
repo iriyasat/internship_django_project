@@ -17,7 +17,6 @@ urlpatterns = [
     path('django-admin/login/', RedirectView.as_view(url='/login/', query_string=True)),
     path('django-admin/logout/', RedirectView.as_view(url='/logout/', query_string=True)),
     
-    # Dual Superadmin Portals
     path('admin/car-sales/', car_sales_admin_site.urls),
     path('admin/ecommerce/', ecommerce_admin_site.urls),
     path('django-admin/', admin.site.urls),

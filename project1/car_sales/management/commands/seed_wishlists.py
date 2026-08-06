@@ -34,7 +34,6 @@ class Command(BaseCommand):
 
         t_start = time.time()
 
-        # 1. Fetch all customer IDs
         self.stdout.write("Fetching existing Customers and CustomerInfo...")
         all_customer_ids = list(Customer.objects.values_list('customer_id', flat=True))
         total_customers = len(all_customer_ids)
@@ -43,12 +42,10 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No Customer records found in database."))
             return
 
-        # Map customer_id -> country_id
         cust_country_map = dict(
             CustomerInfo.objects.filter(country_id__isnull=False).values_list('customer_id', 'country_id')
         )
 
-        # 2. Fetch vehicle pools grouped by country
         self.stdout.write("Mapping Inventory vehicles by country...")
         inventory_items = Inventory.objects.select_related('store').values_list('store__country_id', 'vehicle_id')
 
@@ -65,7 +62,6 @@ class Command(BaseCommand):
         if not all_vehicle_ids_list:
             all_vehicle_ids_list = list(VehicleInfo.objects.values_list('id', flat=True)[:50000])
 
-        # 3. Map customer past interactions (SellingInfo, Order, TestDriveBooking) to vehicle IDs
         self.stdout.write("Mapping past customer vehicle interactions...")
         cust_interacted_vehicles = {}
 
@@ -85,7 +81,6 @@ class Command(BaseCommand):
                 cust_interacted_vehicles[cid] = set()
             cust_interacted_vehicles[cid].add(vid)
 
-        # 4. Fetch existing Wishlist pairs to prevent duplicates
         self.stdout.write("Fetching existing Wishlist entries...")
         existing_wishlists = Wishlist.objects.values_list('customer_id', 'vehicle_id')
         existing_set = set(existing_wishlists)
@@ -96,7 +91,6 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Pre-loaded {total_customers:,} Customers, {len(all_vehicle_ids_list):,} Vehicles, and {len(existing_set):,} existing Wishlist links.")
 
-        # 5. Generate logical Wishlist objects in memory
         self.stdout.write("Generating logical Wishlist links for all customers...")
         wishlist_objs = []
         now = timezone.now()
@@ -108,7 +102,6 @@ class Command(BaseCommand):
             if needed <= 0:
                 continue
 
-            # Pool of candidate vehicles for this customer
             c_country = cust_country_map.get(cid)
             country_pool = country_vehicles_map.get(c_country) if c_country else None
 
@@ -120,7 +113,6 @@ class Command(BaseCommand):
             while added_for_cust < needed and attempts < 15:
                 attempts += 1
 
-                # Prioritize: 1) Interacted vehicles, 2) Country inventory, 3) Global pool
                 rand_val = random.random()
                 if rand_val < 0.4 and interacted_pool:
                     v_choice = random.choice(interacted_pool)
@@ -146,7 +138,6 @@ class Command(BaseCommand):
         total_to_insert = len(wishlist_objs)
         self.stdout.write(f"Generated {total_to_insert:,} new logical Wishlist items to insert across {total_customers:,} customers.")
 
-        # 6. Bulk insert in batches
         inserted_total = 0
         for i in range(0, total_to_insert, batch_size):
             batch = wishlist_objs[i:i + batch_size]

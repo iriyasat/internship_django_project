@@ -4,12 +4,11 @@
 
 {% block title %}Vehicle Directory & Categories | Automobile{% endblock %}
 
-
 {% block extra_css %}{% endblock %}
 
 {% block content %}
 <section class="pb-100">
-    <!-- Header -->
+
     <div class="ecom-page-header mb-4">
         <div class="container">
             <h1 class="fw-extrabold display-5 mb-2">Vehicle Category Directory</h1>
@@ -17,13 +16,11 @@
         </div>
     </div>
 
-
     <div class="tf-spacing-style3"></div>
 
     <div class="container listing-sidebar-right">
         <div class="row g-4">
-            
-            <!-- Filter Sidebar (Collapsible on mobile, Right column on desktop) -->
+
             <div class="col-lg-4 col-xl-3 order-1 order-lg-2">
                 <div class="listing-sidebar-right__filter p-3 p-lg-4 bg-white rounded-4 border shadow-sm">
                     <div class="d-flex align-items-center justify-content-between cursor-pointer d-lg-none py-1" data-bs-toggle="collapse" data-bs-target="#mobileFilterCollapse" aria-expanded="false" aria-controls="mobileFilterCollapse">
@@ -42,14 +39,12 @@
                     <div class="collapse d-lg-block mt-3 mt-lg-0" id="mobileFilterCollapse">
                     <form id="category-filter-form">
                         <input type="hidden" name="trim" id="filter-trim">
-                        
-                        <!-- Search Keyword -->
+
                         <div class="mb-3">
                             <label class="search-cars__label">Search Vehicle</label>
                             <input type="text" name="q" id="filter-q" class="form-control rounded-3" placeholder="Model, Trim, VIN...">
                         </div>
 
-                        <!-- Brand Selection -->
                         <div class="mb-3">
                             <label class="search-cars__label">Select Brand / Make</label>
                             <select name="brand" id="filter-brand" class="form-select rounded-3">
@@ -60,7 +55,6 @@
                             </select>
                         </div>
 
-                        <!-- Body Style -->
                         <div class="mb-3">
                             <label class="search-cars__label">Body Style</label>
                             <select name="body" id="filter-body" class="form-select rounded-3">
@@ -71,7 +65,6 @@
                             </select>
                         </div>
 
-                        <!-- Condition -->
                         <div class="mb-3">
                             <label class="search-cars__label">Vehicle Condition</label>
                             <select name="condition" id="filter-condition" class="form-select rounded-3">
@@ -85,14 +78,11 @@
                             </select>
                         </div>
 
-                        <!-- Dual Range Price Filter (Min & Max Thumbs + Direct Typing Boxes) -->
                         <div class="mb-4">
                             <label class="search-cars__label mb-1">
                                 <span>MMR Price Range ($)</span>
                             </label>
 
-                            
-                            <!-- Direct Typing Inputs for Min & Max Price -->
                             <div class="row g-2 mb-2">
                                 <div class="col-6">
                                     <label class="small text-muted mb-1">Min Price ($)</label>
@@ -104,21 +94,19 @@
                                 </div>
                             </div>
 
-                            <!-- Dual-Thumb Range Slider -->
                             <div class="dual-range-container mb-2">
                                 <div class="dual-range-track"></div>
                                 <div class="dual-range-highlight" id="dual-range-highlight"></div>
                                 <input type="range" class="dual-range-input" id="range-min" name="min_price" min="0" max="{{ max_price_db }}" step="500" value="0">
                                 <input type="range" class="dual-range-input" id="range-max" name="max_price" min="0" max="{{ max_price_db }}" step="500" value="{{ max_price_db }}">
                             </div>
-                            
+
                             <div class="d-flex justify-content-between small text-muted font-monospace fw-semibold">
                                 <span>$0</span>
                                 <span>${{ max_price_db|intcomma }}</span>
                             </div>
                         </div>
 
-                        <!-- Transmission -->
                         <div class="mb-3">
                             <label class="search-cars__label">Transmission</label>
                             <select name="transmission" id="filter-transmission" class="form-select rounded-3">
@@ -129,7 +117,6 @@
                             </select>
                         </div>
 
-                        <!-- Exterior Color -->
                         <div class="mb-3">
                             <label class="search-cars__label">Exterior Color</label>
                             <select name="color" id="filter-color" class="form-select rounded-3">
@@ -140,7 +127,6 @@
                             </select>
                         </div>
 
-                        <!-- Showroom Store Location -->
                         <div class="mb-4">
                             <label class="search-cars__label">Showroom Location</label>
                             <select name="store_id" id="filter-store" class="form-select rounded-3">
@@ -165,11 +151,9 @@
                 </div>
             </div>
 
-            <!-- Main Content Area (Below filters on mobile, Left column on desktop) -->
             <div class="col-lg-8 col-xl-9 order-2 order-lg-1">
                 <div class="listing-sidebar-right__content w-100">
-                    
-                    <!-- Toolbar & View Options -->
+
                     <div class="row mb-4 align-items-center">
                         <div class="col-md-5 col-6">
                             <p class="mb-0 text-muted small fw-semibold">
@@ -211,7 +195,6 @@
                         </div>
                     </div>
 
-                    <!-- Dynamic Vehicles Grid Container -->
                     <div id="vehicles-grid-container" class="grid grid-cols-3 gap-20 mb-32">
                         <div class="text-center py-5 w-100 grid-cols-1">
                             <div class="spinner-border text-primary" role="status">
@@ -220,7 +203,6 @@
                         </div>
                     </div>
 
-                    <!-- Dynamic Pagination -->
                     <ul class="pagination justify-content-center mt-4" id="category-pagination"></ul>
 
                 </div>
@@ -313,7 +295,7 @@
         // Toggle Sort Dropdown
         const dropdownBtn = document.getElementById('coreDropdownBtn');
         const dropdownMenu = document.getElementById('coreDropdownMenu');
-        
+
         if (dropdownBtn && dropdownMenu) {
             dropdownBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -420,7 +402,6 @@
 
         updateDualSlider();
 
-
         // Form Submit & Dynamic Change AJAX
         const filterForm = document.getElementById('category-filter-form');
         if (filterForm) {
@@ -460,12 +441,9 @@
             });
         }
 
-
-
         // Initial Load
         fetchCategoryVehicles(1);
     });
-
 
     function fetchCategoryVehicles(page = 1) {
         currentPage = page;
@@ -508,8 +486,6 @@
             `;
         }
 
-
-
         // Body styles with live counts for active selection
         const bodySelect = document.getElementById('filter-body');
 
@@ -524,8 +500,6 @@
             });
             bodySelect.innerHTML = optionsHtml;
         }
-
-
 
         // Transmissions
         const transSelect = document.getElementById('filter-transmission');
@@ -564,7 +538,6 @@
         }
     }
 
-
     function renderCategoryVehicles(vehicles) {
         const grid = document.getElementById('vehicles-grid-container');
         if (!vehicles || vehicles.length === 0) {
@@ -582,7 +555,7 @@
                         <i class="fa-regular fa-heart text-danger"></i>
                     </button>
                 </div>
-                
+
                 <div class="image"> 
                     <a href="/vehicle/${v.inventory_id}/">
                         <img class="card--img" src="${v.image_url}" onerror="this.src='/static/assets/img/card.jpg'" alt="${v.model}">
@@ -610,14 +583,14 @@
                         </a>
                     </div>
 
-                    <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1 gap-sm-2 flex-wrap flex-sm-nowrap">
-                        <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
+                    <div class="card-box-actions">
+                        <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill fw-bold" title="Add to Cart">
                             <i class="fa-solid fa-cart-plus me-1"></i> Cart
                         </button>
-                        <button onclick="addToCompareGlobal(${v.inventory_id})" class="btn btn-outline-success btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
+                        <button onclick="addToCompareGlobal(${v.inventory_id})" class="btn btn-outline-success btn-sm rounded-pill fw-bold" title="Compare Vehicle">
                             <i class="fa-solid fa-code-compare me-1"></i> Compare
                         </button>
-                        <a href="{% url 'ecommerce:checkout' %}?inventory_id=${v.inventory_id}" class="btn btn-primary btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
+                        <a href="{% url 'ecommerce:checkout' %}?inventory_id=${v.inventory_id}" class="btn btn-primary btn-sm rounded-pill fw-bold btn-buy-now">
                             Buy Now
                         </a>
                     </div>

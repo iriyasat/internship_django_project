@@ -74,7 +74,6 @@ class Command(BaseCommand):
         count = options['count']
         self.stdout.write(self.style.NOTICE(f"Starting seeding process for {count} realistic customers..."))
 
-        # Fetch prerequisite reference data
         stores = list(Store.objects.select_related('city', 'country').all())
         if not stores:
             self.stderr.write(self.style.ERROR("No Stores found in database."))
@@ -100,29 +99,24 @@ class Command(BaseCommand):
                 domain = random.choice(DOMAINS)
                 email = f"{fname.lower()}.{lname.lower()}_{uuid.uuid4().hex[:5]}@{domain}"
 
-                # Generate clean phone number
                 area_code = random.randint(201, 989)
                 prefix = random.randint(200, 999)
                 line = random.randint(1000, 9999)
                 phone = f"+1 ({area_code}) {prefix}-{line}"
 
-                # Pick a logical City & Country pair
                 city_obj = random.choice(cities)
                 country_obj = city_obj.country
 
-                # Generate logical street address
                 street_num = random.randint(100, 9999)
                 street_name = random.choice(STREET_NAMES)
                 customer_address = f"{street_num} {street_name}, Suite {random.randint(10, 500)}"
 
-                # Create Customer
                 customer = Customer.objects.create(
                     email=email,
                     password="pbkdf2_sha256$260000$seed_hashed_pass_" + uuid.uuid4().hex[:12],
                     phone=phone
                 )
 
-                # Create CustomerInfo
                 cust_status = random.choice(statuses)
                 CustomerInfo.objects.create(
                     customer=customer,
@@ -135,18 +129,14 @@ class Command(BaseCommand):
                 )
                 created_customers_count += 1
 
-                # Select a Store (preferably matching customer country if available, else random)
                 matching_stores = [s for s in stores if s.country_id == country_obj.country_id]
                 store = random.choice(matching_stores) if matching_stores else random.choice(stores)
 
-                # Select an Employee working at THIS specific store
                 store_employees = list(Employee.objects.filter(store=store))
                 if not store_employees:
-                    # fallback to any employee if store has no employee
                     store_employees = list(Employee.objects.all()[:10])
                 employee = random.choice(store_employees)
 
-                # Select Inventory available at THIS store
                 store_inventories = list(Inventory.objects.select_related('vehicle', 'vehicle__make').filter(store=store)[:50])
                 if not store_inventories:
                     store_inventories = list(Inventory.objects.select_related('vehicle', 'vehicle__make').all()[:50])
@@ -154,11 +144,9 @@ class Command(BaseCommand):
                 inventory = random.choice(store_inventories)
                 vehicle = inventory.vehicle
 
-                # 1. Seed Car Sale (SellingInfo) & Invoice
-                if random.random() < 0.7:  # 70% of new customers have a car sale record
+                if random.random() < 0.7:
                     sale_date = date.today() - timedelta(days=random.randint(5, 365))
                     mmr_val = vehicle.mmr or 25000
-                    # Price negotiated around MMR (+/- 8%)
                     selling_price = int(mmr_val * random.uniform(0.92, 1.08))
 
                     sale = SellingInfo.objects.create(
@@ -171,7 +159,6 @@ class Command(BaseCommand):
                     )
                     created_sales_count += 1
 
-                    # Invoice
                     discount = max(0, mmr_val - selling_price)
                     discount_pct = round((discount / mmr_val) * 100, 2) if mmr_val > 0 else 0.0
 
@@ -193,8 +180,7 @@ class Command(BaseCommand):
                     next_invoice_id += 1
                     created_invoices_count += 1
 
-                # 2. Seed eCommerce Order & PaymentTransaction
-                if random.random() < 0.6:  # 60% have an eCommerce order
+                if random.random() < 0.6:
                     ord_status = random.choice([
                         Order.OrderStatus.APPROVED, Order.OrderStatus.PAID,
                         Order.OrderStatus.FULFILLED, Order.OrderStatus.NEEDS_APPROVAL
@@ -223,7 +209,6 @@ class Command(BaseCommand):
                     )
                     created_orders_count += 1
 
-                    # PaymentTransaction
                     PaymentTransaction.objects.create(
                         gateway_transaction_id=f"txn_{uuid.uuid4().hex[:14]}",
                         order=order,
@@ -235,7 +220,6 @@ class Command(BaseCommand):
                         status=PaymentTransaction.PaymentStatus.SUCCESS
                     )
 
-                # 3. Seed Test Drive Booking
                 if random.random() < 0.65:
                     td_date = date.today() + timedelta(days=random.randint(-30, 14))
                     td_time = time(random.choice([9, 10, 11, 13, 14, 15, 16]), random.choice([0, 30]))
@@ -253,7 +237,6 @@ class Command(BaseCommand):
                     )
                     created_test_drives_count += 1
 
-                # 4. Seed Customer Message
                 if random.random() < 0.5:
                     make_name = vehicle.make.make_name if vehicle.make else "Vehicle"
                     msg_text = random.choice(MESSAGE_TEMPLATES).format(
@@ -270,7 +253,6 @@ class Command(BaseCommand):
                     )
                     created_messages_count += 1
 
-                # 5. Seed Wishlist / Cart
                 Wishlist.objects.create(customer=customer, vehicle=vehicle)
                 cart = Cart.objects.create(customer=customer)
                 CartItem.objects.create(cart=cart, inventory=inventory)

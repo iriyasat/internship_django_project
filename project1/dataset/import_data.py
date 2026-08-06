@@ -3,7 +3,6 @@ import time
 import django
 import openpyxl
 
-# Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project1.settings')
 django.setup()
 
@@ -108,7 +107,6 @@ def main():
     print(f"Opening Excel file: {excel_path} (this might take a few seconds)...")
     wb = openpyxl.load_workbook(excel_path, read_only=True)
     
-    # 5,000 - 10,000 is an optimal batch size for MySQL single queries
     BATCH_SIZE = 5000
     
     with connection.cursor() as cursor:
@@ -130,7 +128,6 @@ def main():
             sheet = wb[sheet_name]
             rows_gen = sheet.iter_rows(values_only=True)
             
-            # Skip header row
             try:
                 next(rows_gen)
             except StopIteration:
@@ -144,7 +141,6 @@ def main():
             def flush_batch(b):
                 if not b:
                     return
-                # Build a single multi-row insert query
                 placeholders = ", ".join([row_placeholder] * len(b))
                 sql = f"INSERT INTO {table} ({fields}) VALUES {placeholders}"
                 flat_args = [val for row in b for val in row]
@@ -152,10 +148,8 @@ def main():
             
             for row in rows_gen:
                 if not row or row[0] is None:
-                    # Skip empty rows or rows with missing ID
                     continue
                 
-                # Grab only the expected number of columns
                 row_data = row[:cols_count]
                 batch.append(row_data)
                 count += 1
@@ -165,7 +159,6 @@ def main():
                     batch = []
                     print(f"  Inserted {count} rows...")
             
-            # Insert remaining rows
             if batch:
                 flush_batch(batch)
             

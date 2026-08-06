@@ -12,13 +12,9 @@ Single source of truth for:
 from django.db import connections
 from project1.workspaces import is_car_sales_admin_user
 
-# Master admin-only models reserved exclusively for Django Superusers
 ADMIN_ONLY_MODELS = {'Country', 'City', 'EmployeeRole', 'EmployeeStatus', 'IndustryInfo'}
 
 
-# ─────────────────────────────────────────────
-# 1. Hierarchy Level Resolution & Helpers (Raw SQL)
-# ─────────────────────────────────────────────
 
 def get_employee_level(employee_id):
     """
@@ -86,9 +82,6 @@ def get_country_store_ids(country_id):
         return [row[0] for row in cursor.fetchall()]
 
 
-# ─────────────────────────────────────────────
-# 2. Level-Specific Data Scoping Filters
-# ─────────────────────────────────────────────
 
 def get_level_9_user_filters(profile):
     """Level 9 Data Scoping: Personal sales data only."""
@@ -140,9 +133,6 @@ def get_user_filters(request, profile):
     return handler(profile)
 
 
-# ─────────────────────────────────────────────
-# 3. Action-Level CRUD Permission Handlers
-# ─────────────────────────────────────────────
 
 def check_level_1_4_crud_permission(model_name, action, data=None):
     """
@@ -218,9 +208,6 @@ LEVEL_CRUD_DISPATCH = {
 }
 
 
-# ─────────────────────────────────────────────
-# 4. Row-Level Record Visibility Handlers (Raw SQL)
-# ─────────────────────────────────────────────
 
 def check_level_9_record_permission(model_name, record, profile):
     """Row-level permission check for Level 9 (Personal Scope)."""
@@ -267,9 +254,6 @@ LEVEL_RECORD_DISPATCH = {
 }
 
 
-# ─────────────────────────────────────────────
-# 5. Navbar & Template Context Processor
-# ─────────────────────────────────────────────
 
 def employee_context(request):
     """

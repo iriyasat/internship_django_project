@@ -9,7 +9,6 @@ from car_sales.models import Customer, CustomerInfo, Store, Employee, VehicleInf
 from ecommerce.models import TestDriveBooking
 
 
-# Rich, logical customer test drive notes pool
 NOTE_TEMPLATES = [
     "Customer requested highway speed acceleration test and lane-keep assist walkthrough.",
     "Customer interested in inspecting rear cargo capacity and child seat ISOFIX installation.",
@@ -50,7 +49,6 @@ class Command(BaseCommand):
         count = options['count']
         batch_size = options['batch_size']
 
-        # 1. Clear existing test drive bookings
         self.stdout.write(self.style.NOTICE("Clearing all current test drive booking schedules..."))
         deleted_cnt, _ = TestDriveBooking.objects.all().delete()
         self.stdout.write(self.style.SUCCESS(f"Successfully cleared {deleted_cnt:,} existing test drive bookings."))
@@ -58,7 +56,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE(f"Starting bulk seeding of {count:,} logical TestDriveBooking records..."))
         t_start = time.time()
 
-        # 2. Fetch reference data in memory
         self.stdout.write("Fetching reference data (Customers, Stores, Employees, Inventories)...")
         customer_ids = list(Customer.objects.values_list('customer_id', flat=True))
         stores = list(Store.objects.values('store_id', 'country_id'))
@@ -69,7 +66,6 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("Database lacks required Customer, Store, Employee, or Inventory records."))
             return
 
-        # Pre-group employees by store_id
         store_employees_map = {}
         for emp in employees:
             sid = emp['store_id']
@@ -77,7 +73,6 @@ class Command(BaseCommand):
                 store_employees_map[sid] = []
             store_employees_map[sid].append(emp['employee_id'])
 
-        # Pre-group vehicles by store_id
         store_vehicles_map = {}
         all_vehicle_ids = set()
         for inv in inventory_items:
@@ -99,7 +94,6 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Pre-loaded {len(customer_ids):,} Customers, {len(stores):,} Stores, {len(employees):,} Employees, and {len(all_vehicle_ids_list):,} Vehicles.")
 
-        # 3. Generate logical TestDriveBooking records
         today = date.today()
         now = timezone.now()
         bookings_batch = []
@@ -110,23 +104,18 @@ class Command(BaseCommand):
             batch = []
 
             for _ in range(current_batch_size):
-                # Pick customer
                 cust_id = random.choice(customer_ids)
                 cust_country = cust_country_map.get(cust_id)
 
-                # Pick store in customer country if available, else random store
                 local_stores = country_stores_map.get(cust_country) if cust_country else None
                 store_id = random.choice(local_stores) if local_stores else random.choice(store_ids_list)
 
-                # Pick assigned employee at THIS store
                 emp_pool = store_employees_map.get(store_id)
                 assigned_emp_id = random.choice(emp_pool) if emp_pool else random.choice(employees)['employee_id']
 
-                # Pick vehicle held in inventory at THIS store
                 veh_pool = store_vehicles_map.get(store_id)
                 vehicle_id = random.choice(veh_pool) if veh_pool else random.choice(all_vehicle_ids_list)
 
-                # Date logic: 80% past dates (completed/cancelled), 20% future dates (scheduled)
                 is_past = random.random() < 0.8
                 if is_past:
                     days_diff = random.randint(1, 180)
@@ -158,7 +147,6 @@ class Command(BaseCommand):
                     updated_at=created_dt
                 ))
 
-            # Bulk insert batch
             with transaction.atomic():
                 TestDriveBooking.objects.bulk_create(batch, batch_size=current_batch_size)
 

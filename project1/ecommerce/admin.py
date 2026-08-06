@@ -3,7 +3,6 @@ from project1.admin_sites import ecommerce_admin_site
 from .models import Wishlist, Cart, CartItem, TestDriveBooking, Order, PaymentTransaction
 
 
-# Register in custom EcommerceAdminSite
 class WishlistAdmin(admin.ModelAdmin):
     list_display = ('customer', 'vehicle', 'created_at')
     search_fields = ('customer__email', 'vehicle__vehicle_model', 'vehicle__vin')
@@ -46,7 +45,6 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
     list_select_related = ('order', 'invoice', 'customer', 'recorded_by_employee')
 
 
-# Register to both default admin.site and dedicated ecommerce_admin_site
 admin.site.register(Wishlist, WishlistAdmin)
 admin.site.register(Cart, CartAdmin)
 admin.site.register(TestDriveBooking, TestDriveBookingAdmin)
