@@ -29,8 +29,14 @@
                                 <button class="compare-item-remove-table" type="button" onclick="removeCompareCar({{ car.inventory_id }})" title="Remove">
                                     <i class="fa-solid fa-circle-xmark"></i>
                                 </button>
-                                <img class="mb-10 radius-16 image" src="{{ car.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ car.model }}">
-                                <p class="h4 text-center">{{ car.make }} {{ car.model }}{% if car.trim %} {{ car.trim }}{% endif %}</p>
+                                <a href="/vehicle/{{ car.inventory_id }}/">
+                                    <img class="card--img mb-10 radius-16 image" src="{{ car.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ car.model }}">
+                                </a>
+                                <p class="h4 text-center">
+                                    <a href="/vehicle/{{ car.inventory_id }}/" class="text-decoration-none text-dark fw-bold">
+                                        {{ car.make }}
+                                    </a>
+                                </p>
                             </div>
                         </td>
                         {% endfor %}
@@ -50,6 +56,32 @@
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
+                                <i class="fa-solid fa-car"></i>
+                                <span>Model:</span>
+                            </div>
+                        </td>
+                        {% for car in compare_vehicles %}<td>{{ car.model }}</td>{% endfor %}
+                        {% if compare_vehicles|length < 4 %}
+                            {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
+                        {% endif %}
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-8">
+                                <i class="fa-solid fa-layer-group"></i>
+                                <span>Trim Level:</span>
+                            </div>
+                        </td>
+                        {% for car in compare_vehicles %}<td>{{ car.trim|default:"Base / Standard" }}</td>{% endfor %}
+                        {% if compare_vehicles|length < 4 %}
+                            {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
+                        {% endif %}
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-8">
                                 <i class="fa-solid fa-gauge-high"></i>
                                 <span>Mileage:</span>
                             </div>
@@ -62,11 +94,11 @@
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
-                                <i class="fa-solid fa-star-half-stroke"></i>
-                                <span>Condition:</span>
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <span>Condition Score:</span>
                             </div>
                         </td>
-                        {% for car in compare_vehicles %}<td>{{ car.condition|default:"N/A" }}</td>{% endfor %}
+                        {% for car in compare_vehicles %}<td>{{ car.condition|default:"N/A" }} / 50 Rating</td>{% endfor %}
                         {% if compare_vehicles|length < 4 %}
                             {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
                         {% endif %}
@@ -95,18 +127,7 @@
                             {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
                         {% endif %}
                     </tr>
-                    <tr>
-                        <td>
-                            <div class="flex items-center gap-8">
-                                <i class="fa-solid fa-location-dot"></i>
-                                <span>Location:</span>
-                            </div>
-                        </td>
-                        {% for car in compare_vehicles %}<td>{{ car.city }}, {{ car.country }}</td>{% endfor %}
-                        {% if compare_vehicles|length < 4 %}
-                            {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
-                        {% endif %}
-                    </tr>
+
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
@@ -122,15 +143,16 @@
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
-                                <i class="fa-solid fa-engine"></i>
-                                <span>Engine:</span>
+                                <i class="fa-solid fa-car-side"></i>
+                                <span>Body Style:</span>
                             </div>
                         </td>
-                        {% for car in compare_vehicles %}<td>{{ car.body|default:"N/A" }}</td>{% endfor %}
+                        {% for car in compare_vehicles %}<td>{{ car.body|default:"N/A"|title }}</td>{% endfor %}
                         {% if compare_vehicles|length < 4 %}
                             {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
                         {% endif %}
                     </tr>
+
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
@@ -155,18 +177,7 @@
                             {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
                         {% endif %}
                     </tr>
-                    <tr>
-                        <td>
-                            <div class="flex items-center gap-8">
-                                <i class="fa-solid fa-qrcode"></i>
-                                <span>Stock Number:</span>
-                            </div>
-                        </td>
-                        {% for car in compare_vehicles %}<td>{{ car.inventory_id }}</td>{% endfor %}
-                        {% if compare_vehicles|length < 4 %}
-                            {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
-                        {% endif %}
-                    </tr>
+
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
@@ -182,13 +193,40 @@
                     <tr>
                         <td>
                             <div class="flex items-center gap-8">
-                                <i class="fa-solid fa-trash"></i>
+                                <i class="fa-solid fa-bolt text-primary"></i>
+                                <span>Action:</span>
+                            </div>
+                        </td>
+                        {% for car in compare_vehicles %}
+                        <td>
+                            <div class="d-flex flex-column gap-2 my-1">
+                                <a href="{% url 'ecommerce:checkout' %}?inventory_id={{ car.inventory_id }}" class="btn btn-sm btn-primary rounded-pill fw-bold shadow-sm">
+                                    <i class="fa-solid fa-bolt me-1"></i> Buy Now
+                                </a>
+                                <button type="button" onclick="addToCartGlobal({{ car.inventory_id }}, this)" class="btn btn-sm btn-outline-primary rounded-pill fw-bold">
+                                    <i class="fa-solid fa-cart-plus me-1"></i> Add to Cart
+                                </button>
+                                <a href="{% url 'ecommerce:test_drive' %}?inventory_id={{ car.inventory_id }}" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold">
+                                    <i class="fa-solid fa-calendar-check me-1"></i> Test Drive
+                                </a>
+                            </div>
+                        </td>
+                        {% endfor %}
+                        {% if compare_vehicles|length < 4 %}
+                            {% for _ in "x"|rjust:4 %}{% if forloop.counter > compare_vehicles|length %}<td>—</td>{% endif %}{% endfor %}
+                        {% endif %}
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-8">
+                                <i class="fa-solid fa-trash text-danger"></i>
                                 <span>Remove:</span>
                             </div>
                         </td>
                         {% for car in compare_vehicles %}
                         <td>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCompareCar({{ car.inventory_id }})">
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="removeCompareCar({{ car.inventory_id }})">
                                 Remove {{ car.model }}
                             </button>
                         </td>
@@ -201,8 +239,13 @@
             </table>
         </div>
         {% else %}
-        <div class="compare-empty">
-            Select up to {{ max_compare }} vehicles from catalog/vehicle page to compare.
+        <div class="compare-empty p-5 text-center my-4 flex-column">
+            <i class="fa-solid fa-code-compare display-4 text-muted mb-3"></i>
+            <h4 class="fw-bold text-dark">No Vehicles Selected</h4>
+            <p class="text-muted mb-4">Select up to {{ max_compare|default:4 }} vehicles from catalog/vehicle page to compare.</p>
+            <a href="{% url 'ecommerce:catalog' %}" class="btn btn-primary rounded-pill px-4 fw-bold py-2 shadow-sm">
+                <i class="fa-solid fa-car me-2"></i> Browse Vehicle Catalog
+            </a>
         </div>
         {% endif %}
     </div>
@@ -211,6 +254,17 @@
 
 {% block extra_js %}
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('ids') && typeof window.getCompareInventoryIds === 'function') {
+            const storedIds = window.getCompareInventoryIds();
+            if (storedIds && storedIds.length > 0) {
+                const compareBase = (window.EcommerceConfig && window.EcommerceConfig.compareUrl) || '{% url "ecommerce:compare" %}';
+                window.location.replace(`${compareBase}?ids=${storedIds.join(',')}`);
+            }
+        }
+    });
+
     const initialCompareIds = [{% for inv_id in selected_ids %}{{ inv_id }}{% if not forloop.last %}, {% endif %}{% endfor %}];
 
     function removeCompareCar(inventoryId) {

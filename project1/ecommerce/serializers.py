@@ -1222,7 +1222,7 @@ class OrderService:
 
         with transaction.atomic():
             total_price = inventory.vehicle.mmr
-            deposit = 500 if payment_preference != Order.PaymentPreference.STORE_PAYMENT else 0
+            deposit = 0
 
             order = Order.objects.create(
                 customer=customer,
@@ -1273,11 +1273,27 @@ class OrderService:
             if action == 'ACCEPT':
                 order.order_status = Order.OrderStatus.APPROVED
 
+                # Remove vehicle from active catalog by setting status to SOLD (1)
+                order.inventory.status = Inventory.StatusChoices.SOLD
+                order.inventory.save()
+
+                # Record official SellingInfo sale
+                from car_sales.models import SellingInfo
+                sell_record = SellingInfo.objects.create(
+                    customer=order.customer,
+                    vehicle=order.inventory.vehicle,
+                    employee=employee,
+                    store=order.store,
+                    selling_price=order.total_amount,
+                    selling_date=date.today()
+                )
+
                 # Generate Invoice if missing
                 if not order.invoice:
                     inv_id = (Invoice.objects.all().order_by('-invoice_id').first().invoice_id + 1) if Invoice.objects.exists() else 4000
                     invoice = Invoice.objects.create(
                         invoice_id=inv_id,
+                        selling_info=sell_record,
                         customer=order.customer,
                         employee=employee,
                         store=order.store,
@@ -1291,7 +1307,7 @@ class OrderService:
                     order.invoice = invoice
 
                 order.save()
-                msg = f"Order #{order.order_id} accepted and assigned to {employee}."
+                msg = f"Order #{order.order_id} approved. Inventory status updated to Sold."
 
             else: # REJECT
                 order.order_status = Order.OrderStatus.REJECTED

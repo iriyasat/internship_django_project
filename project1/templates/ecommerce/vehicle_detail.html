@@ -59,12 +59,7 @@
                 <div class="mb-5">
                     <div class="detail-gallery-main mb-3 p-4">
                         <img id="main-detail-image" src="{{ vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" alt="{{ vehicle.vehicle_model }}">
-                        <div class="position-absolute bottom-0 start-0 m-3 d-flex gap-2">
-                            <span class="badge bg-dark bg-opacity-75 rounded-pill px-3 py-2"><i class="fa-solid fa-camera me-1"></i> HD Verified Image</span>
-                            <span class="badge {% if inventory.status == 4 %}bg-success{% else %}bg-primary{% endif %} rounded-pill px-3 py-2">{{ inventory.get_status_display }}</span>
-                        </div>
                     </div>
-
                 </div>
 
                 <!-- Vehicle Overview Specs Grid -->
@@ -135,7 +130,7 @@
                                 <div class="spec-icon-circle"><i class="fa-solid fa-shield-halved"></i></div>
                                 <div>
                                     <div class="text-muted small">Condition Score</div>
-                                    <div class="fw-bold text-dark fs-6">{{ vehicle.condition|default:"N/A" }} / 49 Rating</div>
+                                    <div class="fw-bold text-dark fs-6">{{ vehicle.condition|default:"N/A" }} / 50 Rating</div>
                                 </div>
                             </div>
                         </div>
@@ -185,26 +180,17 @@
                         </div>
 
                         <!-- VIN -->
-                        <div class="col-md-4 col-6">
+                        <div class="col-md-4 col-12">
                             <div class="spec-badge-box">
                                 <div class="spec-icon-circle"><i class="fa-solid fa-barcode"></i></div>
-                                <div>
+                                <div class="w-100 min-w-0">
                                     <div class="text-muted small">VIN Code</div>
-                                    <div class="fw-bold text-dark fs-6">{{ vehicle.vin }}</div>
+                                    <div class="fw-bold text-dark fs-6 font-monospace text-break" style="word-break: break-all; font-size: 0.9rem !important;">{{ vehicle.vin }}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Listing Date -->
-                        <div class="col-md-4 col-6">
-                            <div class="spec-badge-box">
-                                <div class="spec-icon-circle"><i class="fa-solid fa-calendar-day"></i></div>
-                                <div>
-                                    <div class="text-muted small">Date Listed</div>
-                                    <div class="fw-bold text-dark fs-6">{{ inventory.created_at|date:"M d, Y" }}</div>
-                                </div>
-                            </div>
-                        </div>
+
 
                     </div>
                 </div>
@@ -231,7 +217,6 @@
                 <div class="sidebar-price-card mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted small fw-bold uppercase">Listing MMR Price</span>
-                        <span class="badge bg-success-subtle text-success fw-bold px-3 py-1 rounded-pill">Verified In Stock</span>
                     </div>
 
                     <div class="h2 fw-extrabold text-primary mb-1">${{ vehicle.mmr|intcomma|default:"N/A" }}</div>
@@ -261,7 +246,7 @@
                     <form id="dealerInquiryForm">
                         <div class="mb-3">
                             <label for="inquiryMessage" class="form-label small fw-bold text-muted text-uppercase mb-1">Your Message to {{ inventory.store.store_name }}</label>
-                            <textarea id="inquiryMessage" class="form-control rounded-3" rows="3" placeholder="I am interested in vehicle #INV-{{ inventory.inventory_id }}..." required>I am interested in vehicle #INV-{{ inventory.inventory_id }} ({{ inventory.vehicle.make.make_name }} {{ inventory.vehicle.vehicle_model }}).</textarea>
+                            <textarea id="inquiryMessage" class="form-control rounded-3" rows="3" placeholder="Write your inquiry or questions regarding vehicle #INV-{{ inventory.inventory_id }} ({{ inventory.vehicle.make.make_name }} {{ inventory.vehicle.vehicle_model }})..." required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100 fw-bold py-2">
                             <i class="fa-solid fa-paper-plane me-1"></i> Send Vehicle Inquiry

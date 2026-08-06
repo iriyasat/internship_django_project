@@ -61,14 +61,14 @@
                                 <span class="profile-item-icon"><i class="fa-regular fa-heart text-danger"></i></span>
                                 Wishlist
                             </span>
-                            <span class="profile-item-count" id="nav-wishlist-count">0</span>
+                            <span class="profile-item-count" id="nav-wishlist-count">{{ wishlist_count|default:0 }}</span>
                         </a>
                         <a href="/cart/" title="Shopping Cart">
                             <span class="profile-item-left">
                                 <span class="profile-item-icon"><i class="fa-solid fa-cart-shopping text-warning"></i></span>
                                 Cart
                             </span>
-                            <span class="profile-item-count" id="nav-cart-count">0</span>
+                            <span class="profile-item-count" id="nav-cart-count">{{ cart_count|default:0 }}</span>
                         </a>
                         <a href="/logout/">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out
@@ -145,12 +145,12 @@
                 <a href="/wishlist/" class="mobile-drawer-action-link">
                     <span class="mobile-drawer-link-icon"><i class="fa-regular fa-heart text-danger"></i></span>
                     Wishlist
-                    <span class="profile-item-count ms-auto" id="nav-wishlist-count-mobile">0</span>
+                    <span class="profile-item-count ms-auto" id="nav-wishlist-count-mobile">{{ wishlist_count|default:0 }}</span>
                 </a>
                 <a href="/cart/" class="mobile-drawer-action-link">
                     <span class="mobile-drawer-link-icon"><i class="fa-solid fa-cart-shopping text-warning"></i></span>
                     Cart
-                    <span class="profile-item-count ms-auto" id="nav-cart-count-mobile">0</span>
+                    <span class="profile-item-count ms-auto" id="nav-cart-count-mobile">{{ cart_count|default:0 }}</span>
                 </a>
                 <a href="/logout/" class="mobile-drawer-action-link mobile-drawer-logout">
                     <span class="mobile-drawer-link-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span>

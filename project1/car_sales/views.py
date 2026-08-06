@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import connection, connections
@@ -174,6 +174,65 @@ def home_view(request):
     })
 
 dashboard_view = home_view
+
+@api_view(['POST'])
+def api_review_order(request):
+    """API endpoint for store staff to approve or reject online orders from dashboard."""
+    if not request.user.is_authenticated or not is_staff_user(request):
+        return JsonResponse({'success': False, 'error': 'Unauthorized staff access required.'}, status=403)
+
+    from ecommerce.views import _get_request_payload
+    data = _get_request_payload(request)
+    order_id = data.get('order_id')
+    action = data.get('action')
+    rejection_reason = data.get('rejection_reason', '')
+
+    if not order_id or action not in ['ACCEPT', 'REJECT']:
+        return JsonResponse({'success': False, 'error': 'Invalid order_id or action.'}, status=400)
+
+    try:
+        from ecommerce.serializers import OrderService
+        profile = get_employee_profile(request)
+        employee_id = profile.employee_id if profile else None
+        order, msg = OrderService.review_order(
+            order_id=order_id,
+            action=action,
+            employee_id=employee_id,
+            rejection_reason=rejection_reason
+        )
+        return JsonResponse({
+            'success': True,
+            'message': msg,
+            'order_id': order.order_id,
+            'new_status': order.get_order_status_display()
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@api_view(['GET'])
+def api_pending_orders_count(request):
+    """API endpoint to get real-time pending orders count for dashboard."""
+    if not request.user.is_authenticated or not is_staff_user(request):
+        return JsonResponse({'success': False, 'error': 'Unauthorized.'}, status=403)
+
+    from ecommerce.models import Order
+    profile = get_employee_profile(request)
+    store_id, _ = get_user_filters(request, profile)
+
+    all_pending = Order.objects.filter(
+        order_status__in=[Order.OrderStatus.NEEDS_APPROVAL, Order.OrderStatus.PARTIALLY_PAID]
+    )
+    total_count = all_pending.count()
+
+    if store_id is not None:
+        store_pending = all_pending.filter(store_id=store_id)
+        if store_pending.exists():
+            total_count = store_pending.count()
+
+    return JsonResponse({
+        'success': True,
+        'count': total_count
+    })
 
 def index_view(request):
     inventory_count = Inventory.objects.count()

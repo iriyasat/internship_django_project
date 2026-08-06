@@ -19,10 +19,11 @@
             <div class="col-lg-3 col-md-4 col-sm-6">
                 <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden vehicle-card-hover bg-white d-flex flex-column justify-content-between">
                     <div>
-                        <div class="position-relative bg-white border-bottom p-4 d-flex align-items-center justify-content-center" style="height: 180px;">
+                        <div class="position-relative overflow-hidden" style="height: 180px;">
                             <img src="{{ item.vehicle.image_url }}" 
-                                 class="mw-100 mh-100 object-fit-contain" style="max-height: 130px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.06));"
-                                 onerror="this.src='/static/assets/img/card.jpg'">
+                                 onerror="this.src='/static/assets/img/card.jpg'"
+                                 class="card-img-top" alt="{{ item.vehicle.vehicle_model }}"
+                                 style="height: 180px; object-fit: cover; background: #f8fafc; width: 100%;">
                             <button onclick="toggleWishlistGlobal({{ item.vehicle.id }}, this)" class="btn btn-light btn-sm rounded-circle position-absolute top-0 end-0 m-3 shadow-sm" title="Remove from Wishlist">
                                 <i class="fa-solid fa-trash text-danger"></i>
                             </button>

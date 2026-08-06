@@ -207,8 +207,26 @@
         }
     };
 
+    // ─── Intercept Compare Navigation Links ───
+    document.addEventListener("click", function(e) {
+        const link = e.target.closest('a[href*="/compare/"]');
+        if (link && !link.search.includes('ids=')) {
+            const ids = window.getCompareInventoryIds();
+            if (ids && ids.length > 0) {
+                e.preventDefault();
+                const compareBase = (window.EcommerceConfig && window.EcommerceConfig.compareUrl) || '/compare/';
+                window.location.href = `${compareBase}?ids=${ids.join(',')}`;
+            }
+        }
+    });
+
     // ─── Global Wishlist Toggle Function ───
     window.toggleWishlistGlobal = function (vehicleId, btn) {
+        if (!vehicleId) {
+            console.error("toggleWishlistGlobal called with missing vehicleId");
+            alert("Vehicle ID is missing for wishlist action.");
+            return;
+        }
         const wishlistUrl = (window.EcommerceConfig && window.EcommerceConfig.apiToggleWishlistUrl) || '/api/wishlist/toggle/';
         fetch(wishlistUrl, {
             method: "POST",
@@ -216,7 +234,7 @@
                 "Content-Type": "application/json",
                 "X-CSRFToken": getCookie("csrftoken")
             },
-            body: JSON.stringify({ vehicle_id: vehicleId })
+            body: JSON.stringify({ vehicle_id: vehicleId, inventory_id: vehicleId })
         })
         .then(res => res.json())
         .then(data => {

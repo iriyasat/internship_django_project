@@ -901,6 +901,45 @@ class SellingInfoSerializer:
             chart_sales.append(item['count'])
             chart_revenue.append(float(item['revenue'] or 0))
 
+        pending_orders = []
+        try:
+            from ecommerce.models import Order
+            all_pending_qs = Order.objects.filter(
+                order_status__in=[Order.OrderStatus.NEEDS_APPROVAL, Order.OrderStatus.PARTIALLY_PAID]
+            )
+            total_pending_count = all_pending_qs.count()
+            orders_qs = all_pending_qs
+
+            if store_id is not None:
+                store_qs = all_pending_qs.filter(store_id=store_id)
+                if store_qs.exists():
+                    orders_qs = store_qs
+                    total_pending_count = store_qs.count()
+
+            orders_qs = orders_qs.select_related('customer', 'customer__info', 'inventory', 'inventory__vehicle', 'inventory__vehicle__make', 'store').order_by('-order_id')
+            for o in orders_qs:
+                c_info = getattr(o.customer, 'info', None)
+                c_name = f"{c_info.firstname} {c_info.lastname}" if c_info and c_info.firstname else o.customer.email
+                v_make = o.inventory.vehicle.make.make_name if o.inventory and o.inventory.vehicle and o.inventory.vehicle.make else ""
+                v_model = o.inventory.vehicle.vehicle_model if o.inventory and o.inventory.vehicle else "Vehicle"
+                v_name = f"{v_make} {v_model}".strip()
+                pending_orders.append({
+                    'order_id': o.order_id,
+                    'customer_name': c_name,
+                    'vehicle_name': v_name,
+                    'total_amount': o.total_amount,
+                    'order_status': o.order_status,
+                    'order_status_display': o.get_order_status_display(),
+                    'fulfillment_type_display': o.get_fulfillment_type_display(),
+                    'payment_preference_display': o.get_payment_preference_display(),
+                    'delivery_address': o.delivery_address or '',
+                    'store_name': o.store.store_name if o.store else "Store",
+                })
+        except Exception as e:
+            print("Error fetching pending_orders:", e)
+            pending_orders = []
+            total_pending_count = 0
+
         return {
             'sales_count': sales_count,
             'total_revenue': total_revenue,
@@ -910,6 +949,8 @@ class SellingInfoSerializer:
             'chart_dates': chart_dates,
             'chart_sales': chart_sales,
             'chart_revenue': chart_revenue,
+            'pending_orders': pending_orders,
+            'total_pending_count': total_pending_count,
         }
 
 class EmployeeBudgetSerializer:

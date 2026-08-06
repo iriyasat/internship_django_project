@@ -60,7 +60,7 @@
                         <div class="form-check card p-3 border rounded-4 bg-light">
                             <input class="form-check-input ms-0 me-2" type="radio" name="payment_preference" id="pay_card" value="ONLINE_CARD" checked>
                             <label class="form-check-label fw-bold" for="pay_card">
-                                <i class="fa-solid fa-credit-card text-success me-2"></i> Online Card ($500 Deposit Upfront + Remaining Balance)
+                                <i class="fa-solid fa-credit-card text-success me-2"></i> Online Credit / Debit Card
                             </label>
                         </div>
                         <div class="form-check card p-3 border rounded-4 bg-light">
@@ -97,7 +97,7 @@
                 
                 {% if buy_now_item %}
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        <img src="{{ buy_now_item.vehicle.image_url }}" class="rounded-3" style="width: 80px; height: 60px; object-fit: cover;">
+                        <img src="{{ buy_now_item.vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" class="rounded-3" style="width: 80px; height: 60px; object-fit: cover;">
                         <div>
                             <small class="text-uppercase fw-bold text-muted">{{ buy_now_item.vehicle.make.make_name }}</small>
                             <h6 class="fw-extrabold text-dark mb-0">{{ buy_now_item.vehicle.vehicle_model }}</h6>
@@ -107,7 +107,7 @@
                 {% elif cart_items %}
                     {% for item in cart_items %}
                     <div class="d-flex align-items-center gap-3 mb-2">
-                        <img src="{{ item.inventory.vehicle.image_url }}" class="rounded-3" style="width: 70px; height: 50px; object-fit: cover;">
+                        <img src="{{ item.inventory.vehicle.image_url }}" onerror="this.src='/static/assets/img/card.jpg'" class="rounded-3" style="width: 70px; height: 50px; object-fit: cover;">
                         <div>
                             <h6 class="fw-bold text-dark mb-0">{{ item.inventory.vehicle.make.make_name }} {{ item.inventory.vehicle.vehicle_model }}</h6>
                             <small class="text-muted">${{ item.inventory.vehicle.mmr }}</small>
@@ -121,13 +121,6 @@
                         <span class="text-muted">Total Vehicle MMR Amount</span>
                         <span class="fw-extrabold text-dark fs-5">${{ total_amount }}</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Required Deposit</span>
-                        <span class="fw-bold text-success">$500</span>
-                    </div>
-                    <p class="small text-muted mb-0 mt-3">
-                        <i class="fa-solid fa-shield-halved text-primary me-1"></i> Submitting your order reserves the vehicle (`PRE_ORDER`) and sends it to store staff for approval.
-                    </p>
                 </div>
             </div>
         </div>

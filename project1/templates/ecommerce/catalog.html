@@ -167,7 +167,7 @@
 
             <!-- Main Content Area (Below filters on mobile, Left column on desktop) -->
             <div class="col-lg-8 col-xl-9 order-2 order-lg-1">
-                <div class="listing-sidebar-right__content flat-tabs">
+                <div class="listing-sidebar-right__content w-100">
                     
                     <!-- Toolbar & View Options -->
                     <div class="row mb-4 align-items-center">
@@ -185,8 +185,8 @@
                                 <span class="item-menu" id="view-mode-2" title="Two Columns">
                                     <i class="fa-solid fa-table-cells-large text-secondary"></i>
                                 </span>
-                                <span class="item-menu active d-none d-md-inline-block" id="view-mode-3" title="Three Columns">
-                                    <i class="fa-solid fa-border-all text-secondary"></i>
+                                <span class="item-menu active d-none d-md-inline-flex" id="view-mode-3" title="Three Columns">
+                                    <i class="fa-solid fa-table-cells text-secondary"></i>
                                 </span>
                             </div>
                         </div>
@@ -578,7 +578,7 @@
             <div class="card-box card-box-style-9">
                 <div class="top">
                     <p class="${v.status_code === 4 ? 'bg-green' : 'bg-primary-2'} text-white highlight">${v.status}</p>
-                    <button type="button" class="heart-btn" onclick="toggleWishlistGlobal(${v.vehicle_id}, this)" title="Wishlist">
+                    <button type="button" class="heart-btn" onclick="toggleWishlistGlobal(${v.vehicle_id || v.inventory_id || v.id}, this)" title="Wishlist">
                         <i class="fa-regular fa-heart text-danger"></i>
                     </button>
                 </div>
@@ -603,12 +603,12 @@
                         <li><i class="fa-solid fa-location-dot text-primary me-1"></i> <span>${v.city}</span></li>
                     </ul>
 
-                    <p class="h6 card-box__price mb-3 flex justify-between gap-8 items-center">
-                        $${v.price ? v.price.toLocaleString() : 'N/A'}
+                    <div class="card-box__price mb-3 d-flex align-items-center justify-content-between">
+                        <span>$${v.price ? v.price.toLocaleString() : 'N/A'}</span>
                         <a href="/vehicle/${v.inventory_id}/" class="text-primary small fw-bold text-decoration-none ms-auto">
                             View Details <i class="fa-solid fa-arrow-right ms-1"></i>
                         </a>
-                    </p>
+                    </div>
 
                     <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1 gap-sm-2 flex-wrap flex-sm-nowrap">
                         <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
