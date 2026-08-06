@@ -275,6 +275,20 @@
             window.addEventListener('scroll', syncNavState);
         }
 
+        // Mobile Footer Collapse Accordion Toggle
+        document.querySelectorAll('.collapse-title[data-breakpoint="mobile"]').forEach(title => {
+            title.addEventListener('click', () => {
+                const content = title.nextElementSibling;
+                const icon = title.querySelector('.icon');
+                if (content && content.classList.contains('collapse-content')) {
+                    content.classList.toggle('md-hidden');
+                    if (icon) {
+                        icon.innerText = content.classList.contains('md-hidden') ? '+' : '−';
+                    }
+                }
+            });
+        });
+
         const COMPARE_STORAGE_KEY = "compare_inventory_ids";
         const MAX_COMPARE_ITEMS = 4;
 

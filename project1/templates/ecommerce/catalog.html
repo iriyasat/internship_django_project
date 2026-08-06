@@ -33,74 +33,23 @@
     <div class="container listing-sidebar-right">
         <div class="row g-4">
             
-            <!-- Main Content Area (Left 8 Cols) -->
-            <div class="col-lg-8 col-xl-9">
-                <div class="listing-sidebar-right__content flat-tabs">
-                    
-                    <!-- Toolbar & View Options -->
-                    <div class="row mb-4 align-items-center">
-                        <div class="col-md-5 col-6">
-                            <p class="mb-0 text-muted small fw-semibold">
-                                Showing <span id="showing-count" class="fw-bold text-dark">0</span> vehicles
-                            </p>
-                        </div>
-
-                        <div class="col-md-3 col-6 text-center">
-                            <div class="d-inline-flex gap-2 p-1 bg-light rounded-3 border">
-                                <span class="item-menu" id="view-mode-1" title="Single Column">
-                                    <i class="fa-solid fa-bars text-secondary"></i>
-                                </span>
-                                <span class="item-menu" id="view-mode-2" title="Two Columns">
-                                    <i class="fa-solid fa-table-cells-large text-secondary"></i>
-                                </span>
-                                <span class="item-menu active" id="view-mode-3" title="Three Columns">
-                                    <i class="fa-solid fa-border-all text-secondary"></i>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 col-12 mt-2 mt-md-0 text-md-end">
-                            <div class="core-dropdown d-inline-block">
-                                <button class="core-dropdown__button" type="button" id="coreDropdownBtn">
-                                    <span class="core-dropdown__selected" id="selected-sort-label">Lowest Price</span>
-                                    <i class="fa-solid fa-chevron-down ms-1 text-muted small"></i>
-                                </button>
-                                <div class="core-dropdown__menu" id="coreDropdownMenu">
-                                    <ul class="core-dropdown__list">
-                                        <li><a href="#" class="core-dropdown__option active" data-value="lowest-price">Lowest Price</a></li>
-                                        <li><a href="#" class="core-dropdown__option" data-value="highest-price">Highest Price</a></li>
-                                        <li><a href="#" class="core-dropdown__option" data-value="lowest-mileage">Lowest Mileage</a></li>
-                                        <li><a href="#" class="core-dropdown__option" data-value="highest-mileage">Highest Mileage</a></li>
-                                        <li><a href="#" class="core-dropdown__option" data-value="newest-year">Newest Year</a></li>
-                                        <li><a href="#" class="core-dropdown__option" data-value="oldest-year">Oldest Year</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Filter Sidebar (Collapsible on mobile, Right column on desktop) -->
+            <div class="col-lg-4 col-xl-3 order-1 order-lg-2">
+                <div class="listing-sidebar-right__filter p-3 p-lg-4 bg-white rounded-4 border shadow-sm">
+                    <div class="d-flex align-items-center justify-content-between cursor-pointer d-lg-none py-1" data-bs-toggle="collapse" data-bs-target="#mobileFilterCollapse" aria-expanded="false" aria-controls="mobileFilterCollapse">
+                        <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-sliders text-primary"></i> Category Filters
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                            <i class="fa-solid fa-filter me-1"></i> Toggle <i class="fa-solid fa-chevron-down ms-1"></i>
+                        </button>
                     </div>
 
-                    <!-- Dynamic Vehicles Grid Container -->
-                    <div id="vehicles-grid-container" class="grid grid-cols-3 gap-20 mb-32">
-                        <div class="text-center py-5 w-100 grid-cols-1">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading category inventory...</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dynamic Pagination -->
-                    <ul class="pagination justify-content-center mt-4" id="category-pagination"></ul>
-
-                </div>
-            </div>
-
-            <!-- Filter Sidebar (Right 4 Cols) -->
-            <div class="col-lg-4 col-xl-3">
-                <div class="listing-sidebar-right__filter">
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 d-none d-lg-block">
                         <i class="fa-solid fa-sliders text-primary me-2"></i> Category Filters
                     </h5>
 
+                    <div class="collapse d-lg-block mt-3 mt-lg-0" id="mobileFilterCollapse">
                     <form id="category-filter-form">
                         <input type="hidden" name="trim" id="filter-trim">
                         
@@ -179,11 +128,6 @@
                             </div>
                         </div>
 
-
-
-
-
-
                         <!-- Transmission -->
                         <div class="mb-3">
                             <label class="search-cars__label">Transmission</label>
@@ -227,6 +171,68 @@
                         </div>
 
                     </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area (Below filters on mobile, Left column on desktop) -->
+            <div class="col-lg-8 col-xl-9 order-2 order-lg-1">
+                <div class="listing-sidebar-right__content flat-tabs">
+                    
+                    <!-- Toolbar & View Options -->
+                    <div class="row mb-4 align-items-center">
+                        <div class="col-md-5 col-6">
+                            <p class="mb-0 text-muted small fw-semibold">
+                                Showing <span id="showing-count" class="fw-bold text-dark">0</span> vehicles
+                            </p>
+                        </div>
+
+                        <div class="col-md-3 col-6 text-center">
+                            <div class="d-inline-flex gap-2 p-1 bg-light rounded-3 border">
+                                <span class="item-menu" id="view-mode-1" title="Single Column">
+                                    <i class="fa-solid fa-bars text-secondary"></i>
+                                </span>
+                                <span class="item-menu" id="view-mode-2" title="Two Columns">
+                                    <i class="fa-solid fa-table-cells-large text-secondary"></i>
+                                </span>
+                                <span class="item-menu active d-none d-md-inline-block" id="view-mode-3" title="Three Columns">
+                                    <i class="fa-solid fa-border-all text-secondary"></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 col-12 mt-2 mt-md-0 text-md-end">
+                            <div class="core-dropdown d-inline-block">
+                                <button class="core-dropdown__button" type="button" id="coreDropdownBtn">
+                                    <span class="core-dropdown__selected" id="selected-sort-label">Lowest Price</span>
+                                    <i class="fa-solid fa-chevron-down ms-1 text-muted small"></i>
+                                </button>
+                                <div class="core-dropdown__menu" id="coreDropdownMenu">
+                                    <ul class="core-dropdown__list">
+                                        <li><a href="#" class="core-dropdown__option active" data-value="lowest-price">Lowest Price</a></li>
+                                        <li><a href="#" class="core-dropdown__option" data-value="highest-price">Highest Price</a></li>
+                                        <li><a href="#" class="core-dropdown__option" data-value="lowest-mileage">Lowest Mileage</a></li>
+                                        <li><a href="#" class="core-dropdown__option" data-value="highest-mileage">Highest Mileage</a></li>
+                                        <li><a href="#" class="core-dropdown__option" data-value="newest-year">Newest Year</a></li>
+                                        <li><a href="#" class="core-dropdown__option" data-value="oldest-year">Oldest Year</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Vehicles Grid Container -->
+                    <div id="vehicles-grid-container" class="grid grid-cols-3 gap-20 mb-32">
+                        <div class="text-center py-5 w-100 grid-cols-1">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading category inventory...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Pagination -->
+                    <ul class="pagination justify-content-center mt-4" id="category-pagination"></ul>
+
                 </div>
             </div>
 
@@ -614,14 +620,14 @@
                         </a>
                     </p>
 
-                    <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-2">
-                        <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
+                    <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1 gap-sm-2 flex-wrap flex-sm-nowrap">
+                        <button onclick="addToCartGlobal(${v.inventory_id}, this)" class="btn btn-outline-primary btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
                             <i class="fa-solid fa-cart-plus me-1"></i> Cart
                         </button>
-                        <button onclick="addToCompareGlobal(${v.inventory_id})" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold">
+                        <button onclick="addToCompareGlobal(${v.inventory_id})" class="btn btn-outline-success btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
                             <i class="fa-solid fa-code-compare me-1"></i> Compare
                         </button>
-                        <a href="{% url 'ecommerce:checkout' %}?inventory_id=${v.inventory_id}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
+                        <a href="{% url 'ecommerce:checkout' %}?inventory_id=${v.inventory_id}" class="btn btn-primary btn-sm rounded-pill px-2 px-sm-3 fw-bold flex-grow-1 text-center">
                             Buy Now
                         </a>
                     </div>
