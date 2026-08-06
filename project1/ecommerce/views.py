@@ -17,6 +17,9 @@ def safe_format_time(dt):
 
 
 from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.core.files.storage import default_storage
@@ -137,6 +140,7 @@ def vehicle_detail_view(request, inventory_id):
     })
 
 
+@api_view(['GET'])
 def api_catalog_vehicles(request):
     """JSON API for searching and filtering inventory vehicles."""
     filter_kwargs = {
@@ -181,12 +185,14 @@ def api_catalog_vehicles(request):
     })
 
 
+@api_view(['GET'])
 def api_vehicle_bodies(request):
     """JSON API for fetching vehicle body types serialized from database via serializers.py."""
     bodies = VehicleBodyService.fetch_vehicle_bodies()
     return JsonResponse({'success': True, 'count': len(bodies), 'bodies': bodies})
 
 
+@api_view(['GET'])
 def api_vehicle_conditions(request):
     """JSON API for fetching vehicle condition tabs (All Car, New Car, Used Car) serialized from database via serializers.py."""
     active_condition = request.GET.get('condition', 'all')
@@ -194,6 +200,7 @@ def api_vehicle_conditions(request):
     return JsonResponse({'success': True, 'count': len(tabs), 'conditions': tabs})
 
 
+@api_view(['GET'])
 def api_vehicle_models(request):
     """JSON API for fetching distinct vehicle models for a selected brand/make via serializers.py."""
     brand = request.GET.get('brand') or request.GET.get('make')
@@ -202,6 +209,7 @@ def api_vehicle_models(request):
     return JsonResponse({'success': True, 'count': len(models_list), 'models': models_list})
 
 
+@api_view(['GET'])
 def api_vehicle_trims(request):
     """JSON API for fetching distinct vehicle trims for a selected brand/model via serializers.py."""
     brand = request.GET.get('brand') or request.GET.get('make')
@@ -351,7 +359,7 @@ def wishlist_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_toggle_wishlist(request):
     """Add or remove a vehicle from customer's wishlist."""
     if not request.user.is_authenticated:
@@ -402,7 +410,7 @@ def cart_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_add_to_cart(request):
     """Add an inventory item to customer's cart."""
     if not request.user.is_authenticated:
@@ -428,7 +436,7 @@ def api_add_to_cart(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-@require_POST
+@api_view(['POST'])
 def api_remove_from_cart(request):
     """Remove an item from customer's cart."""
     if not request.user.is_authenticated:
@@ -534,7 +542,7 @@ def test_drive_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_book_test_drive(request):
     """Schedule a pre-purchase test drive."""
     if not request.user.is_authenticated:
@@ -659,7 +667,7 @@ def checkout_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_submit_order(request):
     """Submit a new online order."""
     if not request.user.is_authenticated:
@@ -838,7 +846,7 @@ def customer_profile_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_update_customer_profile(request):
     """API endpoint to update customer profile info."""
     if not request.user.is_authenticated:
@@ -953,7 +961,7 @@ def api_update_customer_profile(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-@require_POST
+@api_view(['POST'])
 def api_send_customer_message(request):
     """API endpoint for customers to send messages to a dealership store."""
     if not request.user.is_authenticated:
@@ -1136,7 +1144,7 @@ def customer_messages_view(request):
     })
 
 
-@require_POST
+@api_view(['POST'])
 def api_send_superuser_message(request):
     """API endpoint to send newsletter/direct messages to Head Office Superusers."""
     data = request.POST

@@ -47,7 +47,7 @@
   <header id="header" class="header fixed-top d-flex align-items-center">
 
     <div class="d-flex align-items-center justify-content-between">
-      <a href="/" class="logo d-flex align-items-center">
+      <a href="{% url 'dashboard' %}" class="logo d-flex align-items-center">
         <img src="{% static 'assets/img/logo.png' %}" alt="">
         <span class="d-none d-lg-block">Car Sales Management</span>
       </a>
@@ -143,6 +143,7 @@
   </header><!-- End Header -->
 
   <!-- ======= Sidebar ======= -->
+  {% if is_staff or is_admin or employee_profile or request.user.is_staff %}
   <aside id="sidebar" class="sidebar">
 
     <ul class="sidebar-nav" id="sidebar-nav">
@@ -307,18 +308,9 @@
     </ul>
 
   </aside><!-- End Sidebar-->
+  {% endif %}
 
-  <main id="main" class="main">
-    {% if request.user.is_authenticated and not request.user.is_staff and not is_manager %}
-    <div class="alert alert-info alert-dismissible fade show d-flex align-items-center gap-2 border-0 shadow-sm mb-4" role="alert" style="background: #e0e7ff; color: #3730a3; border-radius: 12px;">
-      <i class="bi bi-info-circle-fill fs-5"></i>
-      <div>
-        <strong>Reader Access:</strong> You are logged in as a standard user. You can view reports and dashboards, but you do not have administrative permissions to perform CRUD operations. Contact your administrator to request role upgrades.
-      </div>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    {% endif %} 
-
+  <main id="main" class="main" {% if not is_staff and not is_admin and not employee_profile and not request.user.is_staff %}style="margin-left: 0;"{% endif %}>
     {% block content %}
     {% endblock %}
   </main><!-- End #main -->

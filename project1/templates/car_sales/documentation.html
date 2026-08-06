@@ -143,7 +143,7 @@
   <h1>API Documentation</h1>
   <nav>
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
       <li class="breadcrumb-item active">API Documentation</li>
     </ol>
   </nav>
@@ -189,9 +189,11 @@
           </div>
           <div class="nav flex-column" id="doc-nav">
             <a class="doc-sidebar-link active" href="#authentication-guide"><i class="bi bi-shield-lock"></i> Authentication</a>
+            <a class="doc-sidebar-link" href="#ecomm-apis"><i class="bi bi-shop"></i> E-Commerce APIs</a>
             <a class="doc-sidebar-link" href="#report-apis"><i class="bi bi-bar-chart-line"></i> Reports & Analytics</a>
             <a class="doc-sidebar-link" href="#invoice-apis"><i class="bi bi-receipt"></i> Invoices API</a>
             <a class="doc-sidebar-link" href="#crud-apis"><i class="bi bi-database"></i> Core CRUD APIs</a>
+            <a class="doc-sidebar-link" href="#terms-policy"><i class="bi bi-file-text"></i> Terms, Privacy & Cookie Policy</a>
           </div>
         </div>
       </div>
@@ -430,6 +432,316 @@
 
       <div class="api-container" id="crud-api-list">
         <!-- Rendered via JS loop for neatness and interactivity -->
+      </div>
+
+      <!-- Section: E-Commerce Public & Marketplace APIs -->
+      <h2 id="ecomm-apis" class="doc-section-header">E-Commerce Public & Marketplace APIs</h2>
+      <p class="text-muted">Public search, catalog filters, shopping cart, test drive booking, customer orders & messaging endpoints.</p>
+
+      <div class="api-container">
+        <!-- Catalog Search -->
+        <div class="api-card" data-search="catalog search filter inventory get /api/catalog/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/catalog/</span>
+            </div>
+            <span class="text-muted small">Catalog Search & Filter</span>
+          </div>
+          <div class="api-body">
+            <p>Query vehicle inventory with pagination & dynamic filters (brand, body, price, condition, state, miles, trim).</p>
+            <h6 class="fw-bold">Query Parameters</h6>
+            <ul>
+              <li><code>q</code>: Model keyword search string</li>
+              <li><code>brand</code> / <code>make</code>: Make name filter (e.g. <code>BMW</code>)</li>
+              <li><code>body</code>: Body type (e.g. <code>Sedan</code>, <code>SUV</code>, <code>Truck</code>)</li>
+              <li><code>condition</code>: Vehicle condition (<code>new</code>, <code>used</code>, <code>all</code>)</li>
+              <li><code>min_price</code> & <code>max_price</code>: Price range filter</li>
+              <li><code>count_only=1</code>: Returns integer count of matching inventory vehicles</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Vehicle Bodies -->
+        <div class="api-card" data-search="vehicle bodies get /api/bodies/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/bodies/</span>
+            </div>
+            <span class="text-muted small">Vehicle Body Types</span>
+          </div>
+          <div class="api-body">
+            <p>Returns distinct vehicle body categories with live inventory counts and SVG icons.</p>
+          </div>
+        </div>
+
+        <!-- Vehicle Conditions -->
+        <div class="api-card" data-search="vehicle conditions get /api/conditions/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/conditions/</span>
+            </div>
+            <span class="text-muted small">Vehicle Condition Tabs</span>
+          </div>
+          <div class="api-body">
+            <p>Returns vehicle condition categories (All Car, New Car, Used Car) with live inventory counts.</p>
+          </div>
+        </div>
+
+        <!-- Vehicle Models -->
+        <div class="api-card" data-search="vehicle models brand get /api/models/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/models/</span>
+            </div>
+            <span class="text-muted small">Distinct Models by Brand</span>
+          </div>
+          <div class="api-body">
+            <p>Returns distinct vehicle model names filtered by <code>brand</code> parameter.</p>
+          </div>
+        </div>
+
+        <!-- Vehicle Trims -->
+        <div class="api-card" data-search="vehicle trims brand model get /api/trims/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-get">GET</span>
+              <span class="api-path">/api/trims/</span>
+            </div>
+            <span class="text-muted small">Distinct Trims by Brand & Model</span>
+          </div>
+          <div class="api-body">
+            <p>Returns distinct trim specifications for given <code>brand</code> and <code>model</code> parameters.</p>
+          </div>
+        </div>
+
+        <!-- Toggle Wishlist -->
+        <div class="api-card" data-search="toggle wishlist post /api/wishlist/toggle/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/wishlist/toggle/</span>
+            </div>
+            <span class="text-muted small">Toggle Wishlist (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Add or remove a vehicle from the customer's saved wishlist.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{ "vehicle_id": 105 }</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add to Cart -->
+        <div class="api-card" data-search="add cart post /api/cart/add/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/cart/add/</span>
+            </div>
+            <span class="text-muted small">Add Item to Cart (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Adds an inventory item to the customer's shopping cart.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{ "inventory_id": 42 }</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Remove from Cart -->
+        <div class="api-card" data-search="remove cart post /api/cart/remove/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/cart/remove/</span>
+            </div>
+            <span class="text-muted small">Remove Item from Cart (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Removes an inventory item from the customer's shopping cart.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{ "inventory_id": 42 }</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Book Test Drive -->
+        <div class="api-card" data-search="test drive booking post /api/test-drive/book/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/test-drive/book/</span>
+            </div>
+            <span class="text-muted small">Book Test Drive (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Schedules a test drive appointment at a specified dealership store.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{
+  "vehicle_id": 105,
+  "store_id": 1,
+  "booking_date": "2026-08-15",
+  "booking_time": "14:00",
+  "notes": "Interested in trade-in option"
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Order -->
+        <div class="api-card" data-search="submit order checkout post /api/order/submit/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/order/submit/</span>
+            </div>
+            <span class="text-muted small">Submit Customer Order (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Submits a vehicle purchase order with deposit details and fulfillment preferences.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{
+  "inventory_id": 42,
+  "deposit_amount": 2500,
+  "payment_preference": "Financing",
+  "fulfillment_type": "Store Pickup",
+  "delivery_address": "123 Main Street, Suite 400"
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Update Customer Profile -->
+        <div class="api-card" data-search="update profile post /api/profile/update/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/profile/update/</span>
+            </div>
+            <span class="text-muted small">Update Customer Profile (Customer Auth)</span>
+          </div>
+          <div class="api-body">
+            <p>Updates customer personal details, address, and profile preferences.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{
+  "firstname": "Jane",
+  "lastname": "Doe",
+  "customer_address": "456 Oak Avenue",
+  "city": 1,
+  "country": 1
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Send Store Message -->
+        <div class="api-card" data-search="send customer message post /api/messages/send/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/messages/send/</span>
+            </div>
+            <span class="text-muted small">Send Customer Store Message</span>
+          </div>
+          <div class="api-body">
+            <p>Sends a direct support message from a customer to a store sales representative.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{
+  "store_id": 1,
+  "message": "Hi, is this vehicle eligible for home delivery?"
+}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Send Superuser Message -->
+        <div class="api-card" data-search="send superuser newsletter message post /api/messages/superuser/">
+          <div class="api-header">
+            <div class="d-flex align-items-center gap-3">
+              <span class="api-badge badge-post">POST</span>
+              <span class="api-path">/api/messages/superuser/</span>
+            </div>
+            <span class="text-muted small">Send Direct Superuser Inquiry</span>
+          </div>
+          <div class="api-body">
+            <p>Sends a newsletter subscription or direct inquiry to Head Office Superusers.</p>
+            <h6 class="fw-bold">JSON Request Payload</h6>
+            <div class="json-block">
+              <button class="btn-copy" onclick="copySnippet(this)"><i class="bi bi-clipboard"></i> Copy</button>
+              <pre style="margin:0;">{
+  "email": "customer@example.com"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Terms, Privacy & Cookie Policy -->
+      <h2 id="terms-policy" class="doc-section-header">Terms of Service & API Policies</h2>
+      
+      <div id="terms-service" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
+        <h4 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-file-text-fill text-primary me-2"></i> Terms of Service & API Acceptable Use</h4>
+        <p>
+          Welcome to the <strong>Automobile Marketplace & Management Platform</strong>. By accessing our web application, APIs, or services, you agree to comply with the following terms:
+        </p>
+        <ul>
+          <li><strong>API Access & Authentication:</strong> API endpoints require valid user authentication. Unauthenticated requests to restricted resources will return <code>401 Unauthorized</code> or <code>403 Forbidden</code>.</li>
+          <li><strong>Rate Limits & Usage:</strong> Automated API scraping or rapid requests without caching are prohibited. Excessive requests may trigger temporary IP rate limits.</li>
+          <li><strong>Vehicle Reservation & Pricing:</strong> Prices, MMR valuations, and vehicle statuses are dynamically updated. Vehicle reservations via cart or test-drive bookings are subject to store verification.</li>
+          <li><strong>User Responsibilities:</strong> Users are responsible for maintaining the confidentiality of their credentials. Any actions performed under an account are the responsibility of the account owner.</li>
+        </ul>
+      </div>
+
+      <div id="privacy-policy" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
+        <h4 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-shield-check text-success me-2"></i> Privacy & Data Protection Policy</h4>
+        <p>
+          We are committed to protecting your privacy and personal data. This policy outlines how we handle customer and employee information:
+        </p>
+        <ul>
+          <li><strong>Data Collection:</strong> We collect personal information provided during account registration, profile updates, test-drive bookings, and order submissions (e.g., name, email, address, phone number).</li>
+          <li><strong>Data Security & Password Hashing:</strong> All password credentials are stored using PBKDF2 with SHA-256 algorithm. Raw passwords are never stored or logged in plain text.</li>
+          <li><strong>Data Sharing:</strong> Customer data is shared exclusively with the designated dealership store and assigned sales representative for processing inquiries, test drives, and vehicle orders. We do not sell user data to third parties.</li>
+          <li><strong>Access & Correction:</strong> Users can view, edit, or update their personal details at any time via the <code>/profile/</code> endpoint or profile settings.</li>
+        </ul>
+      </div>
+
+      <div id="cookie-policy" class="card shadow-sm p-4 mb-4" style="border-radius: 12px;">
+        <h4 class="fw-bold mb-3" style="color: #012970;"><i class="bi bi-cookie text-warning me-2"></i> Cookie & LocalStorage Policy</h4>
+        <p>
+          Our platform uses cookies and browser local storage to provide a seamless browsing experience:
+        </p>
+        <ul>
+          <li><strong>Essential Cookies:</strong>
+            <ul>
+              <li><code>sessionid</code>: Maintains your logged-in user session securely across pages.</li>
+              <li><code>csrftoken</code>: Protects against Cross-Site Request Forgery (CSRF) on form and API submissions.</li>
+            </ul>
+          </li>
+          <li><strong>Browser LocalStorage:</strong>
+            <ul>
+              <li><code>compare_inventory_ids</code>: Stores selected vehicle IDs locally on your browser to support side-by-side vehicle comparisons across pages without requiring database writes.</li>
+            </ul>
+          </li>
+          <li><strong>Cookie Management:</strong> You can manage or disable cookies via your browser settings. Note that disabling essential cookies will prevent logging in to customer or management portals.</li>
+        </ul>
       </div>
 
     </div>
@@ -918,6 +1230,98 @@
       crudFolder.item.push(folder);
     });
     postman.item.push(crudFolder);
+
+    // 4. Add E-Commerce Public & Marketplace APIs Folder
+    const ecommFolder = {
+      name: "E-Commerce Marketplace APIs",
+      item: [
+        {
+          name: "Catalog Inventory Search & Filter",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/catalog/?brand=BMW&body=Sedan&page=1&page_size=24",
+              host: ["{{baseUrl}}"],
+              path: ["api", "catalog"]
+            }
+          }
+        },
+        {
+          name: "Get Body Types",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/bodies/",
+              host: ["{{baseUrl}}"],
+              path: ["api", "bodies"]
+            }
+          }
+        },
+        {
+          name: "Get Vehicle Models",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/models/?brand=Toyota",
+              host: ["{{baseUrl}}"],
+              path: ["api", "models"]
+            }
+          }
+        },
+        {
+          name: "Get Vehicle Trims",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/api/trims/?brand=Toyota&model=Camry",
+              host: ["{{baseUrl}}"],
+              path: ["api", "trims"]
+            }
+          }
+        },
+        {
+          name: "Toggle Wishlist Item",
+          request: {
+            method: "POST",
+            header: [{ key: "Content-Type", value: "application/json", type: "text" }],
+            body: { mode: "raw", raw: JSON.stringify({ vehicle_id: 105 }, null, 2) },
+            url: { raw: "{{baseUrl}}/api/wishlist/toggle/", host: ["{{baseUrl}}"], path: ["api", "wishlist", "toggle"] }
+          }
+        },
+        {
+          name: "Add Item to Cart",
+          request: {
+            method: "POST",
+            header: [{ key: "Content-Type", value: "application/json", type: "text" }],
+            body: { mode: "raw", raw: JSON.stringify({ inventory_id: 42 }, null, 2) },
+            url: { raw: "{{baseUrl}}/api/cart/add/", host: ["{{baseUrl}}"], path: ["api", "cart", "add"] }
+          }
+        },
+        {
+          name: "Book Test Drive",
+          request: {
+            method: "POST",
+            header: [{ key: "Content-Type", value: "application/json", type: "text" }],
+            body: { mode: "raw", raw: JSON.stringify({ vehicle_id: 105, store_id: 1, booking_date: "2026-08-15", booking_time: "14:00" }, null, 2) },
+            url: { raw: "{{baseUrl}}/api/test-drive/book/", host: ["{{baseUrl}}"], path: ["api", "test-drive", "book"] }
+          }
+        },
+        {
+          name: "Submit Order",
+          request: {
+            method: "POST",
+            header: [{ key: "Content-Type", value: "application/json", type: "text" }],
+            body: { mode: "raw", raw: JSON.stringify({ inventory_id: 42, deposit_amount: 2500, payment_preference: "Financing" }, null, 2) },
+            url: { raw: "{{baseUrl}}/api/order/submit/", host: ["{{baseUrl}}"], path: ["api", "order", "submit"] }
+          }
+        }
+      ]
+    };
+    postman.item.push(ecommFolder);
 
     // Trigger local JSON file download
     const filename = "Car_Sales_API_Postman_Collection.json";

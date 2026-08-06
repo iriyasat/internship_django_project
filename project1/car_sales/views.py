@@ -103,10 +103,10 @@ def check_analytical_page_access(request):
     return is_staff_user(request)
 
 
+@login_required
 def render_analytical_page(request, template, active_tab):
     if not check_analytical_page_access(request):
-        messages.error(request, "Permission denied. Only administrators and store managers can access this page.")
-        return redirect('home')
+        return HttpResponseForbidden("Permission denied. Only staff members and store administrators can access this page.")
     return render(request, template, {'active_parent': 'api_pages', 'active_tab': active_tab})
 
 def check_record_permission(request, model_class, record):
@@ -164,8 +164,7 @@ def check_crud_permission(request, model_class, action, pk=None, data=None):
 @login_required
 def home_view(request):
     if not is_staff_user(request):
-        messages.error(request, "Permission denied. Only staff members and store administrators can access the dealership dashboard.")
-        return redirect('home')
+        return HttpResponseForbidden("Permission denied. Only staff members and store administrators can access the dealership dashboard.")
     profile = get_employee_profile(request)
     store_id, employee_id = get_user_filters(request, profile)
     stats = SellingInfoSerializer.fetch_dashboard_stats(store_id, employee_id)
@@ -889,7 +888,10 @@ def invoice_api(request, pk=None):
             return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@login_required
 def documentation_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members and administrators can access API documentation.")
     base_url = request.build_absolute_uri('/')[:-1]
     return render(request, 'car_sales/documentation.html', {
         'active_tab': 'documentation',
@@ -899,6 +901,8 @@ def documentation_view(request):
 
 @login_required
 def employee_messages_view(request):
+    if not is_staff_user(request):
+        return HttpResponseForbidden("Permission denied. Only staff members can access internal store messages.")
     """
     Employee / Admin Messages view:
     - Reads single-record chat threads (message_id = 1).

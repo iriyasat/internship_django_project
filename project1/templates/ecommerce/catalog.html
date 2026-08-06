@@ -137,10 +137,12 @@
                             <label class="search-cars__label">Vehicle Condition</label>
                             <select name="condition" id="filter-condition" class="form-select rounded-3">
                                 <option value="all" {% if active_condition == 'all' or not active_condition %}selected{% endif %}>All Vehicles ({{ condition_counts.all|intcomma }})</option>
-                                <option value="excellent" {% if active_condition == 'excellent' %}selected{% endif %}>Excellent Condition 40-49 ({{ condition_counts.excellent|intcomma }})</option>
-                                <option value="very_good" {% if active_condition == 'very_good' %}selected{% endif %}>Very Good Condition 30-39 ({{ condition_counts.very_good|intcomma }})</option>
-                                <option value="good" {% if active_condition == 'good' %}selected{% endif %}>Good Condition 20-29 ({{ condition_counts.good|intcomma }})</option>
-                                <option value="fair" {% if active_condition == 'fair' %}selected{% endif %}>Fair / Rough Condition 1-19 ({{ condition_counts.fair|intcomma }})</option>
+                                <option value="new" {% if active_condition == 'new' %}selected{% endif %}>New Cars (Odometer ≤ 100) ({{ condition_counts.new|intcomma }})</option>
+                                <option value="used" {% if active_condition == 'used' or active_condition == 'pre-owned' %}selected{% endif %}>Used / Pre-Owned Cars (Odometer > 100) ({{ condition_counts.used|intcomma }})</option>
+                                <option value="excellent" {% if active_condition == 'excellent' or active_condition == '40-50' %}selected{% endif %}>Excellent Condition 40-49 ({{ condition_counts.excellent|intcomma }})</option>
+                                <option value="very_good" {% if active_condition == 'very_good' or active_condition == '30-39' %}selected{% endif %}>Very Good Condition 30-39 ({{ condition_counts.very_good|intcomma }})</option>
+                                <option value="good" {% if active_condition == 'good' or active_condition == '20-29' %}selected{% endif %}>Good Condition 20-29 ({{ condition_counts.good|intcomma }})</option>
+                                <option value="fair" {% if active_condition == 'fair' or active_condition == '1-19' %}selected{% endif %}>Fair / Rough Condition 1-19 ({{ condition_counts.fair|intcomma }})</option>
                             </select>
                         </div>
 
@@ -248,7 +250,21 @@
             if (option) {
                 selectEl.value = option.value;
             } else {
-                selectEl.value = rawValue;
+                if (target.includes('used') || target.includes('pre-owned')) {
+                    selectEl.value = 'used';
+                } else if (target.includes('new')) {
+                    selectEl.value = 'new';
+                } else if (target.includes('40-50') || target.includes('excellent')) {
+                    selectEl.value = 'excellent';
+                } else if (target.includes('30-39') || target.includes('very_good')) {
+                    selectEl.value = 'very_good';
+                } else if (target.includes('20-29') || target.includes('good')) {
+                    selectEl.value = 'good';
+                } else if (target.includes('1-19') || target.includes('10-19') || target.includes('1-9') || target.includes('fair')) {
+                    selectEl.value = 'fair';
+                } else {
+                    selectEl.value = rawValue;
+                }
             }
         }
 
@@ -483,10 +499,12 @@
         // Vehicle Condition live counts update
         const condSelect = document.getElementById('filter-condition');
         if (condSelect && filters.conditions) {
-            const currentCond = condSelect.value;
+            const currentCond = condSelect.value || 'all';
             const c = filters.conditions;
             condSelect.innerHTML = `
                 <option value="all" ${currentCond === 'all' ? 'selected' : ''}>All Vehicles (${(c.all || 0).toLocaleString()})</option>
+                <option value="new" ${currentCond === 'new' ? 'selected' : ''}>New Cars (${(c.new || 0).toLocaleString()})</option>
+                <option value="used" ${currentCond === 'used' || currentCond === 'pre-owned' ? 'selected' : ''}>Used / Pre-Owned Cars (${(c.used || 0).toLocaleString()})</option>
                 <option value="excellent" ${currentCond === 'excellent' ? 'selected' : ''}>Excellent Condition 40-49 (${(c.excellent || 0).toLocaleString()})</option>
                 <option value="very_good" ${currentCond === 'very_good' ? 'selected' : ''}>Very Good Condition 30-39 (${(c.very_good || 0).toLocaleString()})</option>
                 <option value="good" ${currentCond === 'good' ? 'selected' : ''}>Good Condition 20-29 (${(c.good || 0).toLocaleString()})</option>

@@ -50,6 +50,47 @@ def _resolve_vehicle_image_url(make_name, vehicle_model=None):
 
 
 # ------------------------------------------------------------------------------
+# Raw SQL Execution Helpers (Unified Architecture matching car_sales)
+# ------------------------------------------------------------------------------
+
+def format_date_fields(item):
+    """Utility to format date and datetime fields to string format in-place."""
+    if not isinstance(item, dict):
+        return item
+    for key, val in item.items():
+        if val and hasattr(val, 'strftime') and not isinstance(val, str):
+            if key in ('created_at', 'updated_at', 'reviewed_at', 'booking_date', 'order_date'):
+                item[key] = val.strftime('%Y-%m-%d %H:%M')
+            elif key in ('selling_date', 'invoice_date', 'due_date', 'date_of_joining'):
+                item[key] = val.strftime('%Y-%m-%d')
+    return item
+
+
+def execute_raw_fetch_all(db_name, query, params=None):
+    with connections[db_name or 'default'].cursor() as cursor:
+        cursor.execute(query, params or [])
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+    return [format_date_fields(dict(zip(columns, row))) for row in rows]
+
+
+def execute_fetchone_query(db_name, query, params=None):
+    with connections[db_name or 'default'].cursor() as cursor:
+        cursor.execute(query, params or [])
+        row = cursor.fetchone()
+        if row:
+            columns = [col[0] for col in cursor.description]
+            return format_date_fields(dict(zip(columns, row)))
+    return None
+
+
+def execute_cud_query(db_name, query, params=None):
+    with connections[db_name or 'default'].cursor() as cursor:
+        cursor.execute(query, params or [])
+        return cursor.lastrowid
+
+
+# ------------------------------------------------------------------------------
 # REST Framework Model Serializers
 # ------------------------------------------------------------------------------
 
@@ -346,18 +387,23 @@ class CatalogService:
 
         if condition and str(condition).lower() not in ['all', 'condition', '']:
             c_lower = str(condition).lower()
-            if c_lower == 'new':
+            if c_lower in ['new', '0-100']:
                 where_clauses.append("v.odometer <= 100")
             elif c_lower in ['used', 'pre-owned']:
                 where_clauses.append("v.odometer > 100")
-            elif c_lower in ['excellent', '40-50']:
+            elif c_lower in ['excellent', '40-50', '40+']:
                 where_clauses.append("v.condition >= 40")
-            elif c_lower in ['very_good', '30-39']:
+            elif c_lower in ['very_good', 'very good', '30-39']:
                 where_clauses.append("v.condition BETWEEN 30 AND 39")
             elif c_lower in ['good', '20-29']:
                 where_clauses.append("v.condition BETWEEN 20 AND 29")
-            elif c_lower in ['fair', '1-19']:
-                where_clauses.append("v.condition BETWEEN 1 AND 19")
+            elif c_lower in ['fair', '1-19', '10-19', '1-9']:
+                if c_lower == '10-19':
+                    where_clauses.append("v.condition BETWEEN 10 AND 19")
+                elif c_lower == '1-9':
+                    where_clauses.append("v.condition BETWEEN 1 AND 9")
+                else:
+                    where_clauses.append("v.condition BETWEEN 1 AND 19")
             elif c_lower.isdigit():
                 where_clauses.append("v.condition = %s")
                 params.append(int(c_lower))
@@ -467,14 +513,22 @@ class CatalogService:
 
         # Sorting logic
         sort_order = "i.inventory_id DESC"
-        if sort == 'lowest-price':
+        if sort in ['lowest-price', 'price_asc']:
             sort_order = "v.mmr ASC"
-        elif sort == 'highest-price':
+        elif sort in ['highest-price', 'price_desc']:
             sort_order = "v.mmr DESC"
-        elif sort == 'lowest-mileage':
+        elif sort in ['lowest-mileage', 'mileage_asc']:
             sort_order = "v.odometer ASC"
-        elif sort == 'highest-mileage':
+        elif sort in ['highest-mileage', 'mileage_desc']:
             sort_order = "v.odometer DESC"
+        elif sort in ['newest-year', 'year_desc', 'newest']:
+            sort_order = "v.vehicle_model DESC, i.inventory_id DESC"
+        elif sort in ['oldest-year', 'year_asc', 'oldest']:
+            sort_order = "v.vehicle_model ASC, i.inventory_id ASC"
+        elif sort in ['condition-high', 'condition_desc']:
+            sort_order = "v.condition DESC"
+        elif sort in ['condition-low', 'condition_asc']:
+            sort_order = "v.condition ASC"
 
         try:
             page = int(page) if page else 1
@@ -516,6 +570,20 @@ class CatalogService:
             min_p = p_stats[0] or 0
             max_p = p_stats[1] or 182000
 
+            # Live condition breakdown counts
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.odometer <= 100", params)
+            c_new = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.odometer > 100", params)
+            c_used = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.condition >= 40", params)
+            c_exc = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.condition BETWEEN 30 AND 39", params)
+            c_vg = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.condition BETWEEN 20 AND 29", params)
+            c_g = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id LEFT JOIN industry_info m ON v.make_id = m.make_id {where_sql} AND v.condition BETWEEN 1 AND 19", params)
+            c_f = cursor.fetchone()[0]
+
         status_map = {1: 'Available', 4: 'Pre-Order', 2: 'Sold', 3: 'Reserved'}
         vehicles = []
         for r in rows:
@@ -552,6 +620,12 @@ class CatalogService:
             'max_price': max_p,
             'conditions': {
                 'all': total_count,
+                'new': c_new,
+                'used': c_used,
+                'excellent': c_exc,
+                'very_good': c_vg,
+                'good': c_g,
+                'fair': c_f,
             }
         }
 
@@ -584,6 +658,12 @@ class CatalogService:
             cursor.execute("SELECT COUNT(*) FROM inventory WHERE status IN (2, 4)")
             cnt_all = cursor.fetchone()[0]
 
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.odometer <= 100")
+            cnt_new = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.odometer > 100")
+            cnt_used = cursor.fetchone()[0]
+
             cursor.execute("SELECT COUNT(*) FROM inventory i JOIN vehicle_info v ON i.vehicle_id = v.id WHERE i.status IN (2, 4) AND v.condition >= 40")
             cnt_excellent = cursor.fetchone()[0]
 
@@ -611,6 +691,8 @@ class CatalogService:
             'condition_tabs': condition_tabs,
             'condition_counts': {
                 'all': cnt_all,
+                'new': cnt_new,
+                'used': cnt_used,
                 'excellent': cnt_excellent,
                 'very_good': cnt_very_good,
                 'good': cnt_good,
