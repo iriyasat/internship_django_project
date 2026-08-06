@@ -643,24 +643,66 @@
         }
 
         let html = '';
-        if (activePage > 1) {
-            html += `<li><a href="#" class="pagination__link" onclick="event.preventDefault(); fetchCategoryVehicles(${activePage - 1})"><i class="fa-solid fa-chevron-left small"></i></a></li>`;
+
+        // First Button
+        const isFirstDisabled = activePage === 1;
+        html += `<li class="${isFirstDisabled ? 'disabled' : ''}">
+            <a href="#" class="pagination__link ${isFirstDisabled ? 'disabled' : ''}" ${isFirstDisabled ? 'style="pointer-events:none;opacity:0.5;"' : `onclick="event.preventDefault(); fetchCategoryVehicles(1)"`}>First</a>
+        </li>`;
+
+        // Previous (<) Button
+        const isPrevDisabled = activePage === 1;
+        html += `<li class="${isPrevDisabled ? 'disabled' : ''}">
+            <a href="#" class="pagination__link ${isPrevDisabled ? 'disabled' : ''}" ${isPrevDisabled ? 'style="pointer-events:none;opacity:0.5;"' : `onclick="event.preventDefault(); fetchCategoryVehicles(${activePage - 1})"`}><i class="fa-solid fa-chevron-left small"></i></a>
+        </li>`;
+
+        // Page Numbers with Ellipsis (...)
+        let pages = [];
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            let start = Math.max(2, activePage - 2);
+            let end = Math.min(totalPages - 1, activePage + 2);
+
+            if (start > 2) {
+                pages.push('...');
+            } else if (start === 3) {
+                pages.push(2);
+            }
+
+            for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+            }
+
+            if (end < totalPages - 1) {
+                pages.push('...');
+            } else if (end === totalPages - 2) {
+                pages.push(totalPages - 1);
+            }
+
+            if (!pages.includes(totalPages)) pages.push(totalPages);
         }
 
-        const maxButtons = 5;
-        let startPage = Math.max(1, activePage - Math.floor(maxButtons / 2));
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        if (endPage - startPage + 1 < maxButtons) {
-            startPage = Math.max(1, endPage - maxButtons + 1);
-        }
+        pages.forEach(p => {
+            if (p === '...') {
+                html += `<li><span class="pagination__link disabled" style="pointer-events:none;border:none;background:transparent;padding:0 6px;">...</span></li>`;
+            } else {
+                html += `<li><a href="#" class="pagination__link ${p === activePage ? 'active' : ''}" onclick="event.preventDefault(); fetchCategoryVehicles(${p})">${p}</a></li>`;
+            }
+        });
 
-        for (let p = startPage; p <= endPage; p++) {
-            html += `<li><a href="#" class="pagination__link ${p === activePage ? 'active' : ''}" onclick="event.preventDefault(); fetchCategoryVehicles(${p})">${p}</a></li>`;
-        }
+        // Next (>) Button
+        const isNextDisabled = activePage === totalPages;
+        html += `<li class="${isNextDisabled ? 'disabled' : ''}">
+            <a href="#" class="pagination__link ${isNextDisabled ? 'disabled' : ''}" ${isNextDisabled ? 'style="pointer-events:none;opacity:0.5;"' : `onclick="event.preventDefault(); fetchCategoryVehicles(${activePage + 1})"`}><i class="fa-solid fa-chevron-right small"></i></a>
+        </li>`;
 
-        if (activePage < totalPages) {
-            html += `<li><a href="#" class="pagination__link" onclick="event.preventDefault(); fetchCategoryVehicles(${activePage + 1})"><i class="fa-solid fa-chevron-right small"></i></a></li>`;
-        }
+        // Last Button
+        const isLastDisabled = activePage === totalPages;
+        html += `<li class="${isLastDisabled ? 'disabled' : ''}">
+            <a href="#" class="pagination__link ${isLastDisabled ? 'disabled' : ''}" ${isLastDisabled ? 'style="pointer-events:none;opacity:0.5;"' : `onclick="event.preventDefault(); fetchCategoryVehicles(${totalPages})"`}>Last</a>
+        </li>`;
 
         pag.innerHTML = html;
     }
