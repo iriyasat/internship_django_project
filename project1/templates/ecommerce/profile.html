@@ -3,73 +3,7 @@
 
 {% block title %}My Profile & Orders | Automobile{% endblock %}
 
-{% block extra_css %}
-<style>
-    .profile-hero-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .profile-avatar-wrapper {
-        position: relative;
-        width: 110px;
-        height: 110px;
-    }
-    .profile-avatar-img {
-        width: 110px;
-        height: 110px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid #ffffff;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    }
-    .profile-nav-tabs .nav-link {
-        color: #64748b;
-        font-weight: 600;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 12px 24px;
-        border-radius: 0;
-        transition: all 0.2s ease;
-    }
-    .profile-nav-tabs .nav-link:hover {
-        color: var(--primary);
-    }
-    .profile-nav-tabs .nav-link.active {
-        color: var(--primary);
-        background: transparent;
-        border-bottom-color: var(--primary);
-        font-weight: 700;
-    }
-    .stat-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 18px;
-        padding: 20px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 28px rgba(0,0,0,0.08);
-    }
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-    .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    .profile-grid .full { grid-column: span 2; }
-    .upload-preview--avatar img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; }
-    .upload-input { display: none; }
-    @media (max-width: 991.98px) {
-        .profile-grid { grid-template-columns: 1fr; }
-        .profile-grid .full { grid-column: auto; }
-    }
-</style>
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <!-- Dark Page Banner -->
