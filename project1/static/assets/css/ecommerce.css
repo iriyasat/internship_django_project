@@ -101,16 +101,16 @@ h1, h2, h3, h4, h5, h6 {
     gap: 14px; 
 }
 
-.btn-nav-login {
-    padding: 9px 24px;
-    border: 2px solid var(--primary);
-    color: var(--primary);
-    border-radius: 50px;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.9rem;
-    transition: all 0.25s;
-}
+.btn-nav-login { 
+    padding: 8px 20px; 
+    border-radius: 99px; 
+    background: #0f172a; 
+    color: #fff; 
+    font-weight: 600; 
+    font-size: 0.88rem; 
+    text-decoration: none; 
+    transition: all 0.2s ease; 
+} 
 .btn-nav-login:hover { 
     background: var(--primary); 
     color: #fff; 
@@ -536,34 +536,51 @@ h1, h2, h3, h4, h5, h6 {
     .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
     .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
 }
-@media (max-width: 576px) {
+@media (max-width: 767px) {
     .grid-cols-3, .grid-cols-2, .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
 }
 
 /* ─── Pagination Styles ─── */
 .pagination {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
     list-style: none;
     padding: 0;
+    margin: 20px 0;
 }
 .pagination__link {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid #e2e8f0;
     color: #334155;
     font-weight: 700;
+    font-size: 0.88rem;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    background: #ffffff;
 }
 .pagination__link.active, .pagination__link:hover {
     background: #2563eb;
     color: #ffffff;
     border-color: #2563eb;
+}
+@media (max-width: 576px) {
+    .pagination {
+        gap: 4px;
+    }
+    .pagination__link {
+        min-width: 30px;
+        height: 30px;
+        padding: 0 6px;
+        font-size: 0.78rem;
+    }
 }
 
 /* ─── Sleek Dark Footer ─── */
@@ -746,4 +763,50 @@ footer > *,
 .footer-bottom-links li {
     list-style: none !important;
     list-style-type: none !important;
+}
+
+/* ─── Global Mobile Responsiveness & Navbar Scaling ─── */
+body {
+    padding-top: 76px;
+}
+
+@media (max-width: 991px) {
+    body {
+        padding-top: 68px;
+    }
+    .landing-nav {
+        height: 68px;
+        padding: 0 4%;
+    }
+    .landing-nav.scrolled {
+        height: 60px;
+    }
+}
+
+@media (max-width: 576px) {
+    body {
+        padding-top: 62px;
+    }
+    .landing-nav {
+        height: 62px;
+        padding: 0 16px;
+    }
+    .landing-nav.scrolled {
+        height: 56px;
+    }
+    .nav-logo img {
+        height: 28px;
+        width: 28px;
+    }
+    .nav-logo .logo-text {
+        font-size: 0.72rem;
+    }
+    .profile-avatar {
+        width: 36px;
+        height: 36px;
+    }
+    .btn-nav-login {
+        padding: 6px 16px;
+        font-size: 0.82rem;
+    }
 }
